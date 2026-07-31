@@ -1,8 +1,12 @@
 name: Deploy to GitHub Pages
 
+# Manual-only until GitHub Pages is enabled for this repo. Once Pages is on
+# (Settings -> Pages -> Source: GitHub Actions), uncomment the push trigger so
+# every commit to main deploys. Pages on a private repo needs GitHub Pro or
+# Team; on the free tier the repo has to be public.
 on:
-  push:
-    branches: [main]
+  # push:
+  #   branches: [main]
   workflow_dispatch:
 
 permissions:
