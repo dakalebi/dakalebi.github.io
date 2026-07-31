@@ -1,0 +1,43 @@
+rules_version = '2';
+
+// There is no backend: the app is a static bundle on GitHub Pages and talks to
+// Firestore directly from the browser. These rules ARE the security boundary,
+// so they are deliberately restrictive.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Replace with your own Firebase Auth UID (Console -> Authentication -> Users).
+    // Add more UIDs to the list to grant catalog-write rights to someone else.
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.uid in ['REPLACE_WITH_YOUR_FIREBASE_UID'];
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Episode catalog: readable by any signed-in user, writable only by admins
+    // (this is what the Reload button writes).
+    match /episodes/{episodeId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Catalog metadata: last refresh time, counts.
+    match /meta/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Watch progress is strictly private to its owner.
+    match /users/{userId}/progress/{episodeId} {
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Everything else is denied.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

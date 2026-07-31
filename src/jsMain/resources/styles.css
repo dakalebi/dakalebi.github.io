@@ -1,0 +1,55 @@
+/* Design tokens ported from the original app's styles.css (oklch, dark-only). */
+:root {
+  --radius: 0.625rem;
+  --background: oklch(0.16 0.02 270);
+  --foreground: oklch(0.97 0.005 270);
+  --card: oklch(0.21 0.025 270);
+  --card-foreground: oklch(0.97 0.005 270);
+  --popover: oklch(0.21 0.025 270);
+  --popover-foreground: oklch(0.97 0.005 270);
+  --primary: oklch(0.72 0.19 25);
+  --primary-foreground: oklch(0.16 0.02 270);
+  --secondary: oklch(0.28 0.03 270);
+  --secondary-foreground: oklch(0.97 0.005 270);
+  --muted: oklch(0.26 0.025 270);
+  --muted-foreground: oklch(0.7 0.02 270);
+  --accent: oklch(0.32 0.04 270);
+  --accent-foreground: oklch(0.97 0.005 270);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.984 0.003 247.858);
+  --border: oklch(0.3 0.025 270);
+  --input: oklch(0.3 0.025 270);
+  --ring: oklch(0.72 0.19 25);
+}
+
+* {
+  box-sizing: border-box;
+  border-color: var(--border);
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  min-height: 100vh;
+  font-family:
+    system-ui, -apple-system, "Segoe UI", "Noto Sans Georgian", "BPG Nino Mtavruli",
+    sans-serif;
+  background-color: var(--background);
+  color: var(--foreground);
+  background-image:
+    radial-gradient(80% 60% at 50% -10%, color-mix(in oklch, var(--primary) 14%, transparent) 0%, transparent 60%),
+    radial-gradient(50% 40% at 100% 0%, color-mix(in oklch, var(--primary) 8%, transparent) 0%, transparent 70%);
+  background-attachment: fixed;
+}
+
+.scaffold-check {
+  display: grid;
+  place-items: center;
+  gap: 1rem;
+  min-height: 100vh;
+  font-size: 1.125rem;
+}

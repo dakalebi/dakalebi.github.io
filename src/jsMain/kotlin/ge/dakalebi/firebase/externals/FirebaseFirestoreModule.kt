@@ -1,0 +1,49 @@
+@file:JsModule("firebase/firestore")
+
+package ge.dakalebi.firebase.externals
+
+import kotlin.js.Promise
+
+external fun getFirestore(app: FirebaseApp): Firestore
+
+external fun collection(
+    db: Firestore,
+    path: String,
+    vararg pathSegments: String,
+): CollectionReference
+
+external fun doc(
+    db: Firestore,
+    path: String,
+    vararg pathSegments: String,
+): DocumentReference
+
+external fun getDoc(reference: DocumentReference): Promise<DocumentSnapshot>
+
+external fun getDocs(query: Query): Promise<QuerySnapshot>
+
+external fun setDoc(
+    reference: DocumentReference,
+    data: dynamic,
+    options: dynamic = definedExternally,
+): Promise<Unit>
+
+external fun updateDoc(reference: DocumentReference, data: dynamic): Promise<Unit>
+
+external fun deleteDoc(reference: DocumentReference): Promise<Unit>
+
+/** Firestore caps a batch at 500 writes; callers must chunk. */
+external fun writeBatch(db: Firestore): WriteBatch
+
+external fun query(base: Query, vararg constraints: QueryConstraint): Query
+
+external fun where(fieldPath: String, opStr: String, value: Any?): QueryConstraint
+
+external fun orderBy(
+    fieldPath: String,
+    directionStr: String = definedExternally,
+): QueryConstraint
+
+external fun limit(count: Int): QueryConstraint
+
+external fun serverTimestamp(): dynamic
