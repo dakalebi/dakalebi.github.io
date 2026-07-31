@@ -219,6 +219,11 @@ h3 {
 
 .hero {
   position: relative;
+  /* `width` must stay explicit. With only `aspect-ratio` and `min-height` set,
+     a narrow viewport makes the browser derive the *width* from the clamped
+     height (340px x 4/3 = 453px on phones), which pushed the whole page into
+     horizontal scroll below ~453px. */
+  width: 100%;
   min-height: 300px;
   aspect-ratio: 21 / 9;
   background: var(--elev);
@@ -1038,7 +1043,11 @@ h3 {
   flex: 1;
   min-width: 0;
 }
-.toggle-row .lab b {
+/* Element selectors here have to match what Compose actually emits, which is a
+   plain <div> in both places — not the <b>/<i> this block was first written
+   against. Neither rule matched, so the label lost its weight and the switch
+   lost its knob entirely. */
+.toggle-row .lab > div {
   display: block;
   font-size: 13.5px;
   font-weight: 600;
@@ -1056,7 +1065,7 @@ h3 {
   flex: none;
   transition: background 0.18s;
 }
-.switch i {
+.switch > div {
   position: absolute;
   top: 3px;
   left: 3px;
@@ -1069,7 +1078,7 @@ h3 {
 .switch.on {
   background: var(--red);
 }
-.switch.on i {
+.switch.on > div {
   transform: translateX(17px);
 }
 
