@@ -8,6 +8,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import ge.dakalebi.app.Log
 import ge.dakalebi.app.formatTime
+import ge.dakalebi.formula.orderedQualityLabels
 import ge.dakalebi.ui.Icon
 import ge.dakalebi.ui.Icons
 import ge.dakalebi.ui.classNames
@@ -297,6 +298,9 @@ fun CustomVideoPlayer(
 
     val pctText = "${formatTime(currentSec.toDouble())} / ${formatTime(durationSec.toDouble())}"
     val controlsHidden = !showControls && playing
+    // Best-first, computed rather than taken from the map's own order, which
+    // is not preserved across a Firestore round trip.
+    val ordered = remember(sources) { orderedQualityLabels(sources) }
 
     Div({
         classes("player")
@@ -462,9 +466,9 @@ fun CustomVideoPlayer(
             Div({ classes("feedback") }) { Text(it) }
         }
 
-        if (qualityOpen && sources.size > 1) {
+        if (qualityOpen && ordered.size > 1) {
             Div({ classes("q-menu") }) {
-                sources.keys.forEach { label ->
+                ordered.forEach { label ->
                     Button({
                         classNames("q-item", if (label == quality) "sel" else null)
                         onClick {
@@ -557,12 +561,12 @@ fun CustomVideoPlayer(
 
                 Div({ classes("grow") })
 
-                if (sources.size > 1) {
+                if (ordered.size > 1) {
                     Button({
                         classes("q-btn", "mono")
                         attr("aria-label", "ხარისხი")
                         onClick { qualityOpen = !qualityOpen }
-                    }) { Text(quality ?: sources.keys.first()) }
+                    }) { Text(quality ?: ordered.first()) }
                 }
 
                 if (castSupported || castAvailable) {
