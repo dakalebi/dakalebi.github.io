@@ -31,7 +31,8 @@ object AuthStore {
      * what actually enforce this — the flag only avoids showing a button that
      * would fail.
      */
-    val isAdmin: Boolean get() = user?.uid?.let { it in FirebaseConfig.ADMIN_UIDS } == true
+    val isAdmin: Boolean
+        get() = user?.let { it.emailVerified && it.email in FirebaseConfig.ADMIN_EMAILS } == true
 
     fun start() {
         onAuthStateChanged(Firebase.auth) { next ->
