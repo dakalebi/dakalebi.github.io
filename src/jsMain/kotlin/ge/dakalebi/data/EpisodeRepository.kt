@@ -18,6 +18,10 @@ import ge.dakalebi.formula.qualitySources
 import ge.dakalebi.formula.thumbnailUrl
 import kotlinx.coroutines.await
 
+/** The catalog could not be read, as opposed to being genuinely empty. */
+class CatalogUnavailableException :
+    RuntimeException("სერიების სია ვერ ჩაიტვირთა — შეამოწმე ინტერნეტი")
+
 /** Reads and writes the shared episode catalog. */
 object EpisodeRepository {
     private const val EPISODES = "episodes"
@@ -27,11 +31,17 @@ object EpisodeRepository {
     /** Firestore hard limit; a full refresh is ~932 docs, so we chunk. */
     private const val BATCH_LIMIT = 450
 
-    suspend fun listEpisodes(): List<Episode> =
-        getDocs(collection(Firebase.db, EPISODES)).await()
-            .docs
-            .map { it.toEpisode() }
-            .sortedBy { it.ordinal }
+    suspend fun listEpisodes(): List<Episode> {
+        val snapshot = getDocs(collection(Firebase.db, EPISODES)).await()
+        // An unreachable backend does not reject — Firestore quietly answers
+        // from its (empty) cache. Treated as success, that renders the "no
+        // episodes in the database yet" screen, which tells a viewer to wait
+        // for an admin who has nothing to do.
+        if (snapshot.empty && snapshot.metadata.fromCache) {
+            throw CatalogUnavailableException()
+        }
+        return snapshot.docs.map { it.toEpisode() }.sortedBy { it.ordinal }
+    }
 
     suspend fun getCatalogMeta(): CatalogMeta? {
         val snapshot = getDoc(doc(Firebase.db, META, CATALOG)).await()
