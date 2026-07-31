@@ -6,6 +6,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import ge.dakalebi.app.Log
 import ge.dakalebi.app.formatTime
 import ge.dakalebi.ui.Icon
 import ge.dakalebi.ui.Icons
@@ -173,7 +174,9 @@ fun CustomVideoPlayer(
         val el = refs.container ?: return
         val doc = document.asDynamic()
         if (doc.fullscreenElement != null || doc.webkitFullscreenElement != null) {
-            runCatching { doc.exitFullscreen() }.recoverCatching { doc.webkitExitFullscreen() }
+            runCatching { doc.exitFullscreen() }
+                .recoverCatching { doc.webkitExitFullscreen() }
+                .onFailure { Log.w("player", "could not leave fullscreen", it) }
         } else {
             val dyn = el.asDynamic()
             runCatching { dyn.requestFullscreen() }
@@ -182,6 +185,7 @@ fun CustomVideoPlayer(
                     // iOS Safari only ever fullscreens the video element itself.
                     refs.video?.asDynamic()?.webkitEnterFullscreen()
                 }
+                .onFailure { Log.w("player", "could not enter fullscreen", it) }
         }
     }
 
@@ -194,8 +198,10 @@ fun CustomVideoPlayer(
             } else if (v.remote != null && jsTypeOf(v.remote.prompt) == "function") {
                 v.remote.prompt()
                 flashFeedback("Cast")
+            } else {
+                Log.w("cast", "no AirPlay or Remote Playback API on this element")
             }
-        }
+        }.onFailure { Log.w("cast", "picker refused to open", it) }
     }
 
     // ------------------------------------------------------------- effects
@@ -323,7 +329,10 @@ fun CustomVideoPlayer(
                 paintBars()
                 refs.pendingSeek?.let { target ->
                     refs.pendingSeek = null
+                    // Losing this seek silently is what a quality switch that
+                    // "jumps back to the start" actually looks like.
                     runCatching { v.currentTime = target }
+                        .onFailure { Log.w("player", "quality-swap seek to ${target}s failed", it) }
                     if (refs.pendingPlay) v.play()
                 }
                 events.onLoadedMetadata(v)
@@ -400,7 +409,7 @@ fun CustomVideoPlayer(
                             remote.watchAvailability { available: Boolean ->
                                 castAvailable = available
                             }
-                        }
+                        }.onFailure { Log.w("cast", "watchAvailability rejected", it) }
                         remote.onconnect = { casting = true }
                         remote.ondisconnect = { casting = false }
                     }

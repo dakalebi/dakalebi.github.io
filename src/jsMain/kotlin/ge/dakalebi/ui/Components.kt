@@ -5,6 +5,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import ge.dakalebi.app.Log
 import ge.dakalebi.app.Route
 import ge.dakalebi.app.Router
 import ge.dakalebi.app.Toasts
@@ -188,8 +189,12 @@ private fun copyToClipboard(text: String, done: (Boolean) -> Unit) {
     if (clipboard != null && clipboard.writeText != null) {
         (clipboard.writeText(text) as kotlin.js.Promise<Unit>)
             .then { done(true) }
-            .catch { done(legacyCopy(text)) }
+            .catch { error ->
+                Log.w("clipboard", "navigator.clipboard refused, trying execCommand", error)
+                done(legacyCopy(text))
+            }
     } else {
+        Log.d("clipboard", "no navigator.clipboard on this origin, using execCommand")
         done(legacyCopy(text))
     }
 }
@@ -204,4 +209,4 @@ private fun legacyCopy(text: String): Boolean = runCatching {
     val ok = document.asDynamic().execCommand("copy") as Boolean
     document.body?.removeChild(area as org.w3c.dom.Node)
     ok
-}.getOrDefault(false)
+}.onFailure { Log.w("clipboard", "execCommand fallback failed", it) }.getOrDefault(false)

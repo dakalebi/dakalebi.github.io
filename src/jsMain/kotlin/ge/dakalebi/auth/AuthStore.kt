@@ -3,6 +3,7 @@ package ge.dakalebi.auth
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import ge.dakalebi.app.Log
 import ge.dakalebi.firebase.Firebase
 import ge.dakalebi.firebase.FirebaseConfig
 import ge.dakalebi.firebase.externals.FirebaseUser
@@ -72,10 +73,7 @@ object AuthStore {
  * reader, so map the ones a person can actually act on.
  */
 fun authErrorMessage(error: Throwable): String {
-    val code = runCatching {
-        val dyn: dynamic = error
-        (dyn.code as? String) ?: (dyn.cause?.code as? String)
-    }.getOrNull().orEmpty()
+    val code = Log.codeOf(error).orEmpty()
 
     return when {
         code.contains("invalid-credential") || code.contains("wrong-password") ||

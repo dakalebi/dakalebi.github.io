@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import ge.dakalebi.app.Log
 import ge.dakalebi.app.Prefs
 import ge.dakalebi.app.Route
 import ge.dakalebi.app.Router
@@ -59,6 +60,7 @@ fun DashboardScreen() {
                 block()
                 Toasts.ok(label)
             } catch (e: Throwable) {
+                Log.e("dashboard", "action failed: $label", e)
                 Toasts.error("მოქმედება ვერ შესრულდა")
             } finally {
                 busy = false

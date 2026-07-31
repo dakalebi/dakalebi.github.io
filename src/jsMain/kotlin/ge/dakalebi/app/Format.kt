@@ -31,7 +31,9 @@ private fun Int.pad(): String = if (this < 10) "0$this" else toString()
 /** Localised timestamp for the "last refreshed" readout. */
 fun formatDateTime(millis: Double?): String {
     if (millis == null) return "—"
-    return runCatching { Date(millis).toLocaleString("ka-GE") }.getOrElse { "—" }
+    return runCatching { Date(millis).toLocaleString("ka-GE") }
+        .onFailure { Log.w("format", "cannot localise timestamp $millis", it) }
+        .getOrElse { "—" }
 }
 
 /**

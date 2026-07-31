@@ -3,6 +3,7 @@ package ge.dakalebi.data
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import ge.dakalebi.app.Log
 import ge.dakalebi.app.Toasts
 import ge.dakalebi.app.nowMillis
 
@@ -47,13 +48,23 @@ object Library {
         try {
             episodes = EpisodeRepository.listEpisodes()
             progress = ProgressRepository.list(uid).associateBy { it.episodeId }
-            meta = runCatching { EpisodeRepository.getCatalogMeta() }.getOrNull()
+            meta = loadMeta()
         } catch (e: Throwable) {
+            Log.e("library", "catalog load failed for uid=$uid", e)
             loadError = e.message ?: "მონაცემები ვერ ჩაიტვირთა"
         } finally {
             loading = false
         }
     }
+
+    /**
+     * Metadata is decoration — the last-refreshed line in the menu. Losing it
+     * must not fail the load, but it should still say so: a permission error
+     * here means the rules are wrong for `meta/catalog` too.
+     */
+    private suspend fun loadMeta(): CatalogMeta? = runCatching {
+        EpisodeRepository.getCatalogMeta()
+    }.onFailure { Log.w("library", "catalog meta unavailable", it) }.getOrNull()
 
     fun reset() {
         loadedFor = null
@@ -75,13 +86,13 @@ object Library {
                 refreshNote = "სეზონი $done / $total"
             }
             episodes = EpisodeRepository.listEpisodes()
-            meta = runCatching { EpisodeRepository.getCatalogMeta() }.getOrNull()
+            meta = loadMeta()
             val missing = if (result.withoutVideo > 0) " · ${result.withoutVideo} ვიდეოს გარეშე" else ""
             Toasts.ok("განახლდა: ${result.episodes} სერია, ${result.written} შეიცვალა$missing")
         } catch (e: Throwable) {
             // Surface the raw failure: the mapped Georgian text hides which
             // stage broke, and this runs only in the browser.
-            console.error("refresh failed", e.asDynamic().code, e.message, e)
+            Log.e("library", "catalog refresh failed", e)
             Toasts.error(refreshErrorMessage(e))
         } finally {
             refreshing = false

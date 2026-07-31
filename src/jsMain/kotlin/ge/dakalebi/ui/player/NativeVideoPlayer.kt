@@ -2,6 +2,7 @@ package ge.dakalebi.ui.player
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import ge.dakalebi.app.Log
 import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.Video
 import org.w3c.dom.HTMLVideoElement
@@ -44,11 +45,13 @@ fun NativeVideoPlayer(
                     events.onAirPlayChange(active, element)
                 }
                 dyn.addEventListener("webkitcurrentplaybacktargetiswirelesschanged", syncAirPlay)
+                // `remote` is absent on older WebKit; the webkit-prefixed event
+                // above still covers AirPlay there, so this is not an error.
                 runCatching {
                     dyn.remote?.addEventListener?.invoke("connect", syncAirPlay)
                     dyn.remote?.addEventListener?.invoke("connecting", syncAirPlay)
                     dyn.remote?.addEventListener?.invoke("disconnect", syncAirPlay)
-                }
+                }.onFailure { Log.d("cast", "Remote Playback API unavailable", it) }
                 syncAirPlay(null)
 
                 onDispose {
@@ -57,7 +60,7 @@ fun NativeVideoPlayer(
                         dyn.remote?.removeEventListener?.invoke("connect", syncAirPlay)
                         dyn.remote?.removeEventListener?.invoke("connecting", syncAirPlay)
                         dyn.remote?.removeEventListener?.invoke("disconnect", syncAirPlay)
-                    }
+                    }.onFailure { Log.d("cast", "AirPlay listener teardown failed", it) }
                     events.onElement(null)
                     holder[0] = null
                 }
@@ -72,7 +75,10 @@ fun NativeVideoPlayer(
             addEventListener("play") { events.onPlay() }
             addEventListener("pause") { events.onPause() }
             addEventListener("ended") { events.onEnded() }
-            addEventListener("error") { events.onError() }
+            addEventListener("error") {
+                Log.e("player", "media error (code=${holder[0]?.asDynamic()?.error?.code}, src=$src)")
+                events.onError()
+            }
         })
     }
 }
