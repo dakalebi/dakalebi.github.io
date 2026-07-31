@@ -41,6 +41,10 @@ fun LoginScreen() {
                 block()
                 onOk()
             } catch (e: Throwable) {
+                // Log the raw Firebase error alongside the friendly text: the
+                // mapped message hides the code, and auth failures are the
+                // hardest thing to diagnose remotely.
+                console.error("auth failed", e.asDynamic().code, e.message, e)
                 Toasts.error(authErrorMessage(e))
             } finally {
                 busy = false
