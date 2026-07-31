@@ -126,13 +126,24 @@ fun orderedQualityLabels(sources: Map<String, String>): List<String> =
 fun FormulaEpisode.bestVideoUrl(): String? = qualitySources().values.firstOrNull()
 
 /**
- * Poster image. Every one of the 932 episodes currently carries [imageURL], so
- * the original app's HTML-scraping fallback is unnecessary — and impossible
- * from a browser anyway, since `tv.formula.ge` sends no CORS headers.
+ * Poster image, largest first.
+ *
+ * Surveyed across all 932 episodes: every one carries [imageURL], but it is a
+ * 220x124 thumbnail. 28 also carry [originalImageURL] at 1280x720. So
+ * [imageURL] is the right *fallback* — it is the one that is always there — and
+ * the wrong first choice, which is what it used to be.
+ *
+ * [videoThumbnailSrc] is deliberately absent: despite the name it is an `.mp4`
+ * (e.g. `cdn.formula.ge/trimmer/THUMBNAIL/.../….mp4`), so putting it in an
+ * `<img>` chain only produces a broken image. It was unreachable before purely
+ * because [imageURL] always won.
+ *
+ * The original app's HTML-scraping fallback stays unnecessary — and is
+ * impossible from a browser anyway, since `tv.formula.ge` sends no CORS
+ * headers.
  */
 fun FormulaEpisode.thumbnailUrl(): String? =
-    listOf(imageURL, originalImageURL, videoThumbnailSrc)
-        .firstOrNull { !it.isNullOrBlank() }
+    listOf(originalImageURL, imageURL).firstOrNull { !it.isNullOrBlank() }
 
 /** Public watch page on Formula, used as the "open on Formula" fallback. */
 fun episodePageUrl(formulaEpisodeId: Int): String =
