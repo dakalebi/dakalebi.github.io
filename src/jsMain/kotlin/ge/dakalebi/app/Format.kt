@@ -28,11 +28,24 @@ fun formatDuration(seconds: Int?): String? {
 
 private fun Int.pad(): String = if (this < 10) "0$this" else toString()
 
-/** Localised timestamp for the "last refreshed" readout. */
+/**
+ * Timestamp for the "last refreshed" readout, as `dd.MM.yyyy, HH:mm`.
+ *
+ * Formatted by hand rather than through `toLocaleString("ka-GE")`. Georgian
+ * locale data is not present in every runtime — Chrome here returns `[]` from
+ * `Intl.DateTimeFormat.supportedLocalesOf(['ka'])` and silently resolves to
+ * `en-US`, which put `8/1/2026, 1:27:35 AM` in an otherwise entirely Georgian
+ * interface. Day-first and 24-hour is what the rest of the UI implies, and it
+ * renders identically everywhere.
+ */
 fun formatDateTime(millis: Double?): String {
     if (millis == null) return "—"
-    return runCatching { Date(millis).toLocaleString("ka-GE") }
-        .onFailure { Log.w("format", "cannot localise timestamp $millis", it) }
+    return runCatching {
+        val d = Date(millis)
+        "${d.getDate().pad()}.${(d.getMonth() + 1).pad()}.${d.getFullYear()}, " +
+            "${d.getHours().pad()}:${d.getMinutes().pad()}"
+    }
+        .onFailure { Log.w("format", "cannot format timestamp $millis", it) }
         .getOrElse { "—" }
 }
 
