@@ -42,11 +42,16 @@ data class FormulaEpisode(
     val imageURL: String? = null,
     val originalImageURL: String? = null,
     val sourceList: List<FormulaSourceEntry> = emptyList(),
-    val orderId: Int = 0,
     val enabled: Boolean = true,
     val status: String? = null,
-    val skipIntroSeconds: Int? = null,
 ) {
+    // Deliberately NOT declared: `skipIntroSeconds`, `thumbnailSeconds`,
+    // `orderId` and `viewsCount`. Formula types these inconsistently — some
+    // episodes return skipIntroSeconds as a quoted decimal ("57.173437"),
+    // which fails to parse as a number and aborts the whole season. They are
+    // unused, so letting ignoreUnknownKeys drop them is both simpler and
+    // immune to whatever type the API returns next.
+
     val episodeNumber: Int get() = episodeId.trimStart('0').toIntOrNull() ?: 0
 
     /** Best human-readable title, or null if Formula has none. */
