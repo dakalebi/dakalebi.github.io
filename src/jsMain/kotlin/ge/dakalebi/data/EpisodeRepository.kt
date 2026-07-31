@@ -54,8 +54,11 @@ object EpisodeRepository {
         nowMillis: Double,
         onProgress: (done: Int, total: Int) -> Unit = { _, _ -> },
     ): RefreshResult {
+        console.log("refresh: reading existing catalog")
         val existing = listEpisodes().associateBy { it.id }
+        console.log("refresh: existing=${existing.size}, fetching seasons")
         val seasons = FormulaApi.fetchSeasons()
+        console.log("refresh: seasons=${seasons.size}")
 
         val fresh = mutableListOf<Episode>()
         seasons.forEachIndexed { index, season ->
@@ -66,6 +69,7 @@ object EpisodeRepository {
 
         val changed = fresh.filter { candidate -> existing[candidate.id]?.contentEquals(candidate) != true }
 
+        console.log("refresh: fetched=${fresh.size}, changed=${changed.size}, writing")
         for (chunk in changed.chunked(BATCH_LIMIT)) {
             val batch = writeBatch(Firebase.db)
             for (episode in chunk) {

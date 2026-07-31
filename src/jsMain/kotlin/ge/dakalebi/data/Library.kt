@@ -79,6 +79,9 @@ object Library {
             val missing = if (result.withoutVideo > 0) " · ${result.withoutVideo} ვიდეოს გარეშე" else ""
             Toasts.ok("განახლდა: ${result.episodes} სერია, ${result.written} შეიცვალა$missing")
         } catch (e: Throwable) {
+            // Surface the raw failure: the mapped Georgian text hides which
+            // stage broke, and this runs only in the browser.
+            console.error("refresh failed", e.asDynamic().code, e.message, e)
             Toasts.error(refreshErrorMessage(e))
         } finally {
             refreshing = false
