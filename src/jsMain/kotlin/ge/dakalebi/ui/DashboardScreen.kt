@@ -103,7 +103,7 @@ fun DashboardScreen() {
                                 val all = Library.season(number)
                                 val done = all.count { Library.progress[it.id]?.isWatched == true }
                                 Button({
-                                    classes("chip", if (number == season) "sel" else "")
+                                    classNames("chip", if (number == season) "sel" else null)
                                     onClick { seasonOverride = number }
                                 }) {
                                     Text("სეზონი $number")
@@ -195,7 +195,7 @@ private fun DashboardNav(onMenu: () -> Unit) {
             classes("icon-btn")
             attr("aria-label", "მენიუ")
             onClick { onMenu() }
-        }) { Text("☰") }
+        }) { Icon(Icons.menu, "მენიუ") }
         Span({ classes("nav-logo") }) { Text("დაქალები") }
         Div({ classes("nav-right") }) {
             if (Library.refreshing) {
@@ -268,7 +268,7 @@ private fun SeasonMenu(disabled: Boolean, onMark: () -> Unit, onReset: () -> Uni
             attr("aria-label", "სეზონის მოქმედებები")
             if (disabled) attr("disabled", "")
             onClick { open = !open }
-        }) { Text("⋯") }
+        }) { Icon(Icons.more, "სეზონის მოქმედებები") }
 
         if (open) {
             Div({ classes("scrim"); style { property("background", "transparent") }; onClick { open = false } })
@@ -339,7 +339,7 @@ private fun MenuSheet(
                     Div { Text("შემდეგი სერიის ავტომატურად ჩართვა") }
                     Span { Text("სერიის დასრულებისას შემდეგი ავტომატურად ჩაირთვება.") }
                 }
-                Div({ classes("switch", if (Prefs.autoplayNext) "on" else "") }) { Div() }
+                Div({ classNames("switch", if (Prefs.autoplayNext) "on" else null) }) { Div() }
             }
         }
 

@@ -11,12 +11,12 @@ fun ToastHost() {
     Div({ classes("toasts") }) {
         Toasts.items.forEach { toast ->
             Div({
-                classes(
+                classNames(
                     "toast",
                     when (toast.kind) {
                         ToastKind.Ok -> "ok"
                         ToastKind.Error -> "err"
-                        ToastKind.Plain -> ""
+                        ToastKind.Plain -> null
                     },
                 )
             }) { Text(toast.message) }

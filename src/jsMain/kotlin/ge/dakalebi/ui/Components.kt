@@ -69,13 +69,13 @@ fun EpisodeTile(episode: Episode, progress: WatchProgress?) {
                 Thumb(episode)
                 Span({ classes("tile-badge", "mono") }) { Text("E${episode.episodeNumber}") }
                 if (watched) {
-                    Span({ classes("tile-seen") }) { Text("✓") }
+                    Span({ classes("tile-seen") }) { Icon(Icons.check) }
                 }
                 formatDuration(episode.durationSeconds)?.let {
                     Span({ classes("tile-dur", "mono") }) { Text(it) }
                 }
                 if (percent > 0) {
-                    Div({ classes("tile-prog", if (watched) "done" else "") }) {
+                    Div({ classNames("tile-prog", if (watched) "done" else null) }) {
                         Div({ style { property("width", "$percent%") } })
                     }
                 }
@@ -110,7 +110,7 @@ fun EpisodeTile(episode: Episode, progress: WatchProgress?) {
                         else Toasts.error("კოპირება ვერ მოხერხდა")
                     }
                 }
-            }) { Text("⧉") }
+            }) { Icon(Icons.link) }
 
             episode.videoUrl?.let { videoUrl ->
                 Button({
@@ -125,7 +125,7 @@ fun EpisodeTile(episode: Episode, progress: WatchProgress?) {
                             else Toasts.error("კოპირება ვერ მოხერხდა")
                         }
                     }
-                }) { Text("⤓") }
+                }) { Icon(Icons.download) }
             }
         }
     }

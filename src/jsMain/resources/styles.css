@@ -1243,3 +1243,26 @@ h3 {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Inline SVG icon wrapper. */
+.ic {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+  flex: none;
+}
+.tile-act .ic svg,
+.tile-seen .ic svg {
+  width: 14px;
+  height: 14px;
+}
+.btn .ic svg {
+  width: 16px;
+  height: 16px;
+}
+.player-center .big .ic svg {
+  width: 30px;
+  height: 30px;
+  margin-left: 3px;
+}
