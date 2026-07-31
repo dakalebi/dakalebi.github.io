@@ -24,6 +24,7 @@ import org.jetbrains.compose.web.dom.Span
 import org.jetbrains.compose.web.dom.Text
 import org.jetbrains.compose.web.dom.Video
 import org.w3c.dom.HTMLElement
+import org.w3c.dom.HTMLInputElement
 import org.w3c.dom.HTMLVideoElement
 import org.w3c.dom.events.Event
 import org.w3c.dom.events.KeyboardEvent
@@ -40,6 +41,7 @@ private class PlayerRefs {
     var fillBuf: HTMLElement? = null
     var knob: HTMLElement? = null
     var thinCur: HTMLElement? = null
+    var scrubInput: HTMLInputElement? = null
     var raf: Int? = null
     var hideTimer: Int? = null
     var feedbackTimer: Int? = null
@@ -87,6 +89,13 @@ fun CustomVideoPlayer(
         if (!refs.scrubbing) {
             refs.fillCur?.style?.width = "$pct%"
             refs.knob?.style?.left = "$pct%"
+            // The bar people see is painted here, but the range input layered
+            // over it for interaction is what the keyboard and screen readers
+            // actually address. Leaving its value behind meant arrow-key
+            // seeking jumped from a stale position and assistive tech
+            // announced the wrong one. Skipped mid-drag so it never fights
+            // the pointer.
+            refs.scrubInput?.value = (pct * 10).roundToInt().toString()
         }
         refs.thinCur?.style?.width = "$pct%"
 
@@ -492,6 +501,7 @@ fun CustomVideoPlayer(
                 Input(InputType.Range) {
                     min("0"); max("1000"); step(1.0)
                     attr("aria-label", "დროის ხაზი")
+                    ref { el -> refs.scrubInput = el; onDispose { refs.scrubInput = null } }
                     onInput { event ->
                         val v = refs.video ?: return@onInput
                         if (!v.duration.isFinite() || v.duration <= 0) return@onInput
