@@ -1,20 +1,17 @@
 package ge.dakalebi
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import org.jetbrains.compose.web.dom.Button
-import org.jetbrains.compose.web.dom.Div
-import org.jetbrains.compose.web.dom.Text
+import ge.dakalebi.app.Prefs
+import ge.dakalebi.app.Router
+import ge.dakalebi.auth.AuthStore
+import ge.dakalebi.firebase.FirebaseConfig
+import ge.dakalebi.ui.App
 import org.jetbrains.compose.web.renderComposable
 
 fun main() {
-    renderComposable(rootElementId = "root") {
-        var clicks by remember { mutableStateOf(0) }
-        Div(attrs = { classes("scaffold-check") }) {
-            Text("ჩემი ცოლის დაქალები — scaffold OK ($clicks)")
-            Button(attrs = { onClick { clicks++ } }) { Text("დააჭირე") }
-        }
-    }
+    Router.start()
+    Prefs.start()
+    // Touching Firebase before the config is filled in would throw on init.
+    if (FirebaseConfig.isConfigured) AuthStore.start()
+
+    renderComposable(rootElementId = "root") { App() }
 }
