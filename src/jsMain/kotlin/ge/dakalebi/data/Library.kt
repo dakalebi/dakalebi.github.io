@@ -41,7 +41,10 @@ object Library {
     // -------------------------------------------------------------- loading
 
     suspend fun ensureLoaded(uid: String) {
-        if (loadedFor == uid && !loading) return
+        // `loadError != null` deliberately re-enters. Without it a single failed
+        // read latched permanently: the guard matched on every later call, so
+        // the retry button — and any navigation — would have been a no-op.
+        if (loadedFor == uid && !loading && loadError == null) return
         loadedFor = uid
         loading = true
         loadError = null
@@ -237,10 +240,15 @@ object Library {
 
 private fun refreshErrorMessage(error: Throwable): String {
     val text = (error.message ?: "").lowercase()
+    val code = Log.codeOf(error).orEmpty()
     return when {
-        "permission" in text || "insufficient" in text ->
-            "განახლების უფლება არ გაქვს — საჭიროა ადმინის UID წესებში"
-        "quota" in text -> "Firestore-ის ლიმიტი ამოიწურა"
+        // The allowlist is keyed on the verified email, not a UID — the old
+        // wording sent anyone hitting this to look in the wrong place.
+        code == "permission-denied" || "permission" in text || "insufficient" in text ->
+            "განახლების უფლება არ გაქვს — ეს ანგარიში ადმინების სიაში არაა"
+        "quota" in text || "resource-exhausted" in code -> "Firestore-ის ლიმიტი ამოიწურა"
+        "failed to fetch" in text || "network" in text || "unavailable" in code ->
+            "ქსელთან კავშირი ვერ მოხერხდა — სცადე თავიდან"
         else -> "განახლება ვერ მოხერხდა"
     }
 }
