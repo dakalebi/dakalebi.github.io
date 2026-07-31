@@ -237,8 +237,18 @@ fun CustomVideoPlayer(
                 target?.isContentEditable == true
             ) return@handler
 
+            // Space and Enter are how a keyboard user presses whatever is
+            // focused. Claiming them unconditionally - which this did - also
+            // calls preventDefault, so the button never fires and the video
+            // toggles instead: every control on the page becomes unreachable
+            // without a mouse. Only take them when focus is somewhere inert.
+            val role = runCatching { target?.getAttribute("role") as? String }.getOrNull()
+            val focusIsActivatable = tag == "BUTTON" || tag == "A" ||
+                tag == "SUMMARY" || !role.isNullOrBlank()
+
             when {
                 event.code == "Space" || event.key == "Enter" -> {
+                    if (focusIsActivatable) return@handler
                     event.preventDefault(); togglePlay()
                 }
                 event.code == "ArrowRight" -> { event.preventDefault(); seekBy(10.0) }
