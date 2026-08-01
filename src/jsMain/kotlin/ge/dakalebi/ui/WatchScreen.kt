@@ -387,6 +387,13 @@ fun WatchScreen(episodeId: String) {
     Div {
         WatchNav(episode)
 
+        // Two columns above 1180px, the way YouTube lays this out: the player
+        // and everything about this episode on the left, what to watch next on
+        // the right. A full-bleed player left the page with nothing beside it
+        // and pushed every rail below the fold.
+        Div({ classes("watch-grid") }) {
+        Div({ classes("watch-main") }) {
+        Div({ classes("player-frame") }) {
         val url = videoUrl
         if (url != null && progressReady) {
             key(episode.id) {
@@ -424,6 +431,7 @@ fun WatchScreen(episodeId: String) {
                     Text(if (error != null) error!! else "იტვირთება...")
                 }
             }
+        }
         }
 
         Div({ classes("watch-body") }) {
@@ -492,17 +500,20 @@ fun WatchScreen(episodeId: String) {
             }
         }
 
-        Div({ classes("rails") }) {
             Rail(
                 title = "წინა სერიები",
-                episodes = Library.previous(episode, 4),
+                episodes = Library.previous(episode, 6),
                 progress = Library.progress,
             )
-            Rail(
-                title = "შემდეგი სერიები",
-                episodes = Library.upcoming(episode, 8),
-                progress = Library.progress,
-            )
+        }
+
+            Div({ classes("watch-aside") }) {
+                UpNextList(
+                    title = "შემდეგი სერიები",
+                    episodes = Library.upcoming(episode, 12),
+                    progress = Library.progress,
+                )
+            }
         }
     }
 

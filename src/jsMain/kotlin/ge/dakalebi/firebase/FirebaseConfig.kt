@@ -20,12 +20,22 @@ object FirebaseConfig {
 
     /**
      * Accounts allowed to refresh the episode catalog. Must match the allowlist
-     * in `firebase/firestore.rules` — this one only controls whether the Reload
+     * in `firebase/firestore.rules` — these only control whether the Reload
      * button is shown; the rules are what actually enforce it.
      *
-     * Matched on email rather than UID so the very first deploy can populate
-     * itself: a UID does not exist until an account has signed in once.
+     * UID is the primary key now that an account exists. Matching on email was
+     * originally the only option, to solve a bootstrap problem: a UID does not
+     * exist until someone has signed in once, so the first deploy could not
+     * have populated itself. That branch carried an `emailVerified` condition,
+     * and an email/password account created from the Firebase console is *not*
+     * verified — so moving off Google sign-in locked the owner out of their own
+     * catalog.
+     *
+     * The verified-email branch is kept as a recovery path if the UID ever
+     * changes. It is not a weakening: an unverified account matches neither.
      */
+    val ADMIN_UIDS: Set<String> = setOf("PZ6HS4qhStUv8Ai1VxCGU72bW6G3")
+
     val ADMIN_EMAILS: Set<String> = setOf("bachanamosulishvili@gmail.com")
 
     val isConfigured: Boolean get() = API_KEY != "REPLACE_ME"
