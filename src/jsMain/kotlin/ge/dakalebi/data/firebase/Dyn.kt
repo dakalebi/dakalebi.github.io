@@ -24,6 +24,12 @@ internal fun dynInt(value: dynamic): Int? = dynDouble(value)?.toInt()
 
 internal fun dynBool(value: dynamic): Boolean = value == true
 
+/** Distinguishes "false" from "absent", which [dynBool] deliberately does not. */
+internal fun dynBoolOrNull(value: dynamic): Boolean? {
+    if (value == null || value == undefined) return null
+    return value == true
+}
+
 /** Reads a flat `{ "1080p": "https://..." }` map, preserving insertion order. */
 internal fun dynStringMap(value: dynamic): Map<String, String> {
     if (value == null || value == undefined) return emptyMap()

@@ -19,6 +19,14 @@ data class RefreshResult(
     val episodes: Int,
     val written: Int,
     val withoutVideo: Int,
+    /**
+     * The catalog the rebuild just produced.
+     *
+     * Carried out rather than re-read: the caller already holds what it needs,
+     * and reading the collection back to learn what we were just told costs
+     * another 932 reads.
+     */
+    val catalog: List<Episode>,
 )
 
 /**

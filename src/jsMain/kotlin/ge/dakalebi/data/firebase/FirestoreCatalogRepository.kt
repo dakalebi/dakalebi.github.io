@@ -15,10 +15,12 @@ import ge.dakalebi.data.formula.bestVideoUrl
 import ge.dakalebi.data.formula.episodePageUrl
 import ge.dakalebi.data.formula.qualitySources
 import ge.dakalebi.data.formula.thumbnailUrl
+import ge.dakalebi.domain.model.Catalog
 import ge.dakalebi.domain.model.CatalogMeta
 import ge.dakalebi.domain.model.CatalogUnavailableException
 import ge.dakalebi.domain.model.Episode
 import ge.dakalebi.domain.model.RefreshResult
+import ge.dakalebi.domain.repository.CatalogCache
 import ge.dakalebi.domain.repository.CatalogRepository
 import kotlinx.coroutines.await
 
@@ -32,7 +34,35 @@ import kotlinx.coroutines.await
  */
 class FirestoreCatalogRepository(
     private val api: FormulaApi,
+    private val cache: CatalogCache,
 ) : CatalogRepository {
+
+    /**
+     * Metadata first, because its refresh stamp is what says whether the
+     * cached catalog is still current. One document read then stands in for
+     * 932 whenever nothing has changed.
+     *
+     * Losing the metadata must not fail the load — it is also the drawer's
+     * "last refreshed" line — but it should say so: a permission error here
+     * means the rules are wrong for `meta/catalog` too. It does cost the
+     * cache, since without a stamp nothing can be validated.
+     */
+    override suspend fun load(): Catalog {
+        val meta = runCatching { getMeta() }
+            .onFailure { Log.w("catalog", "metadata unavailable", it) }
+            .getOrNull()
+        val stamp = meta?.lastRefreshAtMillis
+
+        cache.read(stamp)?.let {
+            Log.d("catalog", "from cache (${it.size} episodes, 1 read)")
+            return Catalog(episodes = it, meta = meta)
+        }
+
+        val fresh = listEpisodes()
+        Log.d("catalog", "from Firestore (${fresh.size} reads)")
+        cache.write(stamp, fresh)
+        return Catalog(episodes = fresh, meta = meta)
+    }
 
     override suspend fun listEpisodes(): List<Episode> {
         val snapshot = getDocs(collection(Firebase.db, EPISODES)).await()
@@ -97,11 +127,15 @@ class FirestoreCatalogRepository(
         meta.episodeCount = fresh.size
         setDoc(doc(Firebase.db, META, CATALOG), meta).await()
 
+        val sorted = fresh.sortedBy { it.ordinal }
+        cache.write(nowMillis, sorted)
+
         return RefreshResult(
             seasons = seasons.size,
             episodes = fresh.size,
             written = changed.size,
             withoutVideo = fresh.count { !it.hasVideo },
+            catalog = sorted,
         )
     }
 

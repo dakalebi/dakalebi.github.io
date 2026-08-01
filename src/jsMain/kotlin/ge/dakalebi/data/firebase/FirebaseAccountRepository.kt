@@ -54,8 +54,4 @@ class FirebaseAccountRepository : AccountRepository {
     override suspend fun signOut() {
         signOut(Firebase.auth).await()
     }
-
-    override fun isAdmin(account: Account): Boolean =
-        account.uid in FirebaseConfig.ADMIN_UIDS ||
-            (account.emailVerified && account.email in FirebaseConfig.ADMIN_EMAILS)
 }

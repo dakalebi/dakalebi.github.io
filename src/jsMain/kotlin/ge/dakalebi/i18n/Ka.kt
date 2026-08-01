@@ -86,7 +86,7 @@ object Ka : Strings {
         "iPhone-სა და iPad-ზე Apple-ის ფლეიერი გამოიყენება. გამორთე, თუ გინდა " +
             "იგივე ფლეიერი, რაც კომპიუტერზეა."
     override val language = "ენა"
-    override val languageNotSynced = "ენა შეიცვალა მხოლოდ ამ მოწყობილობაზე"
+    override val settingNotSynced = "პარამეტრი შეიცვალა მხოლოდ ამ მოწყობილობაზე"
     override val refreshEpisodes = "სერიების განახლება"
     override val downloadEpisodes = "სერიების ჩამოტვირთვა"
     override val inProgress = "მიმდინარეობს..."

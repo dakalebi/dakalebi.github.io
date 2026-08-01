@@ -63,6 +63,8 @@ fun App() {
     LaunchedEffect(account?.uid) {
         val uid = account?.uid
         if (uid == null) settings.stop() else settings.start(scope, uid)
+        // Costs one document read, and only on sign-in or sign-out.
+        session.refreshAdminRights()
     }
 
     when {

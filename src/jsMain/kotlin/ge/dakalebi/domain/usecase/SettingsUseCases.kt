@@ -27,12 +27,23 @@ class ChangeLanguage(private val settings: SettingsRepository) {
 }
 
 /**
- * Gives an account with no language on record the one this device is using.
+ * Records the autoplay choice for the account.
+ *
+ * Account-level rather than per-device: "play the next episode automatically"
+ * describes how someone watches, not which screen they are holding.
+ */
+class ChangeAutoplay(private val settings: SettingsRepository) {
+    suspend operator fun invoke(uid: String, value: Boolean): Boolean =
+        settings.save(uid, UserSettings(autoplayNext = value))
+}
+
+/**
+ * Gives an account with nothing on record what this device is already using.
  *
  * Without it the first device to sign in would keep being asked and nothing
  * would ever reach the second one.
  */
-class SeedLanguage(private val settings: SettingsRepository) {
-    suspend operator fun invoke(uid: String, tag: String): Boolean =
-        settings.save(uid, UserSettings(language = tag))
+class SeedSettings(private val settings: SettingsRepository) {
+    suspend operator fun invoke(uid: String, settingsToSeed: UserSettings): Boolean =
+        settings.save(uid, settingsToSeed)
 }

@@ -2,6 +2,7 @@ package ge.dakalebi.domain.usecase
 
 import ge.dakalebi.domain.model.Account
 import ge.dakalebi.domain.repository.AccountRepository
+import ge.dakalebi.domain.repository.AdminRepository
 
 class ObserveAccount(private val accounts: AccountRepository) {
     operator fun invoke(onChange: (Account?) -> Unit) = accounts.observe(onChange)
@@ -32,10 +33,11 @@ class SignOut(private val accounts: AccountRepository) {
 /**
  * Whether to offer the catalog refresh.
  *
- * Advisory only — the Firestore rules are what actually enforce this. The flag
- * exists so nobody is shown a button that is guaranteed to fail.
+ * Advisory only — the Firestore rules re-check this server-side on every
+ * write, so a forged `true` here buys nothing. The lookup exists so nobody is
+ * shown a button guaranteed to fail.
  */
-class CanRefreshCatalog(private val accounts: AccountRepository) {
-    operator fun invoke(account: Account?): Boolean =
-        account != null && accounts.isAdmin(account)
+class CheckAdminRights(private val admins: AdminRepository) {
+    suspend operator fun invoke(account: Account?): Boolean =
+        account != null && admins.isAdmin(account.uid)
 }
