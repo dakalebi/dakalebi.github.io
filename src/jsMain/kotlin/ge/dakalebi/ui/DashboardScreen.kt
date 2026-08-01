@@ -25,6 +25,7 @@ import org.jetbrains.compose.web.dom.Button
 import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.H1
 import org.jetbrains.compose.web.dom.H2
+import org.jetbrains.compose.web.dom.Img
 import org.jetbrains.compose.web.dom.Span
 import org.jetbrains.compose.web.dom.Text
 import kotlin.math.roundToInt
@@ -201,7 +202,9 @@ private fun DashboardNav(onMenu: () -> Unit) {
             attr("aria-label", S.menu)
             onClick { onMenu() }
         }) { Icon(Icons.menu, S.menu) }
-        Span({ classes("nav-logo") }) { Text(S.appName.caps) }
+        // The mark is lettering, so it *is* the wordmark - the name lives in
+        // `alt` rather than being repeated beside it.
+        Img(src = "logo.png", alt = S.appName) { classes("nav-mark") }
         Div({ classes("nav-right") }) {
             if (Library.refreshing) {
                 Span({ classes("count"); style { property("font-size", "11px"); property("color", "var(--mut)") } }) {

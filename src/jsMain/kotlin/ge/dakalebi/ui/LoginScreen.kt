@@ -24,6 +24,7 @@ import org.jetbrains.compose.web.dom.Button
 import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.Form
 import org.jetbrains.compose.web.dom.H1
+import org.jetbrains.compose.web.dom.Img
 import org.jetbrains.compose.web.dom.Input
 import org.jetbrains.compose.web.dom.Span
 import org.jetbrains.compose.web.dom.Text
@@ -59,7 +60,8 @@ fun LoginScreen() {
         Div({ classes("login-bg") })
 
         Div({ classes("login-card") }) {
-            Div {
+            Div({ classes("login-head") }) {
+                Img(src = "logo.png", alt = S.seriesTitle) { classes("login-mark") }
                 Div({ classes("eyebrow") }) { Text(S.signInEyebrow.caps) }
                 H1({ classes("login-h") }) { Text(S.seriesTitle.caps) }
             }

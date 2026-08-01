@@ -245,11 +245,33 @@ h3 {
   border-bottom: 1px solid var(--line);
 }
 
-.nav-logo {
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
+/* The logo is a transparent PNG of hand lettering, so it needs no plate and
+   no colour treatment - it sits straight on the black. Height-driven with
+   `width: auto` so the wide mark keeps its proportions at any size. */
+.nav-mark {
+  height: 30px;
+  width: auto;
+  flex: none;
+  display: block;
+}
+
+.login-head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.login-mark {
+  height: 78px;
+  width: auto;
+  align-self: flex-start;
+  display: block;
+  margin-bottom: 6px;
+}
+
+@media (max-width: 720px) {
+  .nav-mark {
+    height: 26px;
+  }
 }
 
 .nav-right {

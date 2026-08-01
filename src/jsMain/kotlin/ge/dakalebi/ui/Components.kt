@@ -40,7 +40,7 @@ fun Thumb(episode: Episode, showLabel: Boolean = true) {
     val url = episode.thumbnailUrl
 
     if (url != null && !failed) {
-        Img(src = url, alt = episode.title ?: S.episode(episode.episodeNumber)) {
+        Img(src = url, alt = S.seasonAndEpisode(episode.seasonNumber, episode.episodeNumber)) {
             attr("loading", "lazy")
             // Formula's CDN occasionally 404s a still; fall back to the gradient.
             addEventListener("error") { failed = true }
@@ -88,8 +88,10 @@ fun EpisodeTile(episode: Episode, progress: WatchProgress?) {
                 }
             }
             Div({ classes("tile-meta") }) {
+                // Always season *and* episode. Formula's own title is usually
+                // just "სერია 12", which reads identically in every season.
                 Span({ classes("tile-name") }) {
-                    Text((episode.title ?: S.episode(episode.episodeNumber)).caps)
+                    Text(S.seasonAndEpisode(episode.seasonNumber, episode.episodeNumber).caps)
                 }
                 Span({ classes("tile-side") }) {
                     Text(
@@ -97,7 +99,7 @@ fun EpisodeTile(episode: Episode, progress: WatchProgress?) {
                             watched -> S.watchedLabel
                             percent > 0 -> S.startedLabel
                             !episode.hasVideo -> S.noVideo
-                            else -> S.season(episode.seasonNumber)
+                            else -> ""
                         }.caps,
                     )
                 }
@@ -232,9 +234,6 @@ private fun UpNextRow(episode: Episode, progress: WatchProgress?) {
         }
         Div({ classes("uprow-b") }) {
             Div({ classes("uprow-t") }) {
-                Text((episode.title ?: S.episode(episode.episodeNumber)).caps)
-            }
-            Div({ classes("uprow-s") }) {
                 Text(S.seasonAndEpisode(episode.seasonNumber, episode.episodeNumber).caps)
             }
             formatDuration(episode.durationSeconds)?.let {

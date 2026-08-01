@@ -438,11 +438,8 @@ fun WatchScreen(episodeId: String) {
 
         Div({ classes("watch-body") }) {
             Div {
-                Div({ classes("eyebrow") }) {
-                    Text(S.seasonAndEpisode(episode.seasonNumber, episode.episodeNumber).caps)
-                }
                 H1({ classes("watch-h") }) {
-                    Text((episode.title ?: S.episode(episode.episodeNumber)).caps)
+                    Text(S.seasonAndEpisode(episode.seasonNumber, episode.episodeNumber).caps)
                 }
             }
 
@@ -578,9 +575,6 @@ private fun NextEpisodeCard(
         Div({ classes("nextcard-b") }) {
             Div({ classes("eyebrow") }) { Text(S.nextEpisode.caps) }
             Div({ classes("nextcard-t") }) {
-                Text((episode.title ?: S.episode(episode.episodeNumber)).caps)
-            }
-            Div({ classes("nextcard-s") }) {
                 Text(S.seasonAndEpisode(episode.seasonNumber, episode.episodeNumber).caps)
             }
             if (autoplayOn) {
