@@ -21,7 +21,7 @@ object Ka : Strings {
     // Mkhedruli, not Mtavruli: a tab title is not the UI chrome the caps rule
     // is about, and index.html has always carried the plain form.
     override fun episodeDocumentTitle(season: Int, episode: Int) =
-        "$seriesInitials - სეზონი $season ⋅ სერია $episode"
+        "სეზონი $season ⋅ სერია $episode - $seriesInitials"
 
     override val loading = "იტვირთება..."
     override val menu = "მენიუ"

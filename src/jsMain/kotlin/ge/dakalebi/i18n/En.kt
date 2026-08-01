@@ -22,7 +22,7 @@ object En : Strings {
     override val documentTitle = "Chemi Tsolis Dakalebi — Watch dashboard"
 
     override fun episodeDocumentTitle(season: Int, episode: Int) =
-        "$seriesInitials - Season $season ⋅ Episode $episode"
+        "Season $season ⋅ Episode $episode - $seriesInitials"
 
     override val loading = "Loading…"
     override val menu = "Menu"
