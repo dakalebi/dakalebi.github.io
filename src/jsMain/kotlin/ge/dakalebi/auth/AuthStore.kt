@@ -14,6 +14,7 @@ import ge.dakalebi.firebase.externals.sendPasswordResetEmail
 import ge.dakalebi.firebase.externals.signInWithEmailAndPassword
 import ge.dakalebi.firebase.externals.signInWithPopup
 import ge.dakalebi.firebase.externals.signOut
+import ge.dakalebi.i18n.S
 import kotlinx.coroutines.await
 
 object AuthStore {
@@ -80,17 +81,17 @@ fun authErrorMessage(error: Throwable): String {
 
     return when {
         code.contains("invalid-credential") || code.contains("wrong-password") ||
-            code.contains("user-not-found") -> "ელფოსტა ან პაროლი არასწორია"
-        code.contains("invalid-email") -> "ელფოსტა არასწორია"
-        code.contains("email-already-in-use") -> "ეს ელფოსტა უკვე რეგისტრირებულია"
-        code.contains("weak-password") -> "პაროლი ძალიან მოკლეა — მინიმუმ 6 სიმბოლო"
-        code.contains("too-many-requests") -> "ბევრი მცდელობა იყო — სცადე ცოტა ხანში"
+            code.contains("user-not-found") -> S.errWrongCredentials
+        code.contains("invalid-email") -> S.errInvalidEmail
+        code.contains("email-already-in-use") -> S.errEmailInUse
+        code.contains("weak-password") -> S.errWeakPassword
+        code.contains("too-many-requests") -> S.errTooManyRequests
         code.contains("popup-closed-by-user") || code.contains("cancelled-popup-request") ->
-            "შესვლა შეწყდა"
-        code.contains("popup-blocked") -> "ბრაუზერმა ფანჯარა დაბლოკა — დართე ნება და სცადე თავიდან"
+            S.errPopupClosed
+        code.contains("popup-blocked") -> S.errPopupBlocked
         code.contains("unauthorized-domain") ->
-            "ეს დომენი Firebase-ში ნებადართული არაა (Authentication → Settings → Authorized domains)"
-        code.contains("network-request-failed") -> "ქსელთან კავშირი ვერ მოხერხდა"
-        else -> "შესვლა ვერ მოხერხდა"
+            S.errUnauthorizedDomain
+        code.contains("network-request-failed") -> S.errNetwork
+        else -> S.errSignInFailed
     }
 }

@@ -7,6 +7,8 @@ import ge.dakalebi.app.Router
 import ge.dakalebi.auth.AuthStore
 import ge.dakalebi.data.Library
 import ge.dakalebi.firebase.FirebaseConfig
+import ge.dakalebi.i18n.S
+import ge.dakalebi.i18n.caps
 import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.H1
 import org.jetbrains.compose.web.dom.P
@@ -36,7 +38,7 @@ fun App() {
     }
 
     when {
-        loading -> Div({ classes("center-note") }) { Text("იტვირთება...") }
+        loading -> Div({ classes("center-note") }) { Text(S.loading) }
         user == null -> LoginScreen()
         else -> when (route) {
             is Route.Watch -> WatchScreen(route.episodeId)
@@ -56,8 +58,8 @@ private fun SetupNotice() {
     Div({ classes("login-wrap") }) {
         Div({ classes("login-bg") })
         Div({ classes("login-card") }) {
-            Div({ classes("eyebrow") }) { Text("კონფიგურაცია") }
-            H1({ classes("login-h") }) { Text("Firebase არ არის დაკავშირებული") }
+            Div({ classes("eyebrow") }) { Text(S.setupEyebrow.caps) }
+            H1({ classes("login-h") }) { Text(S.setupTitle.caps) }
             P({
                 style {
                     property("margin", "0")
@@ -65,11 +67,7 @@ private fun SetupNotice() {
                     property("color", "var(--tx-dim)")
                 }
             }) {
-                Text(
-                    "შეავსე FirebaseConfig.kt პროექტის მონაცემებით " +
-                        "(Firebase console → Project settings → Your apps → Web app), " +
-                        "შემდეგ თავიდან ააწყვე აპლიკაცია.",
-                )
+                Text(S.setupBody)
             }
             P({
                 classes("mono")

@@ -16,11 +16,12 @@ import ge.dakalebi.formula.bestVideoUrl
 import ge.dakalebi.formula.episodePageUrl
 import ge.dakalebi.formula.qualitySources
 import ge.dakalebi.formula.thumbnailUrl
+import ge.dakalebi.i18n.S
 import kotlinx.coroutines.await
 
 /** The catalog could not be read, as opposed to being genuinely empty. */
 class CatalogUnavailableException :
-    RuntimeException("სერიების სია ვერ ჩაიტვირთა — შეამოწმე ინტერნეტი")
+    RuntimeException(S.catalogUnavailable)
 
 /** Reads and writes the shared episode catalog. */
 object EpisodeRepository {

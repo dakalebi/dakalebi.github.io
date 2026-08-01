@@ -9,6 +9,7 @@ import androidx.compose.runtime.setValue
 import ge.dakalebi.app.Log
 import ge.dakalebi.app.formatTime
 import ge.dakalebi.formula.orderedQualityLabels
+import ge.dakalebi.i18n.S
 import ge.dakalebi.ui.Icon
 import ge.dakalebi.ui.Icons
 import ge.dakalebi.ui.classNames
@@ -173,7 +174,7 @@ fun CustomVideoPlayer(
         // ten-second jump can leave the frame looking identical, so without
         // this there is no way to tell the key registered.
         val seconds = kotlin.math.abs(delta).toInt()
-        flashFeedback(if (delta >= 0) "$seconds წმ ▸" else "◂ $seconds წმ")
+        flashFeedback(if (delta >= 0) S.seekForward(seconds) else S.seekBackward(seconds))
         revealControls()
     }
 
@@ -271,12 +272,12 @@ fun CustomVideoPlayer(
                 event.code == "ArrowUp" -> {
                     event.preventDefault()
                     applyVolume((refs.video?.volume ?: 1.0) + 0.05)
-                    flashFeedback("ხმა: ${((refs.video?.volume ?: 0.0) * 100).roundToInt()}%")
+                    flashFeedback(S.volumeFeedback(((refs.video?.volume ?: 0.0) * 100).roundToInt()))
                 }
                 event.code == "ArrowDown" -> {
                     event.preventDefault()
                     applyVolume((refs.video?.volume ?: 1.0) - 0.05)
-                    flashFeedback("ხმა: ${((refs.video?.volume ?: 0.0) * 100).roundToInt()}%")
+                    flashFeedback(S.volumeFeedback(((refs.video?.volume ?: 0.0) * 100).roundToInt()))
                 }
                 event.key == "f" || event.key == "F" -> toggleFullscreen()
                 event.key == "m" || event.key == "M" -> {
@@ -509,7 +510,7 @@ fun CustomVideoPlayer(
                 })
                 Input(InputType.Range) {
                     min("0"); max("1000"); step(1.0)
-                    attr("aria-label", "დროის ხაზი")
+                    attr("aria-label", S.timeline)
                     ref { el -> refs.scrubInput = el; onDispose { refs.scrubInput = null } }
                     onInput { event ->
                         val v = refs.video ?: return@onInput
@@ -528,20 +529,20 @@ fun CustomVideoPlayer(
             Div({ classes("ctl-row") }) {
                 Button({
                     classes("icon-btn")
-                    attr("aria-label", if (playing) "პაუზა" else "დაკვრა")
+                    attr("aria-label", if (playing) S.pause else S.play)
                     onClick { togglePlay() }
                 }) { Icon(if (playing) Icons.pause else Icons.play) }
 
                 Button({
                     classes("icon-btn")
-                    attr("aria-label", "10 წამით უკან")
+                    attr("aria-label", S.back10)
                     onClick { seekBy(-10.0) }
                 }) { Icon(Icons.back10) }
 
                 Div({ classes("vol-wrap") }) {
                     Button({
                         classes("icon-btn")
-                        attr("aria-label", if (muted) "ხმის ჩართვა" else "ხმის გათიშვა")
+                        attr("aria-label", if (muted) S.unmute else S.mute)
                         onClick {
                             val v = refs.video ?: return@onClick
                             v.muted = !v.muted
@@ -553,7 +554,7 @@ fun CustomVideoPlayer(
                         Div({ style { property("width", "${if (muted) 0.0 else volume * 100}%") } })
                         Input(InputType.Range) {
                             min("0"); max("1"); step(0.01)
-                            attr("aria-label", "ხმა")
+                            attr("aria-label", S.volume)
                             value(if (muted) "0" else volume.toString())
                             onInput { event ->
                                 applyVolume(event.value.toString().toDoubleOrNull() ?: 0.0)
@@ -569,7 +570,7 @@ fun CustomVideoPlayer(
                 if (ordered.size > 1) {
                     Button({
                         classes("q-btn", "mono")
-                        attr("aria-label", "ხარისხი")
+                        attr("aria-label", S.quality)
                         onClick { qualityOpen = !qualityOpen }
                     }) { Text(quality ?: ordered.first()) }
                 }
@@ -585,7 +586,7 @@ fun CustomVideoPlayer(
 
                 Button({
                     classes("icon-btn")
-                    attr("aria-label", "სრულ ეკრანზე")
+                    attr("aria-label", S.fullscreen)
                     onClick { toggleFullscreen() }
                 }) { Icon(if (fullscreen) Icons.exitFullscreen else Icons.fullscreen) }
             }
