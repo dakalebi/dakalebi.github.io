@@ -13,9 +13,10 @@ import org.jetbrains.compose.web.renderComposable
 fun main() {
     // First, so a crash during the rest of startup is still reported.
     Log.installGlobalHandlers()
-    // The tab title and `lang` are outside the composition, so they are the one
-    // pair of strings the i18n layer has to push rather than be read from.
-    document.title = "${S.seriesTitle} — ${S.signInEyebrow}"
+    // `lang` is outside the composition, so it is the one attribute the i18n
+    // layer has to push rather than be read from. The title is seeded here to
+    // cover the frames before the first composition; after that App owns it.
+    document.title = S.documentTitle
     document.documentElement?.setAttribute("lang", S.tag)
     Router.start()
     Prefs.start()
