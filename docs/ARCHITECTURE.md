@@ -26,7 +26,7 @@ Arrows point inwards. Nothing on an inner ring knows a name from an outer one.
 
 | Package | May import | Contains |
 |---|---|---|
-| `domain` | nothing but Kotlin | models, repository **interfaces**, use cases, pure queries |
+| `domain` | nothing but Kotlin | models, repository **interfaces**, a use case per operation, pure queries |
 | `data` | `domain`, `core` | Firestore, the Formula API, `localStorage` |
 | `presentation` | `domain`, `core`, `i18n` | Compose state holders, error→text mapping |
 | `ui` | `presentation`, `domain`, `core`, `i18n`, `di` | Compose HTML, and nothing else |
