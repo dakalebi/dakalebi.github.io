@@ -2,7 +2,7 @@ package ge.dakalebi.ui.player
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import ge.dakalebi.app.Log
+import ge.dakalebi.core.Log
 import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.Video
 import org.w3c.dom.HTMLVideoElement
