@@ -2,10 +2,12 @@ package ge.dakalebi.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import ge.dakalebi.app.Route
 import ge.dakalebi.app.Router
 import ge.dakalebi.auth.AuthStore
 import ge.dakalebi.data.Library
+import ge.dakalebi.data.Settings
 import ge.dakalebi.firebase.FirebaseConfig
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
@@ -34,6 +36,21 @@ fun App() {
             if (route !is Route.Login) Router.replace(Route.Login)
         } else if (route is Route.Login) {
             Router.replace(Route.Dashboard)
+        }
+    }
+
+    // Keyed on the uid alone so navigating does not re-run it. Tearing the
+    // settings listener down on sign-out matters: left attached, it keeps
+    // querying a document the signed-out client may no longer read.
+    val scope = rememberCoroutineScope()
+    LaunchedEffect(user?.uid) {
+        val uid = user?.uid
+        if (uid == null) {
+            Settings.stop()
+            AuthStore.refreshAdminFlag()
+        } else {
+            Settings.start(scope, uid)
+            AuthStore.refreshAdminFlag()
         }
     }
 

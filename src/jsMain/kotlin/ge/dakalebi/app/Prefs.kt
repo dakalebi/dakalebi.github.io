@@ -7,14 +7,25 @@ import kotlinx.browser.localStorage
 import kotlinx.browser.sessionStorage
 import kotlinx.browser.window
 
-/** Local, per-device preferences. Nothing here is worth a Firestore round-trip. */
+/**
+ * Per-device preferences.
+ *
+ * Quality genuinely belongs here: the right rendition depends on the screen and
+ * the connection in front of you, so a phone on mobile data should not inherit
+ * what a desktop chose. Autoplay is the opposite — it is a statement about how
+ * you like to watch — so it lives on the account instead, in
+ * [ge.dakalebi.data.Settings]. What remains here for autoplay is only a cache,
+ * so the switch renders correctly on the first frame and still works offline.
+ */
 object Prefs {
     private const val AUTOPLAY_KEY = "autoplay_next_episode"
     private const val QUALITY_KEY = "preferred_quality"
     private const val INTENT_PREFIX = "watch-player-intent:"
 
-    var autoplayNext: Boolean by mutableStateOf(readBool(AUTOPLAY_KEY))
-        private set
+    /** Last known value of the account-level setting. Not the source of truth. */
+    val cachedAutoplayNext: Boolean get() = readBool(AUTOPLAY_KEY)
+
+    fun cacheAutoplayNext(value: Boolean) = write(AUTOPLAY_KEY, if (value) "1" else "0")
 
     var preferredQuality: String? by mutableStateOf(read(QUALITY_KEY))
         private set
@@ -22,14 +33,8 @@ object Prefs {
     fun start() {
         // Keep multiple tabs in sync, same as the original did.
         window.addEventListener("storage", {
-            autoplayNext = readBool(AUTOPLAY_KEY)
             preferredQuality = read(QUALITY_KEY)
         })
-    }
-
-    fun setAutoplayNext(value: Boolean) {
-        autoplayNext = value
-        write(AUTOPLAY_KEY, if (value) "1" else "0")
     }
 
     fun setPreferredQuality(label: String?) {

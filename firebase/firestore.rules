@@ -8,25 +8,20 @@ service cloud.firestore {
 
     // Who may rebuild the episode catalog.
     //
-    // UID first. The email branch was originally the only one, to solve a
-    // bootstrap problem: a UID does not exist until an account has signed in
-    // once, so the very first deploy could not have populated itself. That is
-    // history now, and the `email_verified` condition it depends on locked the
-    // owner out the moment they moved from Google sign-in to an email/password
-    // account created in the console, which Firebase does not mark verified.
+    // Membership is the existence of admins/{uid}. That collection is readable
+    // only by the account it names and writable by NOBODY - entries are created
+    // by hand in the Firebase console.
     //
-    // The email branch stays as a recovery path if the UID ever changes. It is
-    // not a weakening: `email_verified` still guards it, so a password account
-    // registered against someone else's address matches neither branch.
+    // That write-deny is the whole design. The obvious alternative, a flag on
+    // users/{uid}, cannot work: that document has to be writable by its owner
+    // for their settings, so an isAdmin field sitting on it would be a field
+    // the user could set on themselves.
+    //
+    // exists() runs server-side and bypasses these rules, so it can see a
+    // document the requesting client cannot read.
     function isAdmin() {
       return request.auth != null
-        && (
-          request.auth.uid in ['PZ6HS4qhStUv8Ai1VxCGU72bW6G3']
-          || (
-            request.auth.token.email_verified == true
-            && request.auth.token.email in ['bachanamosulishvili@gmail.com']
-          )
-        );
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
     function isSignedIn() {
@@ -44,6 +39,23 @@ service cloud.firestore {
     match /meta/{docId} {
       allow read: if isSignedIn();
       allow write: if isAdmin();
+    }
+
+    // The admin roster. Read your own entry to know whether to draw the
+    // refresh control; nobody writes here from the client.
+    match /admins/{adminUid} {
+      allow read: if isSignedIn() && request.auth.uid == adminUid;
+      allow write: if false;
+    }
+
+    // Account-level settings that follow the person rather than the device.
+    // Restricted to known keys so this cannot become arbitrary user storage,
+    // and so a future privileged field cannot be smuggled in here.
+    match /users/{userId} {
+      allow read: if isSignedIn() && request.auth.uid == userId;
+      allow write: if isSignedIn() && request.auth.uid == userId
+        && request.resource.data.keys().hasOnly(['autoplayNext', 'updatedAtMillis'])
+        && request.resource.data.autoplayNext is bool;
     }
 
     // Watch progress is strictly private to its owner.

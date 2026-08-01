@@ -4,8 +4,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import ge.dakalebi.app.Log
+import ge.dakalebi.data.AdminRepository
 import ge.dakalebi.firebase.Firebase
-import ge.dakalebi.firebase.FirebaseConfig
 import ge.dakalebi.firebase.externals.FirebaseUser
 import ge.dakalebi.firebase.externals.GoogleAuthProvider
 import ge.dakalebi.firebase.externals.createUserWithEmailAndPassword
@@ -33,11 +33,21 @@ object AuthStore {
      * what actually enforce this — the flag only avoids showing a button that
      * would fail.
      */
-    val isAdmin: Boolean
-        get() = user?.let {
-            it.uid in FirebaseConfig.ADMIN_UIDS ||
-                (it.emailVerified && it.email in FirebaseConfig.ADMIN_EMAILS)
-        } == true
+    /**
+     * Whether this account may rebuild the catalog.
+     *
+     * Loaded from Firestore rather than derived from the account, so the
+     * allowlist is data instead of a constant that needs a redeploy to change.
+     * Starts false and is filled in by [refreshAdminFlag] — the refresh control
+     * appears a moment after sign-in rather than being wrong first.
+     */
+    var isAdmin: Boolean by mutableStateOf(false)
+        private set
+
+    suspend fun refreshAdminFlag() {
+        val id = uid
+        isAdmin = id != null && AdminRepository.isAdmin(id)
+    }
 
     fun start() {
         onAuthStateChanged(Firebase.auth) { next ->

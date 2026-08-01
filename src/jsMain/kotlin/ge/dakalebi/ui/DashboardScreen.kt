@@ -18,6 +18,7 @@ import ge.dakalebi.app.formatTime
 import ge.dakalebi.auth.AuthStore
 import ge.dakalebi.data.Episode
 import ge.dakalebi.data.Library
+import ge.dakalebi.data.Settings
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
 import kotlinx.coroutines.launch
@@ -303,6 +304,7 @@ private fun MenuSheet(
     onSignOut: () -> Unit,
     busy: Boolean,
 ) {
+    val scope = rememberCoroutineScope()
     DismissOnEscape(onClose)
     Div({ classes("scrim"); onClick { onClose() } })
     Div({ classes("sheet") }) {
@@ -345,13 +347,13 @@ private fun MenuSheet(
             Div({ classes("eyebrow-mut"); style { property("margin-bottom", "8px") } }) { Text(S.settings.caps) }
             Button({
                 classes("toggle-row")
-                onClick { Prefs.setAutoplayNext(!Prefs.autoplayNext) }
+                onClick { Settings.setAutoplayNext(scope, !Settings.autoplayNext) }
             }) {
                 Div({ classes("lab") }) {
                     Div { Text(S.autoplayTitle.caps) }
                     Span { Text(S.autoplayBody) }
                 }
-                Div({ classNames("switch", if (Prefs.autoplayNext) "on" else null) }) { Div() }
+                Div({ classNames("switch", if (Settings.autoplayNext) "on" else null) }) { Div() }
             }
         }
 
