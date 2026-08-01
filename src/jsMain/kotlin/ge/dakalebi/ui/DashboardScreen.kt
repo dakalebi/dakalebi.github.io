@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import ge.dakalebi.app.BuildInfo
 import ge.dakalebi.app.Log
 import ge.dakalebi.app.Prefs
 import ge.dakalebi.app.Route
@@ -20,6 +21,8 @@ import ge.dakalebi.data.Library
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.web.attributes.ATarget
+import org.jetbrains.compose.web.attributes.target
 import org.jetbrains.compose.web.dom.A
 import org.jetbrains.compose.web.dom.Button
 import org.jetbrains.compose.web.dom.Div
@@ -352,9 +355,41 @@ private fun MenuSheet(
             }
         }
 
-        Div({ style { property("margin-top", "auto"); property("font-size", "11px"); property("color", "var(--mut)") } }) {
-            Text(S.lastRefreshed(formatDateTime(Library.meta?.lastRefreshAtMillis)))
+        Div({ classes("sheet-foot") }) {
+            Div { Text(S.lastRefreshed(formatDateTime(Library.meta?.lastRefreshAtMillis))) }
+            BuildStamp()
         }
+    }
+}
+
+/**
+ * Which build is running, and when it went out.
+ *
+ * Two separate facts sit in this footer and they are easy to confuse: the line
+ * above is when the *catalog* was last pulled from Formula, this one is when
+ * the *app* was deployed. The commit hash is the part worth having when
+ * something looks wrong — it says exactly what code is live, which a version
+ * number invented for the occasion would not.
+ */
+@Composable
+private fun BuildStamp() {
+    val whenText = formatDateTime(BuildInfo.PUBLISHED_AT_MILLIS.takeIf { it > 0 })
+    // "Version dev" alongside a DEV badge says the same thing twice, so a local
+    // build shows only its timestamp and lets the badge carry the meaning.
+    val label = if (BuildInfo.isDevBuild) whenText else S.appVersion(BuildInfo.BUILD_NUMBER, whenText)
+    val url = BuildInfo.commitUrl
+
+    Div({ classes("build-stamp") }) {
+        if (url == null) {
+            Span { Text(label) }
+        } else {
+            A(href = url, attrs = { target(ATarget.Blank); attr("rel", "noreferrer") }) {
+                Text(label)
+            }
+        }
+        Span({ classes("mono") }) { Text(BuildInfo.COMMIT) }
+        // A locally-built bundle should never be mistaken for what CI shipped.
+        if (BuildInfo.isDevBuild) Span({ classes("build-dev") }) { Text("dev") }
     }
 }
 

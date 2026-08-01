@@ -91,6 +91,7 @@ object En : Strings {
     override fun minutesLeft(minutes: Int, position: String, duration: String) =
         "$minutes min left · $position / $duration"
     override fun lastRefreshed(whenText: String) = "Last refreshed: $whenText"
+    override fun appVersion(build: String, whenText: String) = "Version $build · $whenText"
 
     // -------------------------------------------------------------- tiles
     override val watchedLabel = "Watched"

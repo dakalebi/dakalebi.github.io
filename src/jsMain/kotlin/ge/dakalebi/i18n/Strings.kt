@@ -113,6 +113,9 @@ interface Strings {
     fun minutesLeft(minutes: Int, position: String, duration: String): String
     fun lastRefreshed(whenText: String): String
 
+    /** Build identity in the drawer footer, e.g. "Version 47 · 02.08.2026, 11:30". */
+    fun appVersion(build: String, whenText: String): String
+
     // -------------------------------------------------------------- tiles
     val watchedLabel: String
     val startedLabel: String

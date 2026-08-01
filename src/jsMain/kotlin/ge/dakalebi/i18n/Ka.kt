@@ -89,6 +89,7 @@ object Ka : Strings {
     override fun minutesLeft(minutes: Int, position: String, duration: String) =
         "დარჩა $minutes წუთი · $position / $duration"
     override fun lastRefreshed(whenText: String) = "ბოლო განახლება: $whenText"
+    override fun appVersion(build: String, whenText: String) = "ვერსია $build · $whenText"
 
     // -------------------------------------------------------------- tiles
     override val watchedLabel = "ნანახია"

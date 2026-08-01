@@ -1537,3 +1537,48 @@ h3 {
   height: 30px;
   margin-left: 3px;
 }
+
+/* --------------------------------------------------------- build stamp */
+
+/* Two different facts live in this footer — when the catalog was last pulled
+   and when the app itself was deployed — so they get their own lines rather
+   than running together. */
+.sheet-foot {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--mut);
+}
+.build-stamp {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.build-stamp a {
+  color: var(--mut);
+  transition: color 0.2s var(--ease);
+}
+.build-stamp a:hover {
+  color: var(--tx-dim);
+  text-decoration: underline;
+}
+.build-stamp .mono {
+  font-size: 10.5px;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--tx-dim);
+}
+.build-dev {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  background: rgba(225, 53, 47, 0.18);
+  color: #ff8a85;
+}
