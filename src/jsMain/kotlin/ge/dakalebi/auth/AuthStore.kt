@@ -33,7 +33,10 @@ object AuthStore {
      * would fail.
      */
     val isAdmin: Boolean
-        get() = user?.let { it.emailVerified && it.email in FirebaseConfig.ADMIN_EMAILS } == true
+        get() = user?.let {
+            it.uid in FirebaseConfig.ADMIN_UIDS ||
+                (it.emailVerified && it.email in FirebaseConfig.ADMIN_EMAILS)
+        } == true
 
     fun start() {
         onAuthStateChanged(Firebase.auth) { next ->

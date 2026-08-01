@@ -169,6 +169,11 @@ fun CustomVideoPlayer(
         if (!v.duration.isFinite()) return
         v.currentTime = max(0.0, min(v.duration, v.currentTime + delta))
         paintBars()
+        // Arrow-key seeking had no acknowledgement at all. On a long episode a
+        // ten-second jump can leave the frame looking identical, so without
+        // this there is no way to tell the key registered.
+        val seconds = kotlin.math.abs(delta).toInt()
+        flashFeedback(if (delta >= 0) "$seconds წმ ▸" else "◂ $seconds წმ")
         revealControls()
     }
 

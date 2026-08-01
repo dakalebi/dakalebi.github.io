@@ -8,15 +8,25 @@ service cloud.firestore {
 
     // Who may rebuild the episode catalog.
     //
-    // Keyed on the verified email rather than the UID: a UID only exists after
-    // an account has signed in at least once, which would leave the very first
-    // deploy unable to populate itself. `email_verified` matters - without it a
-    // password account could be registered with someone else's address and
-    // would inherit admin rights.
+    // UID first. The email branch was originally the only one, to solve a
+    // bootstrap problem: a UID does not exist until an account has signed in
+    // once, so the very first deploy could not have populated itself. That is
+    // history now, and the `email_verified` condition it depends on locked the
+    // owner out the moment they moved from Google sign-in to an email/password
+    // account created in the console, which Firebase does not mark verified.
+    //
+    // The email branch stays as a recovery path if the UID ever changes. It is
+    // not a weakening: `email_verified` still guards it, so a password account
+    // registered against someone else's address matches neither branch.
     function isAdmin() {
       return request.auth != null
-        && request.auth.token.email_verified == true
-        && request.auth.token.email in ['bachanamosulishvili@gmail.com'];
+        && (
+          request.auth.uid in ['PZ6HS4qhStUv8Ai1VxCGU72bW6G3']
+          || (
+            request.auth.token.email_verified == true
+            && request.auth.token.email in ['bachanamosulishvili@gmail.com']
+          )
+        );
     }
 
     function isSignedIn() {
