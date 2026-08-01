@@ -34,7 +34,9 @@
 
   --f-sans: "Noto Sans Georgian", "BPG Arial", Sylfaen, ui-sans-serif, system-ui,
     -apple-system, "Segoe UI", sans-serif;
-  --f-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  /* Timecodes, counters and quality labels. A face of its own so numbers read
+     as data rather than as more of the sentence around them. */
+  --f-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 
   color-scheme: dark;
 }
@@ -91,13 +93,27 @@ button {
 .mono {
   font-family: var(--f-mono);
   font-variant-numeric: tabular-nums;
+  font-feature-settings: "zero" 1;
+  letter-spacing: -0.01em;
 }
+
+/*
+ * Mtavruli (Georgian uppercase) is applied in Kotlin, not here.
+ *
+ * `text-transform: uppercase` deliberately skips the Mkhedruli -> Mtavruli
+ * mapping. Measured in Chrome with Noto Sans Georgian loaded: `ქართული` renders
+ * 210px both plain and with `text-transform: uppercase`, while the literal
+ * `ᲥᲐᲠᲗᲣᲚᲘ` renders 220px. Latin *is* transformed, so leaving the rule on would
+ * have produced "GOOGLE-ით შესვლა" - half shouted, half not.
+ *
+ * See Strings.caps and the `.caps` extension in the i18n package.
+ */
 
 /* ------------------------------------------------------------------ type */
 
 .eyebrow {
   font-size: 10px;
-  letter-spacing: 0.28em;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--red);
   font-weight: 700;
@@ -377,6 +393,21 @@ h3 {
 }
 .rail::-webkit-scrollbar {
   display: none;
+}
+
+/* A row that deliberately does not scroll - see EpisodeRow. */
+.fixedrow {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--rail-gap);
+}
+.fixedrow .tile {
+  width: auto;
+}
+@media (max-width: 900px) {
+  .fixedrow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .grid {
