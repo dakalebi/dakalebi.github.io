@@ -101,6 +101,7 @@ object EpisodeRepository {
             episodes = fresh.size,
             written = changed.size,
             withoutVideo = fresh.count { !it.hasVideo },
+            catalog = fresh.sortedBy { it.ordinal },
         )
     }
 

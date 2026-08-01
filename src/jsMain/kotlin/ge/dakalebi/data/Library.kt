@@ -50,9 +50,23 @@ object Library {
         loading = true
         loadError = null
         try {
-            episodes = EpisodeRepository.listEpisodes()
+            // Metadata first, because its refresh stamp is what tells us
+            // whether the cached catalog is still current. One document read
+            // stands in for 932 when nothing has changed.
+            val catalogMeta = loadMeta()
+            val stamp = catalogMeta?.lastRefreshAtMillis
+            val cached = CatalogCache.read(stamp)
+            episodes = if (cached != null) {
+                Log.d("library", "catalog from cache (${cached.size} episodes, 1 read)")
+                cached
+            } else {
+                val fresh = EpisodeRepository.listEpisodes()
+                Log.d("library", "catalog from Firestore (${fresh.size} reads)")
+                CatalogCache.write(stamp, fresh)
+                fresh
+            }
             progress = ProgressRepository.list(uid).associateBy { it.episodeId }
-            meta = loadMeta()
+            meta = catalogMeta
         } catch (e: Throwable) {
             Log.e("library", "catalog load failed for uid=$uid", e)
             loadError = e.message ?: S.dataLoadFailed
@@ -89,8 +103,12 @@ object Library {
             val result = EpisodeRepository.refreshCatalog(nowMillis()) { done, total ->
                 refreshNote = S.refreshSeasonProgress(done, total)
             }
-            episodes = EpisodeRepository.listEpisodes()
+            // The refresh already holds the catalog it just built; reading the
+            // collection back would cost another 932 reads to learn what we
+            // were just told.
+            episodes = result.catalog
             meta = loadMeta()
+            CatalogCache.write(meta?.lastRefreshAtMillis, result.catalog)
             Toasts.ok(S.refreshed(result.episodes, result.written, result.withoutVideo))
         } catch (e: Throwable) {
             // Surface the raw failure: the mapped Georgian text hides which
@@ -174,6 +192,10 @@ object Library {
         val episode = episodes.firstOrNull { it.id == episodeId } ?: return
         if (episode.durationSeconds == seconds) return
         episodes = episodes.map { if (it.id == episodeId) it.copy(durationSeconds = seconds) else it }
+        // Durations are learned locally and do not move the catalog's refresh
+        // stamp, so without this the cache would keep serving the old value and
+        // every reload would forget the runtime it just measured.
+        CatalogCache.write(meta?.lastRefreshAtMillis, episodes)
         EpisodeRepository.recordDuration(episodeId, seconds)
     }
 

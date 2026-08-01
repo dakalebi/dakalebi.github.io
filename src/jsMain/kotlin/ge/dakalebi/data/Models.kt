@@ -1,5 +1,7 @@
 package ge.dakalebi.data
 
+import kotlinx.serialization.Serializable
+
 /**
  * An episode as stored in Firestore.
  *
@@ -8,6 +10,7 @@ package ge.dakalebi.data
  * as a unique column, which meant watch URLs changed whenever the catalog was
  * rebuilt. Keying on Formula's id makes `#/watch/531` permanent.
  */
+@Serializable
 data class Episode(
     val id: String,
     val formulaEpisodeId: Int,
@@ -63,4 +66,10 @@ data class RefreshResult(
     val episodes: Int,
     val written: Int,
     val withoutVideo: Int,
+    /**
+     * The catalog the refresh just built. Carried back so the caller can adopt
+     * it directly; re-reading the collection afterwards cost another 932 reads
+     * to learn what the refresh already knew.
+     */
+    val catalog: List<Episode>,
 )
