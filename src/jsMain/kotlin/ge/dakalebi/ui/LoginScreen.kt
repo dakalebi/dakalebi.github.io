@@ -10,6 +10,8 @@ import ge.dakalebi.app.Log
 import ge.dakalebi.app.Toasts
 import ge.dakalebi.auth.AuthStore
 import ge.dakalebi.auth.authErrorMessage
+import ge.dakalebi.i18n.S
+import ge.dakalebi.i18n.caps
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.web.attributes.InputType
 import org.jetbrains.compose.web.attributes.disabled
@@ -58,8 +60,8 @@ fun LoginScreen() {
 
         Div({ classes("login-card") }) {
             Div {
-                Div({ classes("eyebrow") }) { Text("სანახავი დაფა") }
-                H1({ classes("login-h") }) { Text("ჩემი ცოლის დაქალები") }
+                Div({ classes("eyebrow") }) { Text(S.signInEyebrow.caps) }
+                H1({ classes("login-h") }) { Text(S.seriesTitle.caps) }
             }
 
             Button({
@@ -67,9 +69,9 @@ fun LoginScreen() {
                 style { property("justify-content", "center") }
                 if (busy) disabled()
                 onClick { run({ AuthStore.signInWithGoogle() }) }
-            }) { Text("Google-ით შესვლა") }
+            }) { Text(S.signInWithGoogle.caps) }
 
-            Div({ classes("divider") }) { Text("ან") }
+            Div({ classes("divider") }) { Text(S.or) }
 
             Form(attrs = {
                 classes("login-form")
@@ -80,14 +82,14 @@ fun LoginScreen() {
                         if (mode) AuthStore.signUp(email, password)
                         else AuthStore.signIn(email, password)
                     }) {
-                        if (mode) Toasts.ok("ანგარიში შეიქმნა")
+                        if (mode) Toasts.ok(S.accountCreated)
                     }
                 }
             }) {
                 Input(InputType.Email) {
                     classes("field")
                     name("email")
-                    placeholder("ელფოსტა")
+                    placeholder(S.emailPlaceholder)
                     required()
                     value(email)
                     onInput { email = it.value }
@@ -95,7 +97,7 @@ fun LoginScreen() {
                 Input(InputType.Password) {
                     classes("field")
                     name("password")
-                    placeholder("პაროლი")
+                    placeholder(S.passwordPlaceholder)
                     required()
                     minLength(6)
                     value(password)
@@ -106,7 +108,7 @@ fun LoginScreen() {
                     style { property("justify-content", "center") }
                     if (busy) disabled()
                 }) {
-                    Text(if (signUpMode) "რეგისტრაცია" else "შესვლა")
+                    Text((if (signUpMode) S.signUp else S.signIn).caps)
                 }
             }
 
@@ -124,8 +126,7 @@ fun LoginScreen() {
                     onClick { signUpMode = !signUpMode }
                 }) {
                     Text(
-                        if (signUpMode) "უკვე გაქვს ანგარიში? შესვლა"
-                        else "არ გაქვს ანგარიში? რეგისტრაცია",
+                        (if (signUpMode) S.promptSignIn else S.promptSignUp).caps,
                     )
                 }
 
@@ -135,14 +136,14 @@ fun LoginScreen() {
                         style { property("padding", "0") }
                         onClick {
                             if (email.isBlank()) {
-                                Toasts.error("ჯერ შეიყვანე ელფოსტა")
+                                Toasts.error(S.enterEmailFirst)
                             } else {
                                 run({ AuthStore.resetPassword(email) }) {
-                                    Toasts.ok("პაროლის აღდგენის ბმული გაიგზავნა")
+                                    Toasts.ok(S.resetLinkSent)
                                 }
                             }
                         }
-                    }) { Span { Text("პაროლი დაგავიწყდა?") } }
+                    }) { Span { Text(S.forgotPassword.caps) } }
                 }
             }
         }

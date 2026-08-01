@@ -6,6 +6,7 @@ import androidx.compose.runtime.setValue
 import ge.dakalebi.app.Log
 import ge.dakalebi.app.Toasts
 import ge.dakalebi.app.nowMillis
+import ge.dakalebi.i18n.S
 
 /**
  * In-memory view of the catalog and the signed-in user's progress.
@@ -54,7 +55,7 @@ object Library {
             meta = loadMeta()
         } catch (e: Throwable) {
             Log.e("library", "catalog load failed for uid=$uid", e)
-            loadError = e.message ?: "მონაცემები ვერ ჩაიტვირთა"
+            loadError = e.message ?: S.dataLoadFailed
         } finally {
             loading = false
         }
@@ -83,15 +84,14 @@ object Library {
     suspend fun refreshCatalog() {
         if (refreshing) return
         refreshing = true
-        refreshNote = "სერიების განახლება..."
+        refreshNote = S.refreshingEpisodes
         try {
             val result = EpisodeRepository.refreshCatalog(nowMillis()) { done, total ->
-                refreshNote = "სეზონი $done / $total"
+                refreshNote = S.refreshSeasonProgress(done, total)
             }
             episodes = EpisodeRepository.listEpisodes()
             meta = loadMeta()
-            val missing = if (result.withoutVideo > 0) " · ${result.withoutVideo} ვიდეოს გარეშე" else ""
-            Toasts.ok("განახლდა: ${result.episodes} სერია, ${result.written} შეიცვალა$missing")
+            Toasts.ok(S.refreshed(result.episodes, result.written, result.withoutVideo))
         } catch (e: Throwable) {
             // Surface the raw failure: the mapped Georgian text hides which
             // stage broke, and this runs only in the browser.
@@ -245,10 +245,10 @@ private fun refreshErrorMessage(error: Throwable): String {
         // The allowlist is keyed on the verified email, not a UID — the old
         // wording sent anyone hitting this to look in the wrong place.
         code == "permission-denied" || "permission" in text || "insufficient" in text ->
-            "განახლების უფლება არ გაქვს — ეს ანგარიში ადმინების სიაში არაა"
-        "quota" in text || "resource-exhausted" in code -> "Firestore-ის ლიმიტი ამოიწურა"
+            S.refreshNoPermission
+        "quota" in text || "resource-exhausted" in code -> S.refreshQuota
         "failed to fetch" in text || "network" in text || "unavailable" in code ->
-            "ქსელთან კავშირი ვერ მოხერხდა — სცადე თავიდან"
-        else -> "განახლება ვერ მოხერხდა"
+            S.refreshNetwork
+        else -> S.refreshFailed
     }
 }

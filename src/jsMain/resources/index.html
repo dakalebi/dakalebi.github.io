@@ -11,6 +11,25 @@
     <meta name="theme-color" content="#0d0c11" />
     <meta property="og:title" content="ჩემი ცოლის დაქალები — სანახავი დაფა" />
     <meta property="og:type" content="website" />
+
+    <!--
+      Noto Sans Georgian is loaded rather than merely named. None of the faces
+      the stylesheet used to ask for - Noto, BPG Arial, Sylfaen - are installed
+      on a typical Mac or phone, so every Georgian glyph was coming from an
+      arbitrary system fallback. It also carries Mtavruli (U+1C90-1CBA), which
+      the uppercase treatment depends on.
+
+      JetBrains Mono is for timecodes and counters only.
+
+      `display=swap` keeps text visible if fonts.gstatic.com is slow or blocked;
+      the stack in styles.css is the fallback in that case.
+    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>

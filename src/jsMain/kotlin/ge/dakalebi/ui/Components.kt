@@ -15,6 +15,8 @@ import ge.dakalebi.app.fallbackGradient
 import ge.dakalebi.app.formatDuration
 import ge.dakalebi.data.Episode
 import ge.dakalebi.data.WatchProgress
+import ge.dakalebi.i18n.S
+import ge.dakalebi.i18n.caps
 import kotlinx.browser.document
 import kotlinx.browser.window
 import org.jetbrains.compose.web.attributes.ATarget
@@ -38,7 +40,7 @@ fun Thumb(episode: Episode, showLabel: Boolean = true) {
     val url = episode.thumbnailUrl
 
     if (url != null && !failed) {
-        Img(src = url, alt = episode.title ?: "სერია ${episode.episodeNumber}") {
+        Img(src = url, alt = episode.title ?: S.episode(episode.episodeNumber)) {
             attr("loading", "lazy")
             // Formula's CDN occasionally 404s a still; fall back to the gradient.
             addEventListener("error") { failed = true }
@@ -55,8 +57,8 @@ fun Thumb(episode: Episode, showLabel: Boolean = true) {
         }) {
             if (showLabel) {
                 Div {
-                    Div({ classes("fb-s") }) { Text("სეზონი ${episode.seasonNumber}") }
-                    Div({ classes("fb-e") }) { Text("სერია ${episode.episodeNumber}") }
+                    Div({ classes("fb-s") }) { Text(S.season(episode.seasonNumber).caps) }
+                    Div({ classes("fb-e") }) { Text(S.episode(episode.episodeNumber).caps) }
                 }
             }
         }
@@ -87,16 +89,16 @@ fun EpisodeTile(episode: Episode, progress: WatchProgress?) {
             }
             Div({ classes("tile-meta") }) {
                 Span({ classes("tile-name") }) {
-                    Text(episode.title ?: "სერია ${episode.episodeNumber}")
+                    Text((episode.title ?: S.episode(episode.episodeNumber)).caps)
                 }
                 Span({ classes("tile-side") }) {
                     Text(
                         when {
-                            watched -> "ნანახია"
-                            percent > 0 -> "დაწყებულია"
-                            !episode.hasVideo -> "ვიდეო არაა"
-                            else -> "სეზონი ${episode.seasonNumber}"
-                        },
+                            watched -> S.watchedLabel
+                            percent > 0 -> S.startedLabel
+                            !episode.hasVideo -> S.noVideo
+                            else -> S.season(episode.seasonNumber)
+                        }.caps,
                     )
                 }
             }
@@ -105,14 +107,14 @@ fun EpisodeTile(episode: Episode, progress: WatchProgress?) {
         Div({ classes("tile-actions") }) {
             Button({
                 classes("tile-act")
-                attr("title", "სერიის ლინკის კოპირება")
-                attr("aria-label", "სერიის ლინკის კოპირება")
+                attr("title", S.copyEpisodeLink)
+                attr("aria-label", S.copyEpisodeLink)
                 onClick { event ->
                     event.preventDefault()
                     event.stopPropagation()
                     copyToClipboard(Router.absolute(Route.Watch(episode.id))) { ok ->
-                        if (ok) Toasts.ok("სერიის ლინკი დაკოპირდა")
-                        else Toasts.error("კოპირება ვერ მოხერხდა")
+                        if (ok) Toasts.ok(S.episodeLinkCopied)
+                        else Toasts.error(S.copyFailed)
                     }
                 }
             }) { Icon(Icons.link) }
@@ -120,14 +122,14 @@ fun EpisodeTile(episode: Episode, progress: WatchProgress?) {
             episode.videoUrl?.let { videoUrl ->
                 Button({
                     classes("tile-act")
-                    attr("title", "MP4 ლინკის კოპირება")
-                    attr("aria-label", "MP4 ლინკის კოპირება")
+                    attr("title", S.copyMp4Link)
+                    attr("aria-label", S.copyMp4Link)
                     onClick { event ->
                         event.preventDefault()
                         event.stopPropagation()
                         copyToClipboard(videoUrl) { ok ->
-                            if (ok) Toasts.ok("MP4 ლინკი დაკოპირდა")
-                            else Toasts.error("კოპირება ვერ მოხერხდა")
+                            if (ok) Toasts.ok(S.mp4LinkCopied)
+                            else Toasts.error(S.copyFailed)
                         }
                     }
                 }) { Icon(Icons.download) }
@@ -177,6 +179,25 @@ fun DismissOnEscape(onDismiss: () -> Unit) {
 }
 
 /**
+ * A fixed row of episodes that does not scroll.
+ *
+ * Used for "previously" on the watch page. Now that what-comes-next has its own
+ * column there is nothing to scroll *to* here, and a horizontal scroller that
+ * never scrolls is worse than a plain row: it hides its last item behind an
+ * edge with no affordance saying so.
+ */
+@Composable
+fun EpisodeRow(title: String, episodes: List<Episode>, progress: Map<String, WatchProgress>) {
+    if (episodes.isEmpty()) return
+    Div {
+        Div({ classes("rail-head") }) { H2 { Text(title) } }
+        Div({ classes("fixedrow") }) {
+            episodes.forEach { episode -> EpisodeTile(episode, progress[episode.id]) }
+        }
+    }
+}
+
+/**
  * Vertical "up next" list for the watch page's side column.
  *
  * A horizontal rail works on the dashboard, where the eye sweeps sideways past
@@ -211,10 +232,10 @@ private fun UpNextRow(episode: Episode, progress: WatchProgress?) {
         }
         Div({ classes("uprow-b") }) {
             Div({ classes("uprow-t") }) {
-                Text(episode.title ?: "სერია ${episode.episodeNumber}")
+                Text((episode.title ?: S.episode(episode.episodeNumber)).caps)
             }
             Div({ classes("uprow-s") }) {
-                Text("სეზონი ${episode.seasonNumber} · სერია ${episode.episodeNumber}")
+                Text(S.seasonAndEpisode(episode.seasonNumber, episode.episodeNumber).caps)
             }
             formatDuration(episode.durationSeconds)?.let {
                 Div({ classes("uprow-s", "mono") }) { Text(it) }
@@ -238,7 +259,7 @@ fun ConfirmDialog(
         H3 { Text(title) }
         P { Text(body) }
         Div({ classes("dialog-row") }) {
-            Button({ classes("btn", "btn-ghost"); onClick { onDismiss() } }) { Text("გაუქმება") }
+            Button({ classes("btn", "btn-ghost"); onClick { onDismiss() } }) { Text(S.cancel.caps) }
             Button({
                 classes("btn", if (destructive) "btn-danger" else "btn-primary")
                 onClick { onConfirm() }

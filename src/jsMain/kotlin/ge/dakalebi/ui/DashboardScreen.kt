@@ -17,6 +17,8 @@ import ge.dakalebi.app.formatTime
 import ge.dakalebi.auth.AuthStore
 import ge.dakalebi.data.Episode
 import ge.dakalebi.data.Library
+import ge.dakalebi.i18n.S
+import ge.dakalebi.i18n.caps
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.web.dom.A
 import org.jetbrains.compose.web.dom.Button
@@ -61,7 +63,7 @@ fun DashboardScreen() {
                 Toasts.ok(label)
             } catch (e: Throwable) {
                 Log.e("dashboard", "action failed: $label", e)
-                Toasts.error("მოქმედება ვერ შესრულდა")
+                Toasts.error(S.actionFailed)
             } finally {
                 busy = false
             }
@@ -89,7 +91,7 @@ fun DashboardScreen() {
                 Div({ classes("rails") }) {
                     if (inProgress.isNotEmpty()) {
                         Rail(
-                            title = "გაგრძელება",
+                            title = S.continueLabel.caps,
                             subtitle = "${inProgress.size}",
                             episodes = inProgress,
                             progress = Library.progress,
@@ -98,7 +100,7 @@ fun DashboardScreen() {
 
                     Div {
                         Div({ classes("rail-head") }) {
-                            H2 { Text("სეზონები") }
+                            H2 { Text(S.seasons.caps) }
                             Span({ classes("count") }) { Text("${Library.seasons.size}") }
                         }
                         Div({ classes("chips") }) {
@@ -109,7 +111,7 @@ fun DashboardScreen() {
                                     classNames("chip", if (number == season) "sel" else null)
                                     onClick { seasonOverride = number }
                                 }) {
-                                    Text("სეზონი $number")
+                                    Text(S.season(number).caps)
                                     if (all.isNotEmpty() && done == all.size) {
                                         Span({ classes("done") }) { Text("✓") }
                                     }
@@ -120,10 +122,10 @@ fun DashboardScreen() {
 
                     Div {
                         Div({ classes("rail-head") }) {
-                            H2 { Text(season?.let { "სეზონი $it" } ?: "სერიები") }
+                            H2 { Text((season?.let { S.season(it) } ?: S.episodes).caps) }
                             Span({ classes("count") }) {
                                 val done = episodes.count { Library.progress[it.id]?.isWatched == true }
-                                Text("${episodes.size} სერია · $done ნანახი")
+                                Text(S.episodeCount(episodes.size, done).caps)
                             }
                             Div({ classes("spacer") })
                             SeasonMenu(
@@ -155,33 +157,33 @@ fun DashboardScreen() {
 
     when (confirm) {
         Confirm.ResetAll -> ConfirmDialog(
-            title = "მთლიანი პროგრესის წაშლა?",
-            body = "ყველა სეზონისა და სერიის პროგრესი წაიშლება. სერიალი გამოჩნდება ისე, თითქოს თავიდან იწყებ ყურებას.",
-            confirmLabel = "ყველაფრის წაშლა",
+            title = S.resetAllTitle,
+            body = S.resetAllBody,
+            confirmLabel = S.resetAllConfirm.caps,
             destructive = true,
-            onConfirm = { uid?.let { id -> act("მთლიანი პროგრესი წაიშალა") { Library.resetAll(id) } } },
+            onConfirm = { uid?.let { id -> act(S.resetAllDone) { Library.resetAll(id) } } },
             onDismiss = { confirm = Confirm.None },
         )
         Confirm.MarkSeason -> ConfirmDialog(
-            title = "სეზონის ნანახად მონიშვნა?",
-            body = "მოინიშნოს სეზონი ${season ?: ""}-ის ყველა სერია ნანახად?",
-            confirmLabel = "მონიშვნა",
+            title = S.markSeasonTitle,
+            body = S.markSeasonBody("${season ?: ""}"),
+            confirmLabel = S.markSeasonConfirm.caps,
             onConfirm = {
                 val s = season
-                if (uid != null && s != null) act("სეზონი მოინიშნა ნანახად") {
+                if (uid != null && s != null) act(S.markSeasonDone) {
                     Library.markSeasonWatched(uid, s)
                 }
             },
             onDismiss = { confirm = Confirm.None },
         )
         Confirm.ResetSeason -> ConfirmDialog(
-            title = "სეზონის პროგრესის წაშლა?",
-            body = "წაიშალოს სეზონი ${season ?: ""}-ის ყველა სერიის პროგრესი?",
-            confirmLabel = "წაშლა",
+            title = S.resetSeasonTitle,
+            body = S.resetSeasonBody("${season ?: ""}"),
+            confirmLabel = S.delete.caps,
             destructive = true,
             onConfirm = {
                 val s = season
-                if (uid != null && s != null) act("სეზონის პროგრესი წაიშალა") {
+                if (uid != null && s != null) act(S.resetSeasonDone) {
                     Library.resetSeason(uid, s)
                 }
             },
@@ -196,14 +198,14 @@ private fun DashboardNav(onMenu: () -> Unit) {
     Div({ classes("nav") }) {
         Button({
             classes("icon-btn")
-            attr("aria-label", "მენიუ")
+            attr("aria-label", S.menu)
             onClick { onMenu() }
-        }) { Icon(Icons.menu, "მენიუ") }
-        Span({ classes("nav-logo") }) { Text("დაქალები") }
+        }) { Icon(Icons.menu, S.menu) }
+        Span({ classes("nav-logo") }) { Text(S.appName.caps) }
         Div({ classes("nav-right") }) {
             if (Library.refreshing) {
                 Span({ classes("count"); style { property("font-size", "11px"); property("color", "var(--mut)") } }) {
-                    Text(Library.refreshNote ?: "მიმდინარეობს...")
+                    Text(Library.refreshNote ?: S.refreshing)
                 }
             }
             Div({ classes("avatar"); attr("title", AuthStore.email ?: "") }) {
@@ -227,11 +229,11 @@ private fun Hero(episode: Episode) {
         Div({ classes("hero-scrim") })
         Div({ classes("hero-body") }) {
             Div({ classes("eyebrow") }) {
-                Text(if (resuming) "გაგრძელება" else if (watched) "ბოლო ნანახი" else "დასაწყისი")
+                Text((if (resuming) S.continueLabel else if (watched) S.lastWatched else S.beginning).caps)
             }
             H1({ classes("hero-h") }) {
-                Text("სეზონი ${episode.seasonNumber}")
-                Div { Text("სერია ${episode.episodeNumber}") }
+                Text(S.season(episode.seasonNumber).caps)
+                Div { Text(S.episode(episode.episodeNumber).caps) }
             }
             if (percent > 0) {
                 Div({ classes("hero-bar") }) {
@@ -241,21 +243,21 @@ private fun Hero(episode: Episode) {
             Div({ classes("hero-sub") }) {
                 Text(
                     when {
-                        watched -> "ნანახია"
+                        watched -> S.watchedLabel
                         duration != null && duration > 0 && position > 0 -> {
                             val left = ((duration - position) / 60.0).roundToInt()
-                            "დარჩა $left წუთი · ${formatTime(position.toDouble())} / ${formatTime(duration.toDouble())}"
+                            S.minutesLeft(left, formatTime(position.toDouble()), formatTime(duration.toDouble()))
                         }
-                        else -> episode.title ?: "სერია ${episode.episodeNumber}"
+                        else -> episode.title ?: S.episode(episode.episodeNumber)
                     },
                 )
             }
             Div({ classes("hero-cta") }) {
                 A(href = Router.href(Route.Watch(episode.id)), attrs = { classes("btn", "btn-primary") }) {
-                    Text(if (resuming) "▶  გაგრძელება" else "▶  ყურება")
+                    Text("▶  " + (if (resuming) S.resume else S.watch).caps)
                 }
                 if (!episode.hasVideo) {
-                    Span({ classes("hero-sub") }) { Text("ვიდეო ამ სერიისთვის მიუწვდომელია") }
+                    Span({ classes("hero-sub") }) { Text(S.videoUnavailableForEpisode) }
                 }
             }
         }
@@ -268,19 +270,19 @@ private fun SeasonMenu(disabled: Boolean, onMark: () -> Unit, onReset: () -> Uni
     Div({ classes("rel") }) {
         Button({
             classes("icon-btn")
-            attr("aria-label", "სეზონის მოქმედებები")
+            attr("aria-label", S.seasonActions)
             if (disabled) attr("disabled", "")
             onClick { open = !open }
-        }) { Icon(Icons.more, "სეზონის მოქმედებები") }
+        }) { Icon(Icons.more, S.seasonActions) }
 
         if (open) {
             Div({ classes("scrim"); style { property("background", "transparent") }; onClick { open = false } })
             Div({ classes("menu") }) {
                 Button({ classes("menu-item"); onClick { open = false; onMark() } }) {
-                    Text("სეზონის ნანახად მონიშვნა")
+                    Text(S.markSeasonWatched.caps)
                 }
                 Button({ classes("menu-item", "danger"); onClick { open = false; onReset() } }) {
-                    Text("სეზონის პროგრესის წაშლა")
+                    Text(S.resetSeasonProgress.caps)
                 }
             }
         }
@@ -299,16 +301,16 @@ private fun MenuSheet(
     Div({ classes("scrim"); onClick { onClose() } })
     Div({ classes("sheet") }) {
         Div {
-            Div({ classes("eyebrow-mut") }) { Text("მენიუ") }
+            Div({ classes("eyebrow-mut") }) { Text(S.menu.caps) }
             Div({ style { property("font-size", "13px"); property("color", "var(--tx-dim)") } }) {
                 Text(AuthStore.email ?: "")
             }
         }
 
         Div({ classes("sheet-stats") }) {
-            Stat("${Library.watchedCount}/${Library.episodes.size}", "ნანახი")
-            Stat("${Library.startedCount}", "დაწყებული")
-            Stat("${Library.percentWatched}%", "პროგრესი")
+            Stat("${Library.watchedCount}/${Library.episodes.size}", S.statWatched.caps)
+            Stat("${Library.startedCount}", S.statStarted.caps)
+            Stat("${Library.percentWatched}%", S.statProgress.caps)
         }
 
         Div({ classes("hero-bar"); style { property("max-width", "none") } }) {
@@ -322,33 +324,33 @@ private fun MenuSheet(
                     if (Library.refreshing) attr("disabled", "")
                     onClick { onRefresh() }
                 }) {
-                    Text(if (Library.refreshing) (Library.refreshNote ?: "მიმდინარეობს...") else "სერიების განახლება")
+                    Text(if (Library.refreshing) (Library.refreshNote ?: S.refreshing) else S.refreshEpisodes.caps)
                 }
             }
             Button({
                 classes("sheet-item", "danger")
                 if (busy) attr("disabled", "")
                 onClick { onResetAll() }
-            }) { Text("მთლიანი პროგრესის წაშლა") }
-            Button({ classes("sheet-item"); onClick { onSignOut() } }) { Text("გასვლა") }
+            }) { Text(S.resetAllProgress.caps) }
+            Button({ classes("sheet-item"); onClick { onSignOut() } }) { Text(S.signOut.caps) }
         }
 
         Div {
-            Div({ classes("eyebrow-mut"); style { property("margin-bottom", "8px") } }) { Text("პარამეტრები") }
+            Div({ classes("eyebrow-mut"); style { property("margin-bottom", "8px") } }) { Text(S.settings.caps) }
             Button({
                 classes("toggle-row")
                 onClick { Prefs.setAutoplayNext(!Prefs.autoplayNext) }
             }) {
                 Div({ classes("lab") }) {
-                    Div { Text("შემდეგი სერიის ავტომატურად ჩართვა") }
-                    Span { Text("სერიის დასრულებისას შემდეგი ავტომატურად ჩაირთვება.") }
+                    Div { Text(S.autoplayTitle.caps) }
+                    Span { Text(S.autoplayBody) }
                 }
                 Div({ classNames("switch", if (Prefs.autoplayNext) "on" else null) }) { Div() }
             }
         }
 
         Div({ style { property("margin-top", "auto"); property("font-size", "11px"); property("color", "var(--mut)") } }) {
-            Text("ბოლო განახლება: ${formatDateTime(Library.meta?.lastRefreshAtMillis)}")
+            Text(S.lastRefreshed(formatDateTime(Library.meta?.lastRefreshAtMillis)))
         }
     }
 }
@@ -365,7 +367,7 @@ private fun Stat(value: String, label: String) {
 private fun LoadingRails() {
     Div({ classes("rails"); style { property("padding-top", "80px") } }) {
         Div {
-            Div({ classes("rail-head") }) { H2 { Text("იტვირთება") } }
+            Div({ classes("rail-head") }) { H2 { Text(S.loading.caps) } }
             Div({ classes("grid") }) {
                 repeat(8) {
                     Div({ classes("tile") }) {
@@ -387,10 +389,10 @@ private fun LoadingRails() {
 private fun LoadFailed(message: String, onRetry: () -> Unit) {
     Div({ style { property("padding-top", "90px") } }) {
         Div({ classes("empty") }) {
-            Div({ classes("eyebrow-mut") }) { Text("ჩატვირთვა ვერ მოხერხდა") }
+            Div({ classes("eyebrow-mut") }) { Text(S.loadFailedEyebrow.caps) }
             Div { Text(message) }
             Button({ classes("btn", "btn-primary"); onClick { onRetry() } }) {
-                Text("თავიდან ცდა")
+                Text(S.retry.caps)
             }
         }
     }
@@ -405,16 +407,16 @@ private fun EmptyCatalog(
 ) {
     Div({ style { property("padding-top", "90px") } }) {
         Div({ classes("empty") }) {
-            Div({ classes("eyebrow-mut") }) { Text("ცარიელია") }
-            Div { Text("ბაზაში სერიები ჯერ არ არის.") }
+            Div({ classes("eyebrow-mut") }) { Text(S.emptyEyebrow.caps) }
+            Div { Text(S.emptyBody) }
             if (canRefresh) {
                 Button({
                     classes("btn", "btn-primary")
                     if (refreshing) attr("disabled", "")
                     onClick { onRefresh() }
-                }) { Text(if (refreshing) (note ?: "მიმდინარეობს...") else "სერიების ჩამოტვირთვა") }
+                }) { Text(if (refreshing) (note ?: S.refreshing) else S.downloadEpisodes.caps) }
             } else {
-                Span { Text("დაელოდე, სანამ ადმინი ჩამოტვირთავს სერიებს.") }
+                Span { Text(S.waitForAdmin) }
             }
         }
     }

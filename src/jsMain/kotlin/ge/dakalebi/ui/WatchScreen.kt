@@ -20,6 +20,8 @@ import ge.dakalebi.data.Episode
 import ge.dakalebi.data.EpisodeRepository
 import ge.dakalebi.data.Library
 import ge.dakalebi.formula.orderedQualityLabels
+import ge.dakalebi.i18n.S
+import ge.dakalebi.i18n.caps
 import ge.dakalebi.ui.player.AirPlayClock
 import ge.dakalebi.ui.player.CustomVideoPlayer
 import ge.dakalebi.ui.player.NativeVideoPlayer
@@ -127,7 +129,7 @@ fun WatchScreen(episodeId: String) {
             ?: resolved.videoUrl
             ?: quality?.let { sources[it] }
 
-        if (videoUrl == null) error = "ვიდეოს ლინკის მიღება ვერ მოხერხდა"
+        if (videoUrl == null) error = S.videoLinkFailed
         resolving = false
     }
 
@@ -283,7 +285,7 @@ fun WatchScreen(episodeId: String) {
         Div {
             WatchNav(null)
             Div({ classes("center-note") }) {
-                Text(if (Library.loading) "იტვირთება..." else "სერია ვერ მოიძებნა")
+                Text(if (Library.loading) S.loading else S.episodeNotFound)
             }
         }
         return
@@ -342,7 +344,7 @@ fun WatchScreen(episodeId: String) {
             Prefs.setPlayIntent(episodeId, "paused")
             persist(isWatched = true)
             ended = true
-            Toasts.ok("მონიშნულია, როგორც ნანახი")
+            Toasts.ok(S.markedAsWatched)
             if (autoplay && nextEpisode != null) goToNext()
         },
         onError = {
@@ -353,15 +355,15 @@ fun WatchScreen(episodeId: String) {
             )
             if (!refs.retried) {
                 refs.retried = true
-                Toasts.show("ვცდი თავიდან...")
+                Toasts.show(S.retryingVideo)
                 scope.launch {
                     val resolved = EpisodeRepository.resolveVideo(episode)
                     Library.putEpisode(resolved)
                     videoUrl = resolved.videoUrl
-                    if (resolved.videoUrl == null) error = "ვიდეოს ჩატვირთვა ვერ მოხერხდა"
+                    if (resolved.videoUrl == null) error = S.videoLoadFailed
                 }
             } else {
-                error = "ვიდეოს ჩატვირთვა ვერ მოხერხდა"
+                error = S.videoLoadFailed
             }
         },
         onAirPlayChange = { active, video ->
@@ -428,7 +430,7 @@ fun WatchScreen(episodeId: String) {
         } else {
             Div({ classes("player") }) {
                 Div({ classes("center-note"); style { property("min-height", "100%") } }) {
-                    Text(if (error != null) error!! else "იტვირთება...")
+                    Text(if (error != null) error!! else S.loading)
                 }
             }
         }
@@ -437,10 +439,10 @@ fun WatchScreen(episodeId: String) {
         Div({ classes("watch-body") }) {
             Div {
                 Div({ classes("eyebrow") }) {
-                    Text("სეზონი ${episode.seasonNumber} · სერია ${episode.episodeNumber}")
+                    Text(S.seasonAndEpisode(episode.seasonNumber, episode.episodeNumber).caps)
                 }
                 H1({ classes("watch-h") }) {
-                    Text(episode.title ?: "სერია ${episode.episodeNumber}")
+                    Text((episode.title ?: S.episode(episode.episodeNumber)).caps)
                 }
             }
 
@@ -451,13 +453,13 @@ fun WatchScreen(episodeId: String) {
             if (ended && nextEpisode != null) {
                 Div({ classes("ended") }) {
                     Div({ classes("grow") }) {
-                        Div({ style { property("font-weight", "650") } }) { Text("სერია დასრულდა") }
+                        Div({ style { property("font-weight", "650") } }) { Text(S.episodeFinished.caps) }
                         Div({ classes("nextcard-s") }) {
-                            Text("შემდეგი: სეზონი ${nextEpisode.seasonNumber} · სერია ${nextEpisode.episodeNumber}")
+                            Text(S.nextUp(nextEpisode.seasonNumber, nextEpisode.episodeNumber).caps)
                         }
                     }
                     Button({ classes("btn", "btn-primary"); onClick { goToNext() } }) {
-                        Text("შემდეგი სერია")
+                        Text(S.nextEpisodeAction.caps)
                     }
                 }
             }
@@ -475,41 +477,42 @@ fun WatchScreen(episodeId: String) {
                             video.play()
                         }
                     }
-                }) { Text("თავიდან ყურება") }
+                }) { Text(S.watchFromStart.caps) }
 
                 if (watched) {
                     Button({
                         classes("btn", "btn-ghost")
                         style { property("color", "var(--ok)"); property("border-color", "rgba(62,207,142,.45)") }
                         onClick { confirmReset = true }
-                    }) { Text("✓  ნანახია") }
+                    }) { Text(S.watchedTick.caps) }
                 } else {
                     Button({
                         classes("btn", "btn-ghost")
-                        onClick { persist(isWatched = true); Toasts.ok("სერია მონიშნულია ნანახად") }
-                    }) { Text("ნანახად მონიშვნა") }
+                        onClick { persist(isWatched = true); Toasts.ok(S.episodeMarkedWatched) }
+                    }) { Text(S.markAsWatched.caps) }
                 }
 
                 if (nextEpisode != null) {
                     Button({ classes("btn", "btn-primary"); onClick { goToNext() } }) {
-                        Text("შემდეგი სერია")
+                        Text(S.nextEpisodeAction.caps)
                     }
                 }
 
-                ExternalLink(episode.episodePageUrl, "ფორმულაზე გახსნა")
+                ExternalLink(episode.episodePageUrl, S.openOnFormula.caps)
             }
         }
 
-            Rail(
-                title = "წინა სერიები",
-                episodes = Library.previous(episode, 6),
+            // Four, oldest on the left, in a row that does not scroll.
+            EpisodeRow(
+                title = S.previousEpisodes.caps,
+                episodes = Library.previous(episode, 4),
                 progress = Library.progress,
             )
         }
 
             Div({ classes("watch-aside") }) {
                 UpNextList(
-                    title = "შემდეგი სერიები",
+                    title = S.nextEpisodes.caps,
                     episodes = Library.upcoming(episode, 12),
                     progress = Library.progress,
                 )
@@ -519,9 +522,9 @@ fun WatchScreen(episodeId: String) {
 
     if (confirmReset) {
         ConfirmDialog(
-            title = "პროგრესის წაშლა?",
-            body = "ეს სერია გამოჩნდება ისე, თითქოს საერთოდ არ გაქვს ნანახი.",
-            confirmLabel = "წაშლა",
+            title = S.clearProgressTitle,
+            body = S.clearProgressBody,
+            confirmLabel = S.delete.caps,
             destructive = true,
             onConfirm = {
                 confirmReset = false
@@ -533,11 +536,11 @@ fun WatchScreen(episodeId: String) {
                                 refs.video?.currentTime = 0.0
                                 refs.lastSaved = 0.0
                                 ended = false
-                                Toasts.ok("პროგრესი წაიშალა")
+                                Toasts.ok(S.progressCleared)
                             }
                             .onFailure {
                                 Log.e("progress", "clear failed for ${episode.id}", it)
-                                Toasts.error("ვერ მოხერხდა წაშლა")
+                                Toasts.error(S.clearFailed)
                             }
                     }
                 }
@@ -552,11 +555,11 @@ private fun WatchNav(episode: Episode?) {
     Div({ classes("nav", "nav-solid") }) {
         A(href = Router.href(Route.Dashboard), attrs = { classes("btn", "btn-quiet") }) {
             Icon(Icons.back)
-            Text("უკან")
+            Text(S.back.caps)
         }
         episode?.let {
             Span({ classes("eyebrow-mut") }) {
-                Text("სეზონი ${it.seasonNumber} · სერია ${it.episodeNumber}")
+                Text(S.seasonAndEpisode(it.seasonNumber, it.episodeNumber).caps)
             }
         }
     }
@@ -573,12 +576,12 @@ private fun NextEpisodeCard(
     Div({ classes("nextcard") }) {
         Div({ classes("nextcard-th") }) { Thumb(episode, showLabel = false) }
         Div({ classes("nextcard-b") }) {
-            Div({ classes("eyebrow") }) { Text("შემდეგი სერია") }
+            Div({ classes("eyebrow") }) { Text(S.nextEpisode.caps) }
             Div({ classes("nextcard-t") }) {
-                Text(episode.title ?: "სერია ${episode.episodeNumber}")
+                Text((episode.title ?: S.episode(episode.episodeNumber)).caps)
             }
             Div({ classes("nextcard-s") }) {
-                Text("სეზონი ${episode.seasonNumber} · სერია ${episode.episodeNumber}")
+                Text(S.seasonAndEpisode(episode.seasonNumber, episode.episodeNumber).caps)
             }
             if (autoplayOn) {
                 Div({ classes("nextcard-bar") }) {
@@ -587,9 +590,9 @@ private fun NextEpisodeCard(
             }
             Div({ classes("nextcard-row") }) {
                 Button({ classes("btn", "btn-primary"); style { property("padding", "7px 13px") }; onClick { onPlayNext() } }) {
-                    Text("ყურება")
+                    Text(S.watch.caps)
                 }
-                Button({ classes("btn", "btn-quiet"); onClick { onDismiss() } }) { Text("დახურვა") }
+                Button({ classes("btn", "btn-quiet"); onClick { onDismiss() } }) { Text(S.dismiss.caps) }
             }
         }
     }
