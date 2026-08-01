@@ -17,7 +17,7 @@ fun LoadingRails() {
         Div {
             Div({ classes("rail-head") }) { H2 { Text(S.loading.caps) } }
             Div({ classes("grid") }) {
-                repeat(8) {
+                repeat(24) {
                     Div({ classes("tile") }) {
                         Div({ classes("skel", "skel-tile") })
                         Div({ classes("skel", "skel-line") })
