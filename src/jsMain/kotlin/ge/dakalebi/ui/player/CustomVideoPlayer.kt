@@ -6,7 +6,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import ge.dakalebi.app.Log
 import ge.dakalebi.app.formatTime
+import ge.dakalebi.formula.orderedQualityLabels
 import ge.dakalebi.ui.Icon
 import ge.dakalebi.ui.Icons
 import ge.dakalebi.ui.classNames
@@ -23,6 +25,7 @@ import org.jetbrains.compose.web.dom.Span
 import org.jetbrains.compose.web.dom.Text
 import org.jetbrains.compose.web.dom.Video
 import org.w3c.dom.HTMLElement
+import org.w3c.dom.HTMLInputElement
 import org.w3c.dom.HTMLVideoElement
 import org.w3c.dom.events.Event
 import org.w3c.dom.events.KeyboardEvent
@@ -39,6 +42,7 @@ private class PlayerRefs {
     var fillBuf: HTMLElement? = null
     var knob: HTMLElement? = null
     var thinCur: HTMLElement? = null
+    var scrubInput: HTMLInputElement? = null
     var raf: Int? = null
     var hideTimer: Int? = null
     var feedbackTimer: Int? = null
@@ -86,6 +90,13 @@ fun CustomVideoPlayer(
         if (!refs.scrubbing) {
             refs.fillCur?.style?.width = "$pct%"
             refs.knob?.style?.left = "$pct%"
+            // The bar people see is painted here, but the range input layered
+            // over it for interaction is what the keyboard and screen readers
+            // actually address. Leaving its value behind meant arrow-key
+            // seeking jumped from a stale position and assistive tech
+            // announced the wrong one. Skipped mid-drag so it never fights
+            // the pointer.
+            refs.scrubInput?.value = (pct * 10).roundToInt().toString()
         }
         refs.thinCur?.style?.width = "$pct%"
 
@@ -173,7 +184,9 @@ fun CustomVideoPlayer(
         val el = refs.container ?: return
         val doc = document.asDynamic()
         if (doc.fullscreenElement != null || doc.webkitFullscreenElement != null) {
-            runCatching { doc.exitFullscreen() }.recoverCatching { doc.webkitExitFullscreen() }
+            runCatching { doc.exitFullscreen() }
+                .recoverCatching { doc.webkitExitFullscreen() }
+                .onFailure { Log.w("player", "could not leave fullscreen", it) }
         } else {
             val dyn = el.asDynamic()
             runCatching { dyn.requestFullscreen() }
@@ -182,6 +195,7 @@ fun CustomVideoPlayer(
                     // iOS Safari only ever fullscreens the video element itself.
                     refs.video?.asDynamic()?.webkitEnterFullscreen()
                 }
+                .onFailure { Log.w("player", "could not enter fullscreen", it) }
         }
     }
 
@@ -194,8 +208,10 @@ fun CustomVideoPlayer(
             } else if (v.remote != null && jsTypeOf(v.remote.prompt) == "function") {
                 v.remote.prompt()
                 flashFeedback("Cast")
+            } else {
+                Log.w("cast", "no AirPlay or Remote Playback API on this element")
             }
-        }
+        }.onFailure { Log.w("cast", "picker refused to open", it) }
     }
 
     // ------------------------------------------------------------- effects
@@ -231,8 +247,18 @@ fun CustomVideoPlayer(
                 target?.isContentEditable == true
             ) return@handler
 
+            // Space and Enter are how a keyboard user presses whatever is
+            // focused. Claiming them unconditionally - which this did - also
+            // calls preventDefault, so the button never fires and the video
+            // toggles instead: every control on the page becomes unreachable
+            // without a mouse. Only take them when focus is somewhere inert.
+            val role = runCatching { target?.getAttribute("role") as? String }.getOrNull()
+            val focusIsActivatable = tag == "BUTTON" || tag == "A" ||
+                tag == "SUMMARY" || !role.isNullOrBlank()
+
             when {
                 event.code == "Space" || event.key == "Enter" -> {
+                    if (focusIsActivatable) return@handler
                     event.preventDefault(); togglePlay()
                 }
                 event.code == "ArrowRight" -> { event.preventDefault(); seekBy(10.0) }
@@ -272,6 +298,9 @@ fun CustomVideoPlayer(
 
     val pctText = "${formatTime(currentSec.toDouble())} / ${formatTime(durationSec.toDouble())}"
     val controlsHidden = !showControls && playing
+    // Best-first, computed rather than taken from the map's own order, which
+    // is not preserved across a Firestore round trip.
+    val ordered = remember(sources) { orderedQualityLabels(sources) }
 
     Div({
         classes("player")
@@ -323,7 +352,10 @@ fun CustomVideoPlayer(
                 paintBars()
                 refs.pendingSeek?.let { target ->
                     refs.pendingSeek = null
+                    // Losing this seek silently is what a quality switch that
+                    // "jumps back to the start" actually looks like.
                     runCatching { v.currentTime = target }
+                        .onFailure { Log.w("player", "quality-swap seek to ${target}s failed", it) }
                     if (refs.pendingPlay) v.play()
                 }
                 events.onLoadedMetadata(v)
@@ -400,7 +432,7 @@ fun CustomVideoPlayer(
                             remote.watchAvailability { available: Boolean ->
                                 castAvailable = available
                             }
-                        }
+                        }.onFailure { Log.w("cast", "watchAvailability rejected", it) }
                         remote.onconnect = { casting = true }
                         remote.ondisconnect = { casting = false }
                     }
@@ -434,9 +466,9 @@ fun CustomVideoPlayer(
             Div({ classes("feedback") }) { Text(it) }
         }
 
-        if (qualityOpen && sources.size > 1) {
+        if (qualityOpen && ordered.size > 1) {
             Div({ classes("q-menu") }) {
-                sources.keys.forEach { label ->
+                ordered.forEach { label ->
                     Button({
                         classNames("q-item", if (label == quality) "sel" else null)
                         onClick {
@@ -473,6 +505,7 @@ fun CustomVideoPlayer(
                 Input(InputType.Range) {
                     min("0"); max("1000"); step(1.0)
                     attr("aria-label", "დროის ხაზი")
+                    ref { el -> refs.scrubInput = el; onDispose { refs.scrubInput = null } }
                     onInput { event ->
                         val v = refs.video ?: return@onInput
                         if (!v.duration.isFinite() || v.duration <= 0) return@onInput
@@ -528,12 +561,12 @@ fun CustomVideoPlayer(
 
                 Div({ classes("grow") })
 
-                if (sources.size > 1) {
+                if (ordered.size > 1) {
                     Button({
                         classes("q-btn", "mono")
                         attr("aria-label", "ხარისხი")
                         onClick { qualityOpen = !qualityOpen }
-                    }) { Text(quality ?: sources.keys.first()) }
+                    }) { Text(quality ?: ordered.first()) }
                 }
 
                 if (castSupported || castAvailable) {

@@ -6,6 +6,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import ge.dakalebi.app.Log
 import ge.dakalebi.app.Toasts
 import ge.dakalebi.auth.AuthStore
 import ge.dakalebi.auth.authErrorMessage
@@ -44,7 +45,7 @@ fun LoginScreen() {
                 // Log the raw Firebase error alongside the friendly text: the
                 // mapped message hides the code, and auth failures are the
                 // hardest thing to diagnose remotely.
-                console.error("auth failed", e.asDynamic().code, e.message, e)
+                Log.e("auth", "sign-in failed", e)
                 Toasts.error(authErrorMessage(e))
             } finally {
                 busy = false

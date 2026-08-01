@@ -103,17 +103,47 @@ fun FormulaEpisode.qualitySources(): Map<String, String> {
     return out
 }
 
+/**
+ * Rank of a quality label, higher being better. Derived from the leading digits
+ * so an unfamiliar label from Formula still sorts sensibly; anything without a
+ * number ("original") ranks last.
+ */
+fun qualityRank(label: String): Int = label.takeWhile { it.isDigit() }.toIntOrNull() ?: -1
+
+/**
+ * Quality labels best-first.
+ *
+ * Never rely on the iteration order of a [Map] of sources for this. The map is
+ * built best-first by [qualitySources], but it round-trips through a Firestore
+ * map field on the way to the UI, and Firestore does not preserve or guarantee
+ * key order — the same document came back in two different orders on two
+ * consecutive reads.
+ */
+fun orderedQualityLabels(sources: Map<String, String>): List<String> =
+    sources.keys.sortedWith(compareByDescending<String> { qualityRank(it) }.thenBy { it })
+
 /** Highest-quality playable URL, or null when Formula has no video for it. */
 fun FormulaEpisode.bestVideoUrl(): String? = qualitySources().values.firstOrNull()
 
 /**
- * Poster image. Every one of the 932 episodes currently carries [imageURL], so
- * the original app's HTML-scraping fallback is unnecessary — and impossible
- * from a browser anyway, since `tv.formula.ge` sends no CORS headers.
+ * Poster image, largest first.
+ *
+ * Surveyed across all 932 episodes: every one carries [imageURL], but it is a
+ * 220x124 thumbnail. 28 also carry [originalImageURL] at 1280x720. So
+ * [imageURL] is the right *fallback* — it is the one that is always there — and
+ * the wrong first choice, which is what it used to be.
+ *
+ * [videoThumbnailSrc] is deliberately absent: despite the name it is an `.mp4`
+ * (e.g. `cdn.formula.ge/trimmer/THUMBNAIL/.../….mp4`), so putting it in an
+ * `<img>` chain only produces a broken image. It was unreachable before purely
+ * because [imageURL] always won.
+ *
+ * The original app's HTML-scraping fallback stays unnecessary — and is
+ * impossible from a browser anyway, since `tv.formula.ge` sends no CORS
+ * headers.
  */
 fun FormulaEpisode.thumbnailUrl(): String? =
-    listOf(imageURL, originalImageURL, videoThumbnailSrc)
-        .firstOrNull { !it.isNullOrBlank() }
+    listOf(originalImageURL, imageURL).firstOrNull { !it.isNullOrBlank() }
 
 /** Public watch page on Formula, used as the "open on Formula" fallback. */
 fun episodePageUrl(formulaEpisodeId: Int): String =

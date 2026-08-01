@@ -1,10 +1,13 @@
 package ge.dakalebi.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import ge.dakalebi.app.Log
 import ge.dakalebi.app.Route
 import ge.dakalebi.app.Router
 import ge.dakalebi.app.Toasts
@@ -25,6 +28,8 @@ import org.jetbrains.compose.web.dom.Img
 import org.jetbrains.compose.web.dom.P
 import org.jetbrains.compose.web.dom.Span
 import org.jetbrains.compose.web.dom.Text
+import org.w3c.dom.events.Event
+import org.w3c.dom.events.KeyboardEvent
 
 /** Episode still, or a deterministic gradient stand-in when there is none. */
 @Composable
@@ -147,6 +152,30 @@ fun Rail(title: String, subtitle: String? = null, episodes: List<Episode>, progr
     }
 }
 
+/**
+ * Closes an overlay on Escape.
+ *
+ * Every modal here could already be dismissed by clicking the scrim, but
+ * nothing listened for Escape — which is the first thing a keyboard user
+ * reaches for, and the only thing available to them once focus is inside a
+ * dialog.
+ */
+@Composable
+fun DismissOnEscape(onDismiss: () -> Unit) {
+    val latest by rememberUpdatedState(onDismiss)
+    DisposableEffect(Unit) {
+        val handler: (Event) -> Unit = { raw ->
+            val event = raw as? KeyboardEvent
+            if (event != null && event.key == "Escape") {
+                event.preventDefault()
+                latest()
+            }
+        }
+        window.addEventListener("keydown", handler)
+        onDispose { window.removeEventListener("keydown", handler) }
+    }
+}
+
 @Composable
 fun ConfirmDialog(
     title: String,
@@ -156,6 +185,7 @@ fun ConfirmDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
+    DismissOnEscape(onDismiss)
     Div({ classes("scrim"); onClick { onDismiss() } })
     Div({ classes("dialog") }) {
         H3 { Text(title) }
@@ -188,8 +218,12 @@ private fun copyToClipboard(text: String, done: (Boolean) -> Unit) {
     if (clipboard != null && clipboard.writeText != null) {
         (clipboard.writeText(text) as kotlin.js.Promise<Unit>)
             .then { done(true) }
-            .catch { done(legacyCopy(text)) }
+            .catch { error ->
+                Log.w("clipboard", "navigator.clipboard refused, trying execCommand", error)
+                done(legacyCopy(text))
+            }
     } else {
+        Log.d("clipboard", "no navigator.clipboard on this origin, using execCommand")
         done(legacyCopy(text))
     }
 }
@@ -204,4 +238,4 @@ private fun legacyCopy(text: String): Boolean = runCatching {
     val ok = document.asDynamic().execCommand("copy") as Boolean
     document.body?.removeChild(area as org.w3c.dom.Node)
     ok
-}.getOrDefault(false)
+}.onFailure { Log.w("clipboard", "execCommand fallback failed", it) }.getOrDefault(false)

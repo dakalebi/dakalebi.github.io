@@ -44,14 +44,31 @@ object Prefs {
      */
     fun playIntent(episodeId: String): String? = runCatching {
         sessionStorage.getItem(INTENT_PREFIX + episodeId)
-    }.getOrNull()?.takeIf { it == "playing" || it == "paused" }
+    }.orWarn("read session $episodeId")?.takeIf { it == "playing" || it == "paused" }
 
     fun setPlayIntent(episodeId: String, intent: String) {
         runCatching { sessionStorage.setItem(INTENT_PREFIX + episodeId, intent) }
+            .orWarn("write session $episodeId")
     }
 
-    private fun read(key: String): String? = runCatching { localStorage.getItem(key) }.getOrNull()
+    private fun read(key: String): String? =
+        runCatching { localStorage.getItem(key) }.orWarn("read $key")
+
     private fun readBool(key: String): Boolean = read(key) == "1"
-    private fun write(key: String, value: String) { runCatching { localStorage.setItem(key, value) } }
-    private fun remove(key: String) { runCatching { localStorage.removeItem(key) } }
+
+    private fun write(key: String, value: String) {
+        runCatching { localStorage.setItem(key, value) }.orWarn("write $key")
+    }
+
+    private fun remove(key: String) {
+        runCatching { localStorage.removeItem(key) }.orWarn("remove $key")
+    }
+
+    /**
+     * Storage throws outright in Safari private mode and wherever the user has
+     * blocked site data. Preferences are not worth failing over, but "my volume
+     * never sticks" is otherwise impossible to explain.
+     */
+    private fun <T> Result<T>.orWarn(what: String): T? =
+        onFailure { Log.w("prefs", "$what unavailable", it) }.getOrNull()
 }

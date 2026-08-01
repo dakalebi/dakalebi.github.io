@@ -89,10 +89,22 @@ external interface QueryDocumentSnapshot {
     fun data(): dynamic
 }
 
+/**
+ * `fromCache` is the only way to tell "the server says there is nothing" from
+ * "we never reached the server". Firestore resolves an offline read instead of
+ * rejecting it, so without this an unreachable backend is indistinguishable
+ * from an empty collection.
+ */
+external interface SnapshotMetadata {
+    val fromCache: Boolean
+    val hasPendingWrites: Boolean
+}
+
 external interface QuerySnapshot {
     val size: Int
     val empty: Boolean
     val docs: Array<QueryDocumentSnapshot>
+    val metadata: SnapshotMetadata
 }
 
 external interface WriteBatch {

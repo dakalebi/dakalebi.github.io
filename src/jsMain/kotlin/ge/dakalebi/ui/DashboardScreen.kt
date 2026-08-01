@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import ge.dakalebi.app.Log
 import ge.dakalebi.app.Prefs
 import ge.dakalebi.app.Route
 import ge.dakalebi.app.Router
@@ -59,6 +60,7 @@ fun DashboardScreen() {
                 block()
                 Toasts.ok(label)
             } catch (e: Throwable) {
+                Log.e("dashboard", "action failed: $label", e)
                 Toasts.error("მოქმედება ვერ შესრულდა")
             } finally {
                 busy = false
@@ -71,9 +73,10 @@ fun DashboardScreen() {
 
         when {
             Library.loading -> LoadingRails()
-            Library.loadError != null -> Div({ classes("center-note") }) {
-                Text(Library.loadError ?: "")
-            }
+            Library.loadError != null -> LoadFailed(
+                message = Library.loadError ?: "",
+                onRetry = { uid?.let { id -> scope.launch { Library.ensureLoaded(id) } } },
+            )
             Library.episodes.isEmpty() -> EmptyCatalog(
                 canRefresh = AuthStore.isAdmin,
                 refreshing = Library.refreshing,
@@ -292,6 +295,7 @@ private fun MenuSheet(
     onSignOut: () -> Unit,
     busy: Boolean,
 ) {
+    DismissOnEscape(onClose)
     Div({ classes("scrim"); onClick { onClose() } })
     Div({ classes("sheet") }) {
         Div {
@@ -369,6 +373,24 @@ private fun LoadingRails() {
                         Div({ classes("skel", "skel-line") })
                     }
                 }
+            }
+        }
+    }
+}
+
+/**
+ * Shown when the catalog could not be read. It carries a retry because the
+ * alternative is a dead end: nothing else in the app calls `ensureLoaded`
+ * again, so without this the only way out was a full page reload.
+ */
+@Composable
+private fun LoadFailed(message: String, onRetry: () -> Unit) {
+    Div({ style { property("padding-top", "90px") } }) {
+        Div({ classes("empty") }) {
+            Div({ classes("eyebrow-mut") }) { Text("ჩატვირთვა ვერ მოხერხდა") }
+            Div { Text(message) }
+            Button({ classes("btn", "btn-primary"); onClick { onRetry() } }) {
+                Text("თავიდან ცდა")
             }
         }
     }

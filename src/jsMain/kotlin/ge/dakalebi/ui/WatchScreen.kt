@@ -9,6 +9,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import ge.dakalebi.app.Log
 import ge.dakalebi.app.Prefs
 import ge.dakalebi.app.Route
 import ge.dakalebi.app.Router
@@ -18,6 +19,7 @@ import ge.dakalebi.auth.AuthStore
 import ge.dakalebi.data.Episode
 import ge.dakalebi.data.EpisodeRepository
 import ge.dakalebi.data.Library
+import ge.dakalebi.formula.orderedQualityLabels
 import ge.dakalebi.ui.player.AirPlayClock
 import ge.dakalebi.ui.player.CustomVideoPlayer
 import ge.dakalebi.ui.player.NativeVideoPlayer
@@ -41,6 +43,16 @@ import kotlin.math.min
 
 /** Seconds before the end at which the next-episode card appears. */
 private const val PROMPT_WINDOW = 180.0
+
+/**
+ * Assigning `currentTime` throws on an element that is not seekable yet. That
+ * is expected during the resume retry loop, but a seek that keeps failing is
+ * exactly why someone would report "it never remembers where I was".
+ */
+private fun seekTo(video: HTMLVideoElement, target: Double, stage: String) {
+    runCatching { video.currentTime = target }
+        .onFailure { Log.w("resume", "seek to ${target}s rejected at stage=$stage", it) }
+}
 
 /** Save at most this often during continuous playback. */
 private const val SAVE_EVERY = 7.0
@@ -69,6 +81,9 @@ fun WatchScreen(episodeId: String) {
 
     var videoUrl by remember(episodeId) { mutableStateOf<String?>(null) }
     var quality by remember(episodeId) { mutableStateOf<String?>(null) }
+    // The renditions the menu offers. Held here so the label and the menu are
+    // always reading the same map — see the resolution effect below.
+    var available by remember(episodeId) { mutableStateOf<Map<String, String>>(emptyMap()) }
     var error by remember(episodeId) { mutableStateOf<String?>(null) }
     var ended by remember(episodeId) { mutableStateOf(false) }
     var remaining by remember(episodeId) { mutableStateOf<Double?>(null) }
@@ -100,10 +115,17 @@ fun WatchScreen(episodeId: String) {
         val resolved = EpisodeRepository.resolveVideo(current)
         if (resolved !== current) Library.putEpisode(resolved)
 
-        val sources = resolved.sources
+        // One map for everything downstream. Previously the label was derived
+        // from the freshly resolved sources while the menu was handed
+        // `episode.sources` — the stored copy, in a different order — so the
+        // two disagreed about which rendition was best.
+        val sources = resolved.sources.ifEmpty { current.sources }
+        available = sources
         val preferred = Prefs.preferredQuality?.takeIf { sources.containsKey(it) }
-        quality = preferred ?: sources.keys.firstOrNull()
-        videoUrl = preferred?.let { sources[it] } ?: resolved.videoUrl
+        quality = preferred ?: orderedQualityLabels(sources).firstOrNull()
+        videoUrl = preferred?.let { sources[it] }
+            ?: resolved.videoUrl
+            ?: quality?.let { sources[it] }
 
         if (videoUrl == null) error = "ვიდეოს ლინკის მიღება ვერ მოხერხდა"
         resolving = false
@@ -132,6 +154,10 @@ fun WatchScreen(episodeId: String) {
                     isWatched = isWatched,
                     allowReset = allowReset,
                 )
+            }.onFailure {
+                // Silent until now, which meant a rules or network problem
+                // looked exactly like "the app forgot where I was".
+                Log.e("progress", "save failed for ${current.id} at ${seconds}s", it)
             }
         }
     }
@@ -194,14 +220,14 @@ fun WatchScreen(episodeId: String) {
 
         if (isAppleMobile && stage != "seeked") {
             refs.resumeSeekIssued = true
-            runCatching { video.currentTime = target }
+            seekTo(video, target, stage)
             scheduleRetry("canplay", 300)
             return
         }
 
         val close = kotlin.math.abs(video.currentTime - target) < 0.75
         if (!close || (isAppleMobile && !refs.resumeSeekIssued)) {
-            runCatching { video.currentTime = target }
+            seekTo(video, target, stage)
         }
 
         if (kotlin.math.abs(video.currentTime - target) < 0.75) {
@@ -320,6 +346,11 @@ fun WatchScreen(episodeId: String) {
             if (autoplay && nextEpisode != null) goToNext()
         },
         onError = {
+            Log.e(
+                "player",
+                "media error for ${episode.id} " +
+                    "(code=${refs.video?.asDynamic()?.error?.code}, src=$videoUrl)",
+            )
             if (!refs.retried) {
                 refs.retried = true
                 Toasts.show("ვცდი თავიდან...")
@@ -365,12 +396,12 @@ fun WatchScreen(episodeId: String) {
                     CustomVideoPlayer(
                         src = url,
                         autoPlay = shouldAutoplay,
-                        sources = episode.sources,
+                        sources = available.ifEmpty { episode.sources },
                         quality = quality,
                         onQualitySelected = { label ->
                             quality = label
                             Prefs.setPreferredQuality(label)
-                            episode.sources[label]?.let { videoUrl = it }
+                            available[label]?.let { videoUrl = it }
                         },
                         events = events,
                         overlay = {
@@ -493,7 +524,10 @@ fun WatchScreen(episodeId: String) {
                                 ended = false
                                 Toasts.ok("პროგრესი წაიშალა")
                             }
-                            .onFailure { Toasts.error("ვერ მოხერხდა წაშლა") }
+                            .onFailure {
+                                Log.e("progress", "clear failed for ${episode.id}", it)
+                                Toasts.error("ვერ მოხერხდა წაშლა")
+                            }
                     }
                 }
             },

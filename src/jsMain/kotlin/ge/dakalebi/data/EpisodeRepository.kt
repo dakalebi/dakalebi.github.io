@@ -1,5 +1,6 @@
 package ge.dakalebi.data
 
+import ge.dakalebi.app.Log
 import ge.dakalebi.firebase.Firebase
 import ge.dakalebi.firebase.externals.DocumentSnapshot
 import ge.dakalebi.firebase.externals.QueryDocumentSnapshot
@@ -17,6 +18,10 @@ import ge.dakalebi.formula.qualitySources
 import ge.dakalebi.formula.thumbnailUrl
 import kotlinx.coroutines.await
 
+/** The catalog could not be read, as opposed to being genuinely empty. */
+class CatalogUnavailableException :
+    RuntimeException("სერიების სია ვერ ჩაიტვირთა — შეამოწმე ინტერნეტი")
+
 /** Reads and writes the shared episode catalog. */
 object EpisodeRepository {
     private const val EPISODES = "episodes"
@@ -26,11 +31,17 @@ object EpisodeRepository {
     /** Firestore hard limit; a full refresh is ~932 docs, so we chunk. */
     private const val BATCH_LIMIT = 450
 
-    suspend fun listEpisodes(): List<Episode> =
-        getDocs(collection(Firebase.db, EPISODES)).await()
-            .docs
-            .map { it.toEpisode() }
-            .sortedBy { it.ordinal }
+    suspend fun listEpisodes(): List<Episode> {
+        val snapshot = getDocs(collection(Firebase.db, EPISODES)).await()
+        // An unreachable backend does not reject — Firestore quietly answers
+        // from its (empty) cache. Treated as success, that renders the "no
+        // episodes in the database yet" screen, which tells a viewer to wait
+        // for an admin who has nothing to do.
+        if (snapshot.empty && snapshot.metadata.fromCache) {
+            throw CatalogUnavailableException()
+        }
+        return snapshot.docs.map { it.toEpisode() }.sortedBy { it.ordinal }
+    }
 
     suspend fun getCatalogMeta(): CatalogMeta? {
         val snapshot = getDoc(doc(Firebase.db, META, CATALOG)).await()
@@ -54,11 +65,11 @@ object EpisodeRepository {
         nowMillis: Double,
         onProgress: (done: Int, total: Int) -> Unit = { _, _ -> },
     ): RefreshResult {
-        console.log("refresh: reading existing catalog")
+        Log.d("refresh", "reading existing catalog")
         val existing = listEpisodes().associateBy { it.id }
-        console.log("refresh: existing=${existing.size}, fetching seasons")
+        Log.d("refresh", "existing=${existing.size}, fetching seasons")
         val seasons = FormulaApi.fetchSeasons()
-        console.log("refresh: seasons=${seasons.size}")
+        Log.d("refresh", "seasons=${seasons.size}")
 
         val fresh = mutableListOf<Episode>()
         seasons.forEachIndexed { index, season ->
@@ -69,7 +80,7 @@ object EpisodeRepository {
 
         val changed = fresh.filter { candidate -> existing[candidate.id]?.contentEquals(candidate) != true }
 
-        console.log("refresh: fetched=${fresh.size}, changed=${changed.size}, writing")
+        Log.d("refresh", "fetched=${fresh.size}, changed=${changed.size}, writing")
         for (chunk in changed.chunked(BATCH_LIMIT)) {
             val batch = writeBatch(Firebase.db)
             for (episode in chunk) {
@@ -99,7 +110,7 @@ object EpisodeRepository {
      * server round-trips. With the call happening in the browser there is no
      * such cost, so we always resolve fresh and fall back to the stored URL.
      */
-    suspend fun resolveVideo(episode: Episode): Episode = runCatching {
+    suspend fun resolveVideo(episode: Episode): Episode = runCatching<Episode> {
         val fresh = FormulaApi.fetchEpisode(episode.formulaEpisodeId)
         val sources = fresh.qualitySources()
         val url = fresh.bestVideoUrl() ?: return@runCatching episode
@@ -109,14 +120,29 @@ object EpisodeRepository {
             title = fresh.displayTitle ?: episode.title,
             thumbnailUrl = fresh.thumbnailUrl() ?: episode.thumbnailUrl,
         )
+    }.onFailure {
+        // Not fatal — the stored URL usually still plays — but it is the first
+        // thing to check when an episode suddenly refuses to load.
+        Log.w("episodes", "live resolve failed for ${episode.id}, using stored URL", it)
     }.getOrDefault(episode)
 
-    /** Persists a duration discovered by the player. Admin-only; failures are ignored. */
+    /**
+     * Persists a duration discovered by the player.
+     *
+     * Only admins may write the `episodes` collection, so a `permission-denied`
+     * here is the normal path for everyone else and stays at debug. Anything
+     * else is worth seeing.
+     */
     suspend fun recordDuration(episodeId: String, durationSeconds: Int) {
         val payload = jsObject()
         payload.durationSeconds = durationSeconds
         runCatching {
             setDoc(doc(Firebase.db, EPISODES, episodeId), payload, mergeOption()).await()
+        }.onFailure {
+            val expected = Log.codeOf(it) == "permission-denied"
+            val message = "duration write skipped for $episodeId"
+            if (expected) Log.d("episodes", "$message (not an admin)")
+            else Log.w("episodes", message, it)
         }
     }
 
