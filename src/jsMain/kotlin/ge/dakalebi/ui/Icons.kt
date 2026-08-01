@@ -11,16 +11,28 @@ import org.jetbrains.compose.web.dom.Span
  * the speaker characters come through as colour emoji, which is wrong inside a
  * monochrome player. These are static, author-controlled strings.
  */
+/**
+ * Renders one of the [Icons] strings.
+ *
+ * `ref` runs once per element and never again, so writing `innerHTML` there
+ * froze the glyph at whatever it was on first render: play stayed play after
+ * the video started, the speaker never gained its slash, and the fullscreen
+ * arrows never flipped. The `aria-label` on the surrounding button *did*
+ * update, so the control announced one thing and drew another.
+ *
+ * `DomSideEffect` re-runs whenever [markup] changes, which is exactly the
+ * dependency we need.
+ */
 @Composable
 fun Icon(markup: String, label: String? = null) {
     Span({
         classes("ic")
         if (label != null) attr("aria-label", label) else attr("aria-hidden", "true")
-        ref { element ->
+    }) {
+        DomSideEffect(markup) { element ->
             element.innerHTML = markup
-            onDispose { }
         }
-    })
+    }
 }
 
 private fun svg(body: String, fill: String = "none"): String =
