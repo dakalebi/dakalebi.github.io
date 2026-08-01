@@ -176,6 +176,53 @@ fun DismissOnEscape(onDismiss: () -> Unit) {
     }
 }
 
+/**
+ * Vertical "up next" list for the watch page's side column.
+ *
+ * A horizontal rail works on the dashboard, where the eye sweeps sideways past
+ * a season. Beside a player it wastes the one axis there is room on, so this is
+ * a stacked list of wide-thumbnail rows instead.
+ */
+@Composable
+fun UpNextList(title: String, episodes: List<Episode>, progress: Map<String, WatchProgress>) {
+    if (episodes.isEmpty()) return
+    Div {
+        Div({ classes("rail-head") }) { H2 { Text(title) } }
+        Div({ classes("uplist") }) {
+            episodes.forEach { episode -> UpNextRow(episode, progress[episode.id]) }
+        }
+    }
+}
+
+@Composable
+private fun UpNextRow(episode: Episode, progress: WatchProgress?) {
+    val percent = progress?.percent ?: 0.0
+    val watched = progress?.isWatched == true
+
+    A(href = Router.href(Route.Watch(episode.id)), attrs = { classes("uprow") }) {
+        Div({ classes("uprow-th") }) {
+            Thumb(episode, showLabel = false)
+            if (watched) Span({ classes("tile-seen") }) { Icon(Icons.check) }
+            if (percent > 0) {
+                Div({ classNames("tile-prog", if (watched) "done" else null) }) {
+                    Div({ style { property("width", "$percent%") } })
+                }
+            }
+        }
+        Div({ classes("uprow-b") }) {
+            Div({ classes("uprow-t") }) {
+                Text(episode.title ?: "სერია ${episode.episodeNumber}")
+            }
+            Div({ classes("uprow-s") }) {
+                Text("სეზონი ${episode.seasonNumber} · სერია ${episode.episodeNumber}")
+            }
+            formatDuration(episode.durationSeconds)?.let {
+                Div({ classes("uprow-s", "mono") }) { Text(it) }
+            }
+        }
+    }
+}
+
 @Composable
 fun ConfirmDialog(
     title: String,

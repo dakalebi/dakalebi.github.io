@@ -381,7 +381,7 @@ h3 {
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
   gap: 28px var(--rail-gap);
   padding: 0 var(--pad);
 }
@@ -915,8 +915,52 @@ h3 {
 
 /* ------------------------------------------------------------ watch page */
 
+/* Two columns from 1180px up: the episode on the left, what to watch next on
+   the right. Below that they stack, and the side list simply becomes the last
+   block on the page. */
+.watch-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: clamp(28px, 3vw, 44px);
+  padding: clamp(16px, 2.2vw, 26px) var(--pad) 96px;
+  max-width: 1760px;
+  margin: 0 auto;
+}
+@media (min-width: 1180px) {
+  .watch-grid {
+    grid-template-columns: minmax(0, 1fr) 384px;
+    align-items: start;
+  }
+}
+
+.watch-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(20px, 2.4vw, 30px);
+}
+.watch-aside {
+  min-width: 0;
+}
+
+/* Rails and grids inside the columns already sit within the page gutter. */
+.watch-grid .rail-head,
+.watch-grid .rail,
+.watch-grid .grid {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+/* Cap the player by capping its *width*, never its height. `.player` derives
+   height from width through aspect-ratio, so a max-height would clip rather
+   than scale - the same trap that made the hero overflow on phones. */
+.player-frame {
+  width: min(100%, calc(72vh * 16 / 9));
+  margin-inline: auto;
+}
+
 .watch-body {
-  padding: 20px var(--pad) 8px;
+  padding: 0;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -948,6 +992,70 @@ h3 {
   background: rgba(225, 53, 47, 0.08);
   font-size: 13px;
   color: #ff9d99;
+}
+
+.uplist {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.uprow {
+  display: flex;
+  gap: 12px;
+  padding: 8px;
+  border-radius: var(--radius);
+  color: inherit;
+  transition: background 0.2s var(--ease);
+}
+.uprow:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.uprow-th {
+  position: relative;
+  width: 156px;
+  flex: none;
+  aspect-ratio: 16 / 9;
+  background: var(--elev);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.uprow-th img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.uprow-b {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-top: 2px;
+}
+.uprow-t {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.uprow-s {
+  font-size: 12px;
+  color: var(--mut);
+}
+
+/* Stacked below the player, a single tall column of rows is a lot of empty
+   space on the right, so let them flow into however many fit. */
+@media (max-width: 1179px) {
+  .uplist {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
+    gap: 8px 16px;
+  }
 }
 
 /* ----------------------------------------------------------------- login */
@@ -1306,7 +1414,7 @@ h3 {
     width: 190px;
   }
   .grid {
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(150px, 100%), 1fr));
   }
   .nextcard {
     right: 8px;
