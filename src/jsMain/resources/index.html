@@ -2,7 +2,19 @@
 <html lang="ka">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <!--
+      `user-scalable=no` holds the layout at 1x on Android and in Chrome's
+      device emulation. iOS Safari has ignored both it and `maximum-scale`
+      since iOS 10 and will always allow a deliberate pinch — that is not
+      something a page can take away. What the page *can* stop there is the
+      accidental kind, and that is handled in CSS: `touch-action: manipulation`
+      for double-tap, and 16px form fields so focusing one does not yank the
+      viewport in.
+    -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
     <title>ჩემი ცოლის დაქალები — სანახავი დაფა</title>
     <meta
       name="description"

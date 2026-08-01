@@ -59,6 +59,18 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
+
+  /* Drops double-tap-to-zoom, which on a phone is mostly a way to zoom the
+     page by mistake while aiming at a control — and takes the ~300ms tap delay
+     that came with it. Panning and a deliberate pinch still work; `none` would
+     have killed scrolling too. Unlike `user-scalable=no` in the viewport tag,
+     iOS Safari does honour this. */
+  touch-action: manipulation;
+
+  /* Stops the long-press callout and the blue flash on tap. On a page whose
+     tiles are all images and links, both read as the browser interrupting. */
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 img {
@@ -1160,6 +1172,14 @@ h3 {
   font: inherit;
   font-size: 14px;
 }
+/* iOS Safari zooms the viewport whenever a focused field is under 16px, and
+   never zooms back out — you finish signing in on a page scrolled sideways.
+   Raising it only on touch pointers keeps the desktop form at 14px. */
+@media (pointer: coarse) {
+  .field {
+    font-size: 16px;
+  }
+}
 .field:focus {
   outline: none;
   border-color: var(--red);
@@ -1556,6 +1576,18 @@ h3 {
   }
   .vol-wrap {
     display: none;
+  }
+
+  /* One action per line, each filling the width. Capsules sized to their own
+     label wrap into a ragged stack on a phone, and the widest target ends up
+     being whichever action happens to have the longest name. `> *` rather than
+     `.btn` because one of these is an <a>. */
+  .watch-acts {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .watch-acts > * {
+    width: 100%;
   }
 }
 
