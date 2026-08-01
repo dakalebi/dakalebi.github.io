@@ -9,6 +9,7 @@ import ge.dakalebi.data.Library
 import ge.dakalebi.firebase.FirebaseConfig
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
+import kotlinx.browser.document
 import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.H1
 import org.jetbrains.compose.web.dom.P
@@ -36,6 +37,16 @@ fun App() {
             Router.replace(Route.Dashboard)
         }
     }
+
+    // The tab names whatever is open, so a row of tabs still says which episode
+    // is playing. Derived from the route here rather than pushed from the watch
+    // screen: a single writer cannot strand a stale title on the way out, and
+    // the episode itself is only known once the catalog has loaded.
+    val title = (route as? Route.Watch)
+        ?.let { Library.byId(it.episodeId) }
+        ?.let { S.episodeDocumentTitle(it.seasonNumber, it.episodeNumber) }
+        ?: S.documentTitle
+    LaunchedEffect(title) { document.title = title }
 
     when {
         loading -> Div({ classes("center-note") }) { Text(S.loading) }

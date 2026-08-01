@@ -18,6 +18,12 @@ object En : Strings {
     // ------------------------------------------------------------- shell
     override val appName = "Dakalebi"
     override val seriesTitle = "Chemi Tsolis Dakalebi"
+    override val seriesInitials = "CTD"
+    override val documentTitle = "Chemi Tsolis Dakalebi — Watch dashboard"
+
+    override fun episodeDocumentTitle(season: Int, episode: Int) =
+        "$seriesInitials - Season $season ⋅ Episode $episode"
+
     override val loading = "Loading…"
     override val menu = "Menu"
     override val settings = "Settings"

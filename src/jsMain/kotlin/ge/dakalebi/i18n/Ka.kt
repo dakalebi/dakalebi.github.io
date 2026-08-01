@@ -15,6 +15,14 @@ object Ka : Strings {
     // ------------------------------------------------------------- shell
     override val appName = "დაქალები"
     override val seriesTitle = "ჩემი ცოლის დაქალები"
+    override val seriesInitials = "ჩცდ"
+    override val documentTitle = "ჩემი ცოლის დაქალები — სანახავი დაფა"
+
+    // Mkhedruli, not Mtavruli: a tab title is not the UI chrome the caps rule
+    // is about, and index.html has always carried the plain form.
+    override fun episodeDocumentTitle(season: Int, episode: Int) =
+        "$seriesInitials - სეზონი $season ⋅ სერია $episode"
+
     override val loading = "იტვირთება..."
     override val menu = "მენიუ"
     override val settings = "პარამეტრები"

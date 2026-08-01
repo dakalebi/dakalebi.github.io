@@ -42,6 +42,20 @@ interface Strings {
 
     /** The series itself. A proper noun — translations transliterate, not translate. */
     val seriesTitle: String
+
+    /**
+     * The series reduced to its initials, for places with no room for the full
+     * name. A tab strip gives a title maybe fifteen characters before it
+     * truncates, and the full name spends all of them before saying anything.
+     */
+    val seriesInitials: String
+
+    /** Tab title everywhere except an open episode. Mirrors `index.html`. */
+    val documentTitle: String
+
+    /** Tab title while an episode is open, e.g. "ჩცდ - სეზონი 3 ⋅ სერია 12". */
+    fun episodeDocumentTitle(season: Int, episode: Int): String
+
     val loading: String
     val menu: String
     val settings: String
