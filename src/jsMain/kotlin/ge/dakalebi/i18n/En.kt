@@ -81,6 +81,12 @@ object En : Strings {
     override val statProgress = "Progress"
     override val autoplayTitle = "Autoplay the next episode"
     override val autoplayBody = "When an episode ends, the next one starts automatically."
+    override val nativePlayerTitle = "System player"
+    override val nativePlayerBody =
+        "iPhone and iPad use Apple's own player. Turn this off for the same " +
+            "player the desktop site uses."
+    override val language = "Language"
+    override val languageNotSynced = "Language changed on this device only"
     override val refreshEpisodes = "Refresh episodes"
     override val downloadEpisodes = "Download episodes"
     override val inProgress = "Working…"

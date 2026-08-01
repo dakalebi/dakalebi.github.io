@@ -111,6 +111,16 @@ interface Strings {
     val statProgress: String
     val autoplayTitle: String
     val autoplayBody: String
+
+    /** Only offered on iPhone and iPad, which are the only devices with two. */
+    val nativePlayerTitle: String
+    val nativePlayerBody: String
+
+    val language: String
+
+    /** The language changed here but could not be recorded for other devices. */
+    val languageNotSynced: String
+
     val refreshEpisodes: String
     val downloadEpisodes: String
     val inProgress: String

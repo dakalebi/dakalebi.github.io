@@ -46,7 +46,25 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // Watch progress is strictly private to its owner.
+    // Account settings: one small document per user, written when someone flips
+    // a switch in the drawer.
+    //
+    // The field allowlist is the point of this rule, not the ownership check. A
+    // client allowed to write its own document is otherwise allowed to write
+    // *anything* into it, and this is a free tier with a shared quota.
+    // `autoplayNext` is listed ahead of the code that writes it so moving that
+    // setting off the device later needs no second rules deploy — `hasOnly`
+    // permits a subset, so a write that omits the field still passes.
+    match /users/{userId} {
+      allow read: if isSignedIn() && request.auth.uid == userId;
+      allow write: if isSignedIn() && request.auth.uid == userId
+        && request.resource.data.keys()
+          .hasOnly(['language', 'autoplayNext', 'updatedAtMillis']);
+    }
+
+    // Watch progress is strictly private to its owner. A rule of its own rather
+    // than an extension of the one above: rules do not cascade into
+    // subcollections, so these two paths are matched independently.
     match /users/{userId}/progress/{episodeId} {
       allow read, write: if isSignedIn() && request.auth.uid == userId;
     }

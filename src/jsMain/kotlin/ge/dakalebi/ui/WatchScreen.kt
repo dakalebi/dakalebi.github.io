@@ -378,13 +378,21 @@ fun WatchScreen(episodeId: String) {
         },
     )
 
+    // Which player is on screen. The device decides whether there is a choice
+    // at all; the preference decides how it was answered. Everything else that
+    // tests `isAppleMobile` is about the device's own quirks — resume, seeking,
+    // AirPlay — and those hold whichever player is drawing the controls.
+    val nativePlayer = isAppleMobile && Prefs.useNativePlayer
+
+    // No overlay over a native player: it draws its own fullscreen surface and
+    // nothing of ours survives on top of it.
     val showPrompt = nextEpisode != null &&
         duration != null &&
         remaining != null &&
         remaining!! <= PROMPT_WINDOW &&
         !ended &&
         !promptDismissed &&
-        !isAppleMobile
+        !nativePlayer
 
     Div {
         WatchNav(episode)
@@ -399,7 +407,7 @@ fun WatchScreen(episodeId: String) {
         val url = videoUrl
         if (url != null && progressReady) {
             key(episode.id) {
-                if (isAppleMobile) {
+                if (nativePlayer) {
                     NativeVideoPlayer(src = url, autoPlay = shouldAutoplay, events = events)
                 } else {
                     CustomVideoPlayer(

@@ -1338,6 +1338,60 @@ h3 {
   transform: translateX(20px);
 }
 
+/* Settings stack. The rows are separate elements rather than one bordered
+   group, so the spacing has to come from the container — margins between
+   siblings collapse differently depending on which rows are present, and the
+   native-player row only exists on iPhone and iPad. */
+.settings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* A setting whose control is not a switch. Same frame as .toggle-row, but a
+   plain div: here the row itself does nothing, the segments inside it do. */
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+}
+.setting-row .lab > div {
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.seg {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--radius-pill);
+  background: var(--elev2);
+  flex: none;
+}
+.seg-item {
+  padding: 6px 13px;
+  border-radius: var(--radius-pill);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--tx-dim);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s var(--ease), color 0.2s var(--ease);
+}
+.seg-item:hover:not(.on) {
+  color: var(--tx);
+}
+.seg-item.on {
+  background: var(--tx);
+  color: #000;
+  cursor: default;
+}
+
 /* --------------------------------------------------------------- dialogs */
 
 .dialog {

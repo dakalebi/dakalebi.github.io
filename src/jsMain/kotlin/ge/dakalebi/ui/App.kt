@@ -2,10 +2,12 @@ package ge.dakalebi.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import ge.dakalebi.app.Route
 import ge.dakalebi.app.Router
 import ge.dakalebi.auth.AuthStore
 import ge.dakalebi.data.Library
+import ge.dakalebi.data.Settings
 import ge.dakalebi.firebase.FirebaseConfig
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
@@ -47,6 +49,20 @@ fun App() {
         ?.let { S.episodeDocumentTitle(it.seasonNumber, it.episodeNumber) }
         ?: S.documentTitle
     LaunchedEffect(title) { document.title = title }
+
+    // Follows the language rather than being stamped once at startup: `lang` is
+    // what a screen reader picks a voice from, and reading Georgian aloud in an
+    // English one is worse than no attribute at all.
+    LaunchedEffect(S.tag) { document.documentElement?.setAttribute("lang", S.tag) }
+
+    // Keyed on the uid alone so navigating does not re-run it. Tearing the
+    // listener down on sign-out matters: left attached, it keeps querying a
+    // document the signed-out client may no longer read.
+    val scope = rememberCoroutineScope()
+    LaunchedEffect(user?.uid) {
+        val uid = user?.uid
+        if (uid == null) Settings.stop() else Settings.start(scope, uid)
+    }
 
     when {
         loading -> Div({ classes("center-note") }) { Text(S.loading) }
