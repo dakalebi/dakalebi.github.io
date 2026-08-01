@@ -276,7 +276,7 @@ private fun SeasonMenu(disabled: Boolean, onMark: () -> Unit, onReset: () -> Uni
         }) { Icon(Icons.more, S.seasonActions) }
 
         if (open) {
-            Div({ classes("scrim"); style { property("background", "transparent") }; onClick { open = false } })
+            Div({ classes("popover-catch"); onClick { open = false } })
             Div({ classes("menu") }) {
                 Button({ classes("menu-item"); onClick { open = false; onMark() } }) {
                     Text(S.markSeasonWatched.caps)

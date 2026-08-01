@@ -1170,6 +1170,28 @@ h3 {
   backdrop-filter: blur(3px);
 }
 
+/*
+ * Click-catcher for dropdowns. Deliberately not `.scrim`.
+ *
+ * `.scrim` is for modal surfaces - the drawer and the dialogs - so it dims and
+ * blurs the page and sits above them at z-index 60. A dropdown needs the
+ * opposite of both: catch the click outside, change nothing visually, and stay
+ * *below* the menu it belongs to.
+ *
+ * The season menu reused `.scrim` and cancelled it with an inline
+ * `background: transparent`. That cleared the dim but not `backdrop-filter`, so
+ * the entire page blurred; and at z-index 60 against `.menu`'s 50 it covered
+ * the very menu it had been opened for, so neither item could be clicked.
+ */
+.popover-catch {
+  position: fixed;
+  inset: 0;
+  /* Above the sticky nav (40), below .menu (50). */
+  z-index: 49;
+  background: none;
+  backdrop-filter: none;
+}
+
 .sheet {
   position: fixed;
   top: 0;
