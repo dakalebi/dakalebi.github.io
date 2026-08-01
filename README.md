@@ -1,85 +1,126 @@
 # ჩემი ცოლის დაქალები — სანახავი დაფა
 
-Kotlin/JS rewrite of the TV-series watch dashboard. Static bundle on GitHub Pages,
-Firebase Auth + Firestore for accounts and data, episode catalog pulled straight
-from Formula's public API in the browser.
+A private watch dashboard for one 932-episode Georgian TV series. Static bundle
+on GitHub Pages, Firebase for accounts and data, episodes pulled straight from
+Formula's public API in the browser. No backend.
+
+Live at <https://dakalebi.github.io/>.
 
 | | |
 |---|---|
 | Language | Kotlin 2.3.20 (Kotlin/JS, IR) |
 | UI | Compose HTML (Compose Multiplatform 1.11.1) |
-| Backend | Firebase Auth + Cloud Firestore (no server) |
-| Hosting | GitHub Pages (static), hash routing |
-| Source of episodes | `https://mw-api.formula.ge/formula` (CORS-open, called from the browser) |
+| Backend | Firebase Auth + Cloud Firestore — no server |
+| Hosting | GitHub Pages, hash routing |
+| Episodes | `https://mw-api.formula.ge/formula` (CORS-open, called from the browser) |
 
-## Build
+## Start here
+
+**[`docs/PROJECT-GUIDE.md`](docs/PROJECT-GUIDE.md)** — what this is, which
+decisions were made and why, how each subsystem works, and the traps that have
+already cost time. Read it before changing behaviour.
+
+| | |
+|---|---|
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | the layering, and the rule that keeps it |
+| [`docs/TEST-PLAN.md`](docs/TEST-PLAN.md) | the manual, signed-in test plan |
+| [`docs/BUG-REPORT.md`](docs/BUG-REPORT.md) | defects found and fixed, with root causes |
+
+## Build and test
 
 ```bash
 ./gradlew jsBrowserDistribution
 ```
 
-Output lands in `build/dist/js/productionExecutable/`. Local dev server:
+Output lands in `build/dist/js/productionExecutable/`.
 
 ```bash
-./gradlew jsBrowserDevelopmentRun --continuous
+./gradlew jsNodeTest
 ```
 
-## Setup checklist
+28 domain tests, about a second, no browser. The domain layer is plain Kotlin —
+no Compose, no Firebase, no DOM — which is what makes that possible.
 
-These steps need the Firebase and GitHub consoles, so they're yours to do — the
-code is already written against them.
+## Layout
 
-### 1. Firebase project
+```
+src/jsMain/kotlin/ge/dakalebi/
+  domain/        models, repository interfaces, use cases, pure queries
+  data/          Firestore, the Formula API, localStorage
+  presentation/  Compose state holders, error-to-text mapping
+  ui/            Compose HTML only
+  di/            the composition root
+  core/          logging, formatting, generated build info
+  i18n/          every user-facing string, one file per language
+```
 
-1. Create a project at <https://console.firebase.google.com>.
-2. **Authentication → Sign-in method** → enable **Email/Password** and **Google**.
-3. **Authentication → Settings → Authorized domains** → add your Pages domain
-   (`<username>.github.io`, plus any custom domain). Sign-in fails silently without this.
-4. **Firestore Database** → create in production mode, pick a region near you.
-5. **Project settings → General → Your apps → Web app** → register one and copy the config.
-6. Paste those values into `src/jsMain/kotlin/ge/dakalebi/firebase/FirebaseConfig.kt`.
-   These keys are public by design — they identify the project, they don't authorize
-   anything. Access control lives entirely in the rules.
-
-### 2. Firestore rules
-
-Sign in once so your account exists, then copy your UID from
-**Authentication → Users** into `firebase/firestore.rules` (replacing
-`REPLACE_WITH_YOUR_FIREBASE_UID`) and publish the rules in
-**Firestore → Rules**.
-
-Only that UID can write the episode catalog; everyone signed in can read it and
-write their own watch progress.
-
-### 3. GitHub Pages
-
-1. Push to `main`.
-2. **Settings → Pages → Build and deployment → Source: GitHub Actions**.
-3. The workflow in `.github/workflows/deploy.yml` builds and deploys on every push.
+Dependencies point inwards and `domain` names no framework at all. The greps
+that check this are in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ## Data model
 
 ```
-episodes/{formulaEpisodeId}
-  seasonNumber, episodeNumber, formulaSeasonId, title,
-  thumbnailUrl, videoUrl, sources{}, durationSeconds,
-  episodePageUrl, lastResolvedAt, updatedAt
-
-users/{uid}/progress/{episodeId}
-  progressSeconds, durationSeconds, isWatched, lastWatchedAt
-
-meta/catalog
-  lastRefreshAt, seasonCount, episodeCount
+episodes/{formulaEpisodeId}   the shared catalog, admin-writable
+meta/catalog                  lastRefreshAtMillis, seasonCount, episodeCount
+users/{uid}                   language — settings that follow the person
+users/{uid}/progress/{id}     progressSeconds, durationSeconds, isWatched, lastWatchedAtMillis
 ```
 
-Document IDs are Formula's own episode ids, so watch URLs (`#/watch/531`) stay
-stable across a full catalog rebuild.
+Document ids are Formula's own episode ids, so `#/watch/531` survives a full
+catalog rebuild.
+
+`meta/catalog.lastRefreshAtMillis` is bumped by exactly the operation that
+changes the catalog, which makes it a usable cache validator: one small read
+says whether the other 932 are still current.
+
+### Pending — PR #7
+
+Not yet on `main`. It adds `admins/{uid}` (existence grants catalog-write,
+writable by nobody), `autoplayNext` alongside `language`, and the catalog cache
+that turns a 932-read page load into a 1-read one. Today's `main` still carries
+a hardcoded admin allowlist in `FirebaseConfig.kt` and re-reads the whole
+catalog on every load — which exhausted the free tier's daily 50,000 reads in a
+single afternoon.
+
+It needs two console steps before merging, in order: create the admin document,
+**then** publish the rules. See
+[`docs/PROJECT-GUIDE.md`](docs/PROJECT-GUIDE.md#9-current-state-and-open-work).
+
+## Setup
+
+The consoles are yours; the code is already written against them.
+
+### Firebase
+
+1. Create a project at <https://console.firebase.google.com>.
+2. **Authentication → Sign-in method** → enable **Email/Password** and **Google**.
+3. **Authentication → Settings → Authorized domains** → add the Pages domain.
+   Sign-in fails silently without this.
+4. **Firestore Database** → create in production mode.
+5. **Project settings → General → Your apps → Web app** → register one and copy
+   the config into
+   `src/jsMain/kotlin/ge/dakalebi/data/firebase/FirebaseConfig.kt`. Those keys
+   are public by design: they identify the project, they authorize nothing.
+6. **Firestore → Rules** → paste `firebase/firestore.rules` and publish. These
+   rules are the entire security boundary — there is no server behind them.
+7. Catalog-refresh rights are a UID in `FirebaseConfig.ADMIN_UIDS`, which must
+   match the allowlist in the rules. PR #7 replaces both with an `admins/{uid}`
+   document created by hand in the console.
+
+### GitHub Pages
+
+**Settings → Pages → Source: GitHub Actions.** `.github/workflows/deploy.yml`
+builds and deploys on every push to `main`. If the source ever reverts to
+`legacy`, the workflow goes green while the site 404s.
 
 ## Notes
 
-- Video is never rehosted. The app reads Formula's public JSON and plays the
-  official MP4 URLs from `cdn.formula.ge` directly.
-- The `<video>` element must **not** carry a `crossorigin` attribute — the CDN
-  sends no CORS headers, and adding it would break playback.
-- iPhone and iPad get Apple's native player; every other device gets the custom
-  player.
+- Video is never rehosted — the official MP4 URLs from `cdn.formula.ge` play
+  directly.
+- The `<video>` element must **not** carry `crossorigin`: the CDN sends no CORS
+  headers and the attribute breaks playback.
+- iPhone and iPad default to Apple's native player, with a switch in the drawer
+  for the web player. Everywhere else gets the web player, which is the only one
+  there is.
+- Georgian UI chrome is set in Mtavruli from Kotlin, not CSS —
+  `text-transform: uppercase` deliberately skips that mapping.
