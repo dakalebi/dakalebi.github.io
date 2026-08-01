@@ -6,9 +6,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import ge.dakalebi.app.Log
-import ge.dakalebi.app.formatTime
-import ge.dakalebi.formula.orderedQualityLabels
+import ge.dakalebi.core.Log
+import ge.dakalebi.core.formatTime
+import ge.dakalebi.domain.service.orderedQualityLabels
 import ge.dakalebi.i18n.S
 import ge.dakalebi.ui.Icon
 import ge.dakalebi.ui.Icons

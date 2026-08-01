@@ -1,15 +1,16 @@
 package ge.dakalebi.ui
 
 import androidx.compose.runtime.Composable
-import ge.dakalebi.app.ToastKind
-import ge.dakalebi.app.Toasts
+import ge.dakalebi.di.toasts
+import ge.dakalebi.presentation.ToastKind
 import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.Text
 
 @Composable
 fun ToastHost() {
+    val toasts = toasts()
     Div({ classes("toasts") }) {
-        Toasts.items.forEach { toast ->
+        toasts.items.forEach { toast ->
             Div({
                 classNames(
                     "toast",

@@ -7,14 +7,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
-import ge.dakalebi.app.Log
-import ge.dakalebi.app.Route
-import ge.dakalebi.app.Router
-import ge.dakalebi.app.Toasts
-import ge.dakalebi.app.fallbackGradient
-import ge.dakalebi.app.formatDuration
-import ge.dakalebi.data.Episode
-import ge.dakalebi.data.WatchProgress
+import ge.dakalebi.core.Log
+import ge.dakalebi.core.fallbackGradient
+import ge.dakalebi.core.formatDuration
+import ge.dakalebi.di.router
+import ge.dakalebi.di.toasts
+import ge.dakalebi.domain.model.Episode
+import ge.dakalebi.domain.model.WatchProgress
+import ge.dakalebi.presentation.Route
+import ge.dakalebi.presentation.Router
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
 import kotlinx.browser.document
@@ -67,6 +68,8 @@ fun Thumb(episode: Episode, showLabel: Boolean = true) {
 
 @Composable
 fun EpisodeTile(episode: Episode, progress: WatchProgress?) {
+    val router = router()
+    val toasts = toasts()
     val percent = progress?.percent ?: 0.0
     val watched = progress?.isWatched == true
 
@@ -114,9 +117,9 @@ fun EpisodeTile(episode: Episode, progress: WatchProgress?) {
                 onClick { event ->
                     event.preventDefault()
                     event.stopPropagation()
-                    copyToClipboard(Router.absolute(Route.Watch(episode.id))) { ok ->
-                        if (ok) Toasts.ok(S.episodeLinkCopied)
-                        else Toasts.error(S.copyFailed)
+                    copyToClipboard(router.absolute(Route.Watch(episode.id))) { ok ->
+                        if (ok) toasts.ok(S.episodeLinkCopied)
+                        else toasts.error(S.copyFailed)
                     }
                 }
             }) { Icon(Icons.link) }
@@ -130,8 +133,8 @@ fun EpisodeTile(episode: Episode, progress: WatchProgress?) {
                         event.preventDefault()
                         event.stopPropagation()
                         copyToClipboard(videoUrl) { ok ->
-                            if (ok) Toasts.ok(S.mp4LinkCopied)
-                            else Toasts.error(S.copyFailed)
+                            if (ok) toasts.ok(S.mp4LinkCopied)
+                            else toasts.error(S.copyFailed)
                         }
                     }
                 }) { Icon(Icons.download) }

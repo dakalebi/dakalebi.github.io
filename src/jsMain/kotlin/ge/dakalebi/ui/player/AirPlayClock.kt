@@ -1,6 +1,6 @@
 package ge.dakalebi.ui.player
 
-import ge.dakalebi.app.nowMillis
+import ge.dakalebi.core.nowMillis
 import org.w3c.dom.HTMLVideoElement
 import kotlin.math.max
 import kotlin.math.min

@@ -3,14 +3,15 @@ package ge.dakalebi.ui
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
-import ge.dakalebi.app.Route
-import ge.dakalebi.app.Router
-import ge.dakalebi.auth.AuthStore
-import ge.dakalebi.data.Library
-import ge.dakalebi.data.Settings
-import ge.dakalebi.firebase.FirebaseConfig
+import ge.dakalebi.di.catalog
+import ge.dakalebi.di.router
+import ge.dakalebi.di.session
+import ge.dakalebi.di.settings
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
+import ge.dakalebi.presentation.Route
+import ge.dakalebi.ui.dashboard.DashboardScreen
+import ge.dakalebi.ui.watch.WatchScreen
 import kotlinx.browser.document
 import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.H1
@@ -19,24 +20,24 @@ import org.jetbrains.compose.web.dom.Text
 
 @Composable
 fun App() {
-    if (!FirebaseConfig.isConfigured) {
-        SetupNotice()
-        return
-    }
+    val router = router()
+    val session = session()
+    val catalog = catalog()
+    val settings = settings()
 
-    val route = Router.current
-    val loading = AuthStore.loading
-    val user = AuthStore.user
+    val route = router.current
+    val loading = session.loading
+    val account = session.account
 
-    LaunchedEffect(loading, user, route) {
+    LaunchedEffect(loading, account, route) {
         if (loading) return@LaunchedEffect
-        if (user == null) {
+        if (account == null) {
             // Drop cached rows on sign-out rather than refetching: a refetch
             // races the session teardown and comes back as permission errors.
-            Library.reset()
-            if (route !is Route.Login) Router.replace(Route.Login)
+            catalog.reset()
+            if (route !is Route.Login) router.replace(Route.Login)
         } else if (route is Route.Login) {
-            Router.replace(Route.Dashboard)
+            router.replace(Route.Dashboard)
         }
     }
 
@@ -45,7 +46,7 @@ fun App() {
     // screen: a single writer cannot strand a stale title on the way out, and
     // the episode itself is only known once the catalog has loaded.
     val title = (route as? Route.Watch)
-        ?.let { Library.byId(it.episodeId) }
+        ?.let { catalog.byId(it.episodeId) }
         ?.let { S.episodeDocumentTitle(it.seasonNumber, it.episodeNumber) }
         ?: S.documentTitle
     LaunchedEffect(title) { document.title = title }
@@ -59,14 +60,14 @@ fun App() {
     // listener down on sign-out matters: left attached, it keeps querying a
     // document the signed-out client may no longer read.
     val scope = rememberCoroutineScope()
-    LaunchedEffect(user?.uid) {
-        val uid = user?.uid
-        if (uid == null) Settings.stop() else Settings.start(scope, uid)
+    LaunchedEffect(account?.uid) {
+        val uid = account?.uid
+        if (uid == null) settings.stop() else settings.start(scope, uid)
     }
 
     when {
         loading -> Div({ classes("center-note") }) { Text(S.loading) }
-        user == null -> LoginScreen()
+        account == null -> LoginScreen()
         else -> when (route) {
             is Route.Watch -> WatchScreen(route.episodeId)
             else -> DashboardScreen()
@@ -79,9 +80,12 @@ fun App() {
 /**
  * Shown instead of a stack trace when the Firebase config is still the
  * placeholder, which is the state a fresh clone starts in.
+ *
+ * Public, and free of every store, because it is the one screen that renders
+ * before there is a graph to read them from.
  */
 @Composable
-private fun SetupNotice() {
+fun SetupNotice() {
     Div({ classes("login-wrap") }) {
         Div({ classes("login-bg") })
         Div({ classes("login-card") }) {
@@ -104,7 +108,7 @@ private fun SetupNotice() {
                     property("color", "var(--mut)")
                     property("word-break", "break-all")
                 }
-            }) { Text("src/jsMain/kotlin/ge/dakalebi/firebase/FirebaseConfig.kt") }
+            }) { Text("src/jsMain/kotlin/ge/dakalebi/data/firebase/FirebaseConfig.kt") }
         }
     }
 }

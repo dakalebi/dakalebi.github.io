@@ -6,10 +6,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import ge.dakalebi.app.Log
-import ge.dakalebi.app.Toasts
-import ge.dakalebi.auth.AuthStore
-import ge.dakalebi.auth.authErrorMessage
+import ge.dakalebi.core.Log
+import ge.dakalebi.di.session
+import ge.dakalebi.di.toasts
+import ge.dakalebi.presentation.ErrorMessages
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
 import kotlinx.coroutines.launch
@@ -31,6 +31,8 @@ import org.jetbrains.compose.web.dom.Text
 
 @Composable
 fun LoginScreen() {
+    val session = session()
+    val toasts = toasts()
     val scope = rememberCoroutineScope()
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -49,7 +51,7 @@ fun LoginScreen() {
                 // mapped message hides the code, and auth failures are the
                 // hardest thing to diagnose remotely.
                 Log.e("auth", "sign-in failed", e)
-                Toasts.error(authErrorMessage(e))
+                toasts.error(ErrorMessages.signIn(e))
             } finally {
                 busy = false
             }
@@ -70,7 +72,7 @@ fun LoginScreen() {
                 classes("btn", "btn-ghost")
                 style { property("justify-content", "center") }
                 if (busy) disabled()
-                onClick { run({ AuthStore.signInWithGoogle() }) }
+                onClick { run({ session.signInWithGoogle() }) }
             }) { Text(S.signInWithGoogle.caps) }
 
             Div({ classes("divider") }) { Text(S.or) }
@@ -81,10 +83,10 @@ fun LoginScreen() {
                     event.preventDefault()
                     val mode = signUpMode
                     run({
-                        if (mode) AuthStore.signUp(email, password)
-                        else AuthStore.signIn(email, password)
+                        if (mode) session.signUp(email, password)
+                        else session.signIn(email, password)
                     }) {
-                        if (mode) Toasts.ok(S.accountCreated)
+                        if (mode) toasts.ok(S.accountCreated)
                     }
                 }
             }) {
@@ -138,10 +140,10 @@ fun LoginScreen() {
                         style { property("padding", "0") }
                         onClick {
                             if (email.isBlank()) {
-                                Toasts.error(S.enterEmailFirst)
+                                toasts.error(S.enterEmailFirst)
                             } else {
-                                run({ AuthStore.resetPassword(email) }) {
-                                    Toasts.ok(S.resetLinkSent)
+                                run({ session.resetPassword(email) }) {
+                                    toasts.ok(S.resetLinkSent)
                                 }
                             }
                         }
