@@ -46,6 +46,20 @@ class SaveProgress(
         val watched = when {
             allowReset -> false
             isWatched != null -> isWatched
+
+            // Watched is sticky. Only an explicit decision above — the
+            // "watch from the start" reset, or a caller passing false — may
+            // take it back; an inferred one never may.
+            //
+            // Without this, marking an episode watched half way through was
+            // undone by the next autosave seven seconds later: the position
+            // had moved *forwards*, so the rewind guard did not fire, and the
+            // ratio said 27%. The episode reappeared on the dashboard with
+            // almost the position it had before. The same hole opened whenever
+            // the duration was unknown — during teardown, and mid-AirPlay
+            // handover — because then the ratio cannot be computed at all.
+            existing?.isWatched == true -> true
+
             durationSeconds != null && durationSeconds > 0 ->
                 progressSeconds.toDouble() / durationSeconds >= WATCHED_AT
 
