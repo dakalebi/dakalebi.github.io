@@ -58,6 +58,9 @@ interface Strings {
 
     val loading: String
     val menu: String
+
+    /** The first destination in the TV navigation rail. */
+    val home: String
     val settings: String
     val signOut: String
     val retry: String

@@ -26,6 +26,7 @@ object En : Strings {
 
     override val loading = "Loading…"
     override val menu = "Menu"
+    override val home = "Home"
     override val settings = "Settings"
     override val signOut = "Sign out"
     override val retry = "Try again"

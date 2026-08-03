@@ -135,3 +135,34 @@ later state change is.
 - **`Firebase` is an object, not injected.** It is a lazily-initialised handle
   to the SDK, held inside `data/firebase` and named by nothing outside it. The
   repositories in front of it are what the rest of the app depends on.
+- **`SpatialNav` is an object with one mutable subscriber, and the TV UI writes
+  some classes straight to the DOM.** Both are the same exception: on the TV
+  surface, focus must not depend on a recomposition. Compose HTML's frame clock is
+  `requestAnimationFrame`, which a browser stops entirely when the page is hidden —
+  an Android WebView without Android focus is exactly that — so anything on the
+  focus path that needs a frame is something that silently stops working. Hence
+  `SpatialNav.onFocusChanged`, and hence `TvApp` toggling the navigation rail's
+  `open` class itself rather than deriving it from state. It also happens to be
+  faster: sweeping a sixty-tile grid recomposes nothing.
+
+## The one asymmetry in the TV focus engine
+
+Worth calling out because it looks like a bug and is not. In
+`ui/tv/focus/SpatialNav.kt`, a **rightward** press cannot leave an `X` or `Grid`
+group, and a **leftward** press can:
+
+```
+$ grep -A4 'private fun mayLeave' src/jsMain/kotlin/ge/dakalebi/ui/tv/focus/SpatialNav.kt
+```
+
+Running out of shelf on the right is a wall because there is genuinely nothing over
+there, and letting a press escape produced the worst bug this engine had: reaching
+the last tile of a row and being teleported into an unrelated band. On the left
+there is always exactly one thing — the navigation rail — and reaching it from a
+shelf is the entire interaction model of a left-navigation app.
+
+`leaveGroup` drops the row-overlap requirement for horizontal moves for the same
+reason. A rail's *container* spans the screen height but its items do not, so no
+rail item shares a row with a shelf in the middle of the screen; requiring overlap
+made the rail unenterable and unleaveable. `mayLeave` already guards the case
+overlap was protecting, so it was belt over braces.

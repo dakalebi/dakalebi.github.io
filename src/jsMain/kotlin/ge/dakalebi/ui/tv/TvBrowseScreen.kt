@@ -13,25 +13,30 @@ import ge.dakalebi.i18n.caps
 import ge.dakalebi.presentation.ErrorMessages
 import ge.dakalebi.presentation.Route
 import ge.dakalebi.presentation.Router
-import ge.dakalebi.ui.Thumb
-import ge.dakalebi.ui.assetBase
 import ge.dakalebi.ui.tv.focus.FocusAxis
 import ge.dakalebi.ui.tv.focus.focusGroup
 import ge.dakalebi.ui.tv.focus.focusItem
 import org.jetbrains.compose.web.dom.A
 import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.H1
-import org.jetbrains.compose.web.dom.Img
 import org.jetbrains.compose.web.dom.Span
 import org.jetbrains.compose.web.dom.Text
 
 /**
- * What to watch: a hero, what you have started, and one season at a time.
+ * Home: a masthead, then shelves — what you have started, the seasons, and one season
+ * at a time.
+ *
+ * The shape is deliberate and is the television idiom rather than a translated web
+ * page: a vertical stack of horizontally scrolling shelves, each with a permanent
+ * heading, and the top item's metadata lifted into a masthead above the first of them.
  *
  * Deliberately narrower than the web dashboard. There is no catalog refresh, no
  * mark-season-watched and no reset-all here — those are three confirm dialogs and
  * a live progress counter for jobs nobody does from a sofa, and every one of them
  * would be another band to steer past on the way to pressing play.
+ *
+ * The mark and the way to Settings used to sit in a top bar here. Both now live in
+ * [TvNavRail], which is why this function starts at the content.
  */
 @Composable
 fun TvBrowseScreen() {
@@ -51,8 +56,7 @@ fun TvBrowseScreen() {
         catalog.episodes.isEmpty() -> Div({ classes("tv-note") }) { Text(S.emptyBody) }
 
         else -> {
-            TvTopBar()
-            catalog.continueWatching?.let { TvHero(it) }
+            catalog.continueWatching?.let { TvMasthead(it) }
             TvRail(
                 key = "continue",
                 title = S.continueLabel.caps,
@@ -72,28 +76,25 @@ fun TvBrowseScreen() {
     }
 }
 
-/** The mark, and the way to the settings screen. */
-@Composable
-private fun TvTopBar() {
-    Div({ classes("tv-topbar"); focusGroup("topbar", FocusAxis.X) }) {
-        Img(src = "${assetBase}logo.png", alt = S.appName) { classes("tv-mark") }
-        Div({ classes("grow") })
-        A(href = Router.href(Route.Settings), attrs = {
-            classes("tv-btn")
-            focusItem("open-settings")
-        }) { Text(S.settings.caps) }
-    }
-}
-
 /**
- * The one episode the viewer is most likely to want.
+ * The masthead: what the viewer is most likely to want, above the first shelf.
  *
- * Two stops, not one: resuming and starting over are different intentions, and on
- * a television the second is otherwise unreachable without opening the episode
- * first.
+ * Replaces a two-column hero that put artwork on one side and a stack of text on the
+ * other. That shape is a web landing page; a television home screen is a **vertical
+ * stack of horizontal shelves** with the metadata for the top item lifted above the
+ * first of them, which is what "the full metadata lives in a masthead above the top
+ * shelf" describes and what YouTube's own home is built from.
+ *
+ * The practical gain is the whole point of the change: the old hero was a half-screen
+ * band that pushed the first real shelf below the fold, so arriving at the app showed
+ * one episode and no rails. Text over a wide gradient costs a third of that height and
+ * the first shelf is visible on arrival.
+ *
+ * Two stops, not one: resuming and starting over are different intentions, and on a
+ * television the second is otherwise unreachable without opening the episode first.
  */
 @Composable
-private fun TvHero(episode: Episode) {
+private fun TvMasthead(episode: Episode) {
     val catalog = catalog()
     val entry = catalog.progress[episode.id]
     val eyebrow = when {
@@ -106,26 +107,23 @@ private fun TvHero(episode: Episode) {
         if (duration != null && !p.isWatched) formatTime((duration - p.progressSeconds).toDouble()) else null
     }
 
-    Div({ classes("tv-hero") }) {
-        Div({ classes("tv-hero-art") }) { Thumb(episode, showLabel = false) }
-        Div({ classes("tv-hero-body") }) {
-            Span({ classes("tv-eyebrow") }) { Text(eyebrow.caps) }
-            H1({ classes("tv-h") }) {
-                Text(S.seasonAndEpisode(episode.seasonNumber, episode.episodeNumber).caps)
-            }
-            left?.let { Span({ classes("tv-hero-sub", "mono") }) { Text(it) } }
-            Div({ classes("tv-hero-acts"); focusGroup("hero", FocusAxis.X) }) {
-                A(href = Router.href(Route.Watch(episode.id)), attrs = {
-                    classes("tv-btn", "tv-btn-primary")
-                    focusItem("hero-play", entry = true)
-                }) { Text((if (entry?.isStarted == true) S.continueLabel else S.watch).caps) }
+    Div({ classes("tv-masthead") }) {
+        Span({ classes("tv-eyebrow") }) { Text(eyebrow.caps) }
+        H1({ classes("tv-h") }) {
+            Text(S.seasonAndEpisode(episode.seasonNumber, episode.episodeNumber).caps)
+        }
+        left?.let { Span({ classes("tv-hero-sub", "mono") }) { Text(it) } }
+        Div({ classes("tv-hero-acts"); focusGroup("hero", FocusAxis.X) }) {
+            A(href = Router.href(Route.Watch(episode.id)), attrs = {
+                classes("tv-btn", "tv-btn-primary")
+                focusItem("hero-play", entry = true)
+            }) { Text((if (entry?.isStarted == true) S.continueLabel else S.watch).caps) }
 
-                A(href = Router.href(Route.Watch(episode.id)), attrs = {
-                    classes("tv-btn")
-                    focusItem("hero-restart")
-                    attr("data-from-start", "1")
-                }) { Text(S.watchFromStart.caps) }
-            }
+            A(href = Router.href(Route.Watch(episode.id)), attrs = {
+                classes("tv-btn")
+                focusItem("hero-restart")
+                attr("data-from-start", "1")
+            }) { Text(S.watchFromStart.caps) }
         }
     }
 }

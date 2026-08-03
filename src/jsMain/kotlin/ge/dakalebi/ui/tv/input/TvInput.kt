@@ -38,7 +38,16 @@ class TvLayer(
     val dismissible: Boolean = true,
     val onBack: () -> Boolean = { false },
     val onAnyKey: (Key) -> Unit = {},
-    val onDirection: (Direction) -> Boolean = { false },
+    /**
+     * A direction press, and whether it is auto-repeat rather than a fresh press.
+     *
+     * The player is the reason the second argument exists. A tap and a hold are
+     * different intentions — "skip a bit" against "take me somewhere" — and the only
+     * thing that separates them is `KeyboardEvent.repeat`. Without it a held key is
+     * indistinguishable from someone pressing very fast, and the player has to guess
+     * with a timer.
+     */
+    val onDirection: (Direction, Boolean) -> Boolean = { _, _ -> false },
     val onSelect: (HTMLElement?) -> Boolean = { false },
     val onMedia: (MediaAction) -> Boolean = { false },
 )
@@ -152,7 +161,8 @@ class TvInput {
         if (event.ctrlKey || event.metaKey || event.altKey) return
 
         val consumed = when (key) {
-            is Key.Dir -> layer.onDirection(key.direction) || moveFocus(layer, key.direction)
+            is Key.Dir -> layer.onDirection(key.direction, event.repeat) ||
+                moveFocus(layer, key.direction)
             Key.Select -> layer.onSelect(document.activeElement as? HTMLElement) || activate()
             Key.Back -> { back(); true }
             is Key.Media -> layer.onMedia(key.action)

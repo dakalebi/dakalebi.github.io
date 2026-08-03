@@ -83,4 +83,26 @@ object Icons {
     val download = svg("""<path d="M12 3.5v11M7.5 10.5l4.5 4.5 4.5-4.5M4.5 20h15"/>""")
     val check = svg("""<path d="M4.5 12.5l5 5 10-11"/>""")
     val back = svg("""<path d="M15 4.5L7.5 12l7.5 7.5"/>""")
+
+    // The TV navigation rail. Line icons at the same weight as the rest, because a
+    // rail sets them beside each other at 24px and a mismatch in stroke shows.
+    val home = svg("""<path d="M3.5 10.2L12 3.5l8.5 6.7V20h-6v-6h-5v6h-6z"/>""")
+    val grid = svg(
+        """<rect x="3.5" y="3.5" width="7" height="7" rx="1.4"/>
+           <rect x="13.5" y="3.5" width="7" height="7" rx="1.4"/>
+           <rect x="3.5" y="13.5" width="7" height="7" rx="1.4"/>
+           <rect x="13.5" y="13.5" width="7" height="7" rx="1.4"/>""",
+    )
+    /**
+     * A cog outline. The first attempt drew eight radiating spokes around a circle,
+     * which at a rail's 24px reads as a sunburst rather than a gear — the teeth have to
+     * be part of the body's silhouette, not separate strokes floating outside it.
+     */
+    val gear = svg(
+        """<circle cx="12" cy="12" r="2.9"/>
+           <path d="M19.4 14.6a7.6 7.6 0 0 0 0-5.2l2-1.4-2-3.4-2.3 1a7.6 7.6 0 0 0-2.3-1.3
+                    L14.4 2h-4l-.4 2.3a7.6 7.6 0 0 0-2.3 1.3l-2.3-1-2 3.4 2 1.4a7.6 7.6 0 0 0 0 5.2
+                    l-2 1.4 2 3.4 2.3-1a7.6 7.6 0 0 0 2.3 1.3l.4 2.3h4l.4-2.3a7.6 7.6 0 0 0 2.3-1.3
+                    l2.3 1 2-3.4z"/>""",
+    )
 }

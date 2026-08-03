@@ -23,6 +23,7 @@ import kotlinx.browser.window
 import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.Text
 import org.w3c.dom.Element
+import org.w3c.dom.HTMLElement
 
 /** Mutable holders that must not trigger recomposition when they change. */
 internal class TvRefs {
@@ -58,31 +59,78 @@ fun TvApp() {
     val route = router.current
     val account = session.account
 
+    // Watching, not browsing: the rail is chrome over content, and there is no content
+    // behind a full-screen video for it to sit beside.
+    val showRail = account != null && route !is Route.Watch
+
     DisposableEffect(Unit) {
         val removeListeners = input.install()
         val layer = input.push(
             TvLayer(
                 key = "tv-root",
                 root = { refs.root },
-                // Back at the top of a screen means "up a level", and the only
-                // level above anything here is the browse screen. Returning false
-                // at the browse screen itself lets the exit protocol run.
+                /*
+                 * The documented Back ladder for a left-navigation app, and it is not
+                 * a history pop:
+                 *
+                 *   "App uses left navigation: activate the left side menu and focus
+                 *    on the currently active menu item."
+                 *
+                 * So Back from content jumps out to the rail and lands on the item for
+                 * the page you are on — not the first item, and not the previous URL.
+                 * Back again, now already in the rail, falls through to the exit
+                 * protocol. That gives a two-press exit from anywhere, which is what
+                 * the guidance describes, and it replaces the old behaviour of routing
+                 * Back to the dashboard.
+                 */
                 onBack = {
-                    if (router.current == Route.Dashboard) {
-                        false
-                    } else {
-                        router.replace(Route.Dashboard)
-                        true
+                    val root = refs.root
+                    val active = document.activeElement
+                    val inRail = active?.closest("[data-tv-group=\"$NAV_GROUP\"]") != null
+                    when {
+                        // Already in the rail: let the exit protocol run.
+                        inRail || root == null -> false
+                        // Settings is a destination, not a modal, so Back from it goes
+                        // to the rail like anywhere else. The rail's active item is
+                        // Settings, which is where the ring lands.
+                        else -> focusRailActiveItem(root)
                     }
                 },
             ),
         )
+
+        /*
+         * The rail's whole behaviour, in one subscription: it is open exactly while the
+         * ring is inside it.
+         *
+         * Written straight to `classList` rather than through Compose state, for the
+         * same reason the rest of the focus layer bypasses Compose. Two reasons here
+         * specifically, and the second one is not a micro-optimisation:
+         *
+         * 1. A recomposition is dispatched through the frame clock, and Compose HTML's
+         *    frame clock is `requestAnimationFrame`, which a browser stops entirely when
+         *    the page is not visible. State-driven expansion is therefore a rail that
+         *    silently stops responding whenever the frame clock does — the same class of
+         *    bug the input layer is installed from a `DisposableEffect` to avoid.
+         * 2. It keeps the promise the focus engine makes: a keypress touches DOM nodes
+         *    and nothing else.
+         */
+        SpatialNav.onFocusChanged = { item ->
+            val open = item.closest("[data-tv-group=\"$NAV_GROUP\"]") != null
+            refs.root?.let { root ->
+                root.classList.toggle("rail-open", open)
+                (root.querySelector(".tv-rail-nav") as? HTMLElement)
+                    ?.classList?.toggle("open", open)
+            }
+        }
+
         // Deferred by a turn of the event loop so the children exist to focus.
         // `setTimeout`, not `requestAnimationFrame`: see the note above.
         val landFocus = window.setTimeout({ refs.root?.let { SpatialNav.ensureFocused(it) } }, 0)
 
         onDispose {
             window.clearTimeout(landFocus)
+            SpatialNav.onFocusChanged = null
             layer.dismiss()
             removeListeners()
         }
@@ -112,13 +160,22 @@ fun TvApp() {
     // The player needs the input stack, and it is three screens down.
     CompositionLocalProvider(LocalTvInput provides input) {
         Div({
-            // The watch screen fills the panel; every other screen is padded.
-            classNames("tv-root", if (route is Route.Watch && account != null) "tv-root-bare" else null)
+            // No `rail-open` here: that class is owned by the focus subscriber above, and
+            // listing it in the composition would make Compose fight it on every render.
+            classNames(
+                "tv-root",
+                // The watch screen fills the panel; every other screen is padded.
+                if (route is Route.Watch && account != null) "tv-root-bare" else null,
+            )
             ref { element ->
                 refs.root = element
                 onDispose { refs.root = null }
             }
         }) {
+            // Inside the root, so the rail is in the focus engine's scope and one Left
+            // press reaches it from anywhere on the screen.
+            if (showRail) TvNavRail(route = route)
+
             when {
                 session.loading -> Div({ classes("tv-note") }) { Text(S.loading) }
                 account == null -> TvSignInScreen()
@@ -130,4 +187,19 @@ fun TvApp() {
 
         ToastHost()
     }
+}
+
+/**
+ * Moves the ring to the rail's active destination.
+ *
+ * Returns whether it found one, so an unhandled Back can fall through to the exit
+ * protocol rather than silently doing nothing.
+ */
+private fun focusRailActiveItem(root: Element): Boolean {
+    val rail = root.querySelector("[data-tv-group=\"$NAV_GROUP\"]") ?: return false
+    val target = rail.querySelector(".tv-nav-item.on") as? HTMLElement
+        ?: rail.querySelector("[data-tv-item]") as? HTMLElement
+        ?: return false
+    SpatialNav.focus(target, direction = null, scope = root)
+    return true
 }

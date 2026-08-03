@@ -38,7 +38,7 @@ Output lands in `build/dist/js/productionExecutable/`.
 ./gradlew jsNodeTest
 ```
 
-60 tests, about a second, no browser. They live in `:shared`, which is plain
+73 tests, about a second, no browser. They live in `:shared`, which is plain
 Kotlin — no Compose HTML, no Firebase, no DOM — which is what makes that
 possible.
 
@@ -60,11 +60,18 @@ shared/src/jsMain/kotlin/ge/dakalebi/
 
 src/jsMain/kotlin/ge/dakalebi/
   ui/            Compose HTML only
+  ui/tv/         the 10-foot UI: a navigation rail, shelves, and a remote's player
+  ui/tv/focus/   D-pad navigation — geometry within a band, memory across bands
+  ui/tv/input/   one window listener and a layer stack, for the whole TV UI
   data/firebase/ the Firestore and Auth SDK, behind the domain interfaces
   data/local/    localStorage
   di/            the composition root that names the implementations
   Main.kt        the entry point
 ```
+
+Two front ends, one bundle. `/` is the phone and desktop site; `/tv/` is the same
+data behind a 10-foot UI, sharing the palette and nothing else — `web.css` carries
+nineteen `:hover` rules describing affordances a remote cannot produce.
 
 Dependencies point inwards, and the whole of `commonMain` names no framework at
 all. The greps that check this are in
