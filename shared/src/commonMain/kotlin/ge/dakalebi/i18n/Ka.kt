@@ -25,6 +25,7 @@ object Ka : Strings {
 
     override val loading = "იტვირთება..."
     override val menu = "მენიუ"
+    override val home = "მთავარი"
     override val settings = "პარამეტრები"
     override val signOut = "გასვლა"
     override val retry = "თავიდან ცდა"

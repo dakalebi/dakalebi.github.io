@@ -16,6 +16,9 @@ import ge.dakalebi.ui.Icon
 import ge.dakalebi.ui.Icons
 import ge.dakalebi.ui.classNames
 import ge.dakalebi.ui.player.PlayerEvents
+import ge.dakalebi.ui.tv.actsAsButton
+import ge.dakalebi.ui.tv.actsAsOption
+import ge.dakalebi.ui.tv.actsAsOptionGroup
 import ge.dakalebi.ui.tv.focus.Direction
 import ge.dakalebi.ui.tv.focus.FocusAxis
 import ge.dakalebi.ui.tv.focus.SpatialNav
@@ -25,6 +28,8 @@ import ge.dakalebi.ui.tv.input.Key
 import ge.dakalebi.ui.tv.input.MediaAction
 import ge.dakalebi.ui.tv.input.TvInput
 import ge.dakalebi.ui.tv.input.TvLayer
+import ge.dakalebi.ui.tv.ownsPopup
+import kotlinx.browser.document
 import kotlinx.browser.window
 import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.Span
@@ -32,9 +37,10 @@ import org.jetbrains.compose.web.dom.Text
 import org.jetbrains.compose.web.dom.Video
 import org.w3c.dom.HTMLElement
 import org.w3c.dom.HTMLVideoElement
+import kotlin.math.abs
 
 /** What the D-pad currently means. */
-private enum class Mode { Idle, Controls, Seeking }
+private enum class Mode { Idle, Controls, Scrubbing }
 
 /** Mutable holders that must not trigger recomposition when they change. */
 private class TvPlayerRefs {
@@ -42,11 +48,20 @@ private class TvPlayerRefs {
     var container: HTMLElement? = null
     var fillCur: HTMLElement? = null
     var fillBuf: HTMLElement? = null
+    var ghost: HTMLElement? = null
     var raf: Int? = null
     var hideTimer: Int? = null
-    var settleTimer: Int? = null
-    var seek: TvSeek? = null
-    var preSeekPosition: Double = 0.0
+    var scrub: TvSeek? = null
+    var scrubOrigin: Double = 0.0
+
+    /**
+     * Whether playback was running when the scrub began.
+     *
+     * The documented contract pauses for the duration of a scrub and restores the
+     * previous state after it, which also stops the audio babbling while someone
+     * sweeps across ten minutes of episode.
+     */
+    var playingBeforeScrub: Boolean = false
 }
 
 /**
@@ -61,14 +76,28 @@ private class TvPlayerRefs {
  *
  * Three modes, because a D-pad has four directions and two jobs:
  *
- * - **Idle**, controls hidden. Left/Right seek, Down opens the controls, OK plays
- *   or pauses, and *any* press brings the chrome back.
- * - **Controls**. Left/Right move focus through the control row, using the same
- *   spatial engine as every other screen rather than bespoke index walking. Down
- *   dismisses.
- * - **Seeking**. Presses accumulate through [TvSeek] and commit once, when the
- *   viewer stops. Applying each press directly means one network re-buffer per
- *   press; this is one seek per gesture.
+ * - **Idle**, chrome hidden. *Every* direction press only raises the chrome — see the
+ *   speed bump in `onDirection`. OK plays or pauses.
+ * - **Controls**. What a horizontal press means depends on which item holds the ring,
+ *   not on a flag: on the progress bar it seeks, on a button it moves focus. Vertical
+ *   movement between the bar and the button row belongs to the spatial engine, because
+ *   the chrome is one `Y` group with a nested `X` row inside it.
+ * - **Scrubbing**. Presses accumulate into a preview and the media does not move.
+ *   **OK commits, Back cancels**, and Up/Down are swallowed so a stray press cannot
+ *   abandon the gesture halfway.
+ *
+ * Almost none of that is invented here. `PlaybackSeekUi.Client` — the contract
+ * Leanback and YouTube both implement — ends a scrub on an explicit decision: confirm
+ * seeks to the previewed position, cancel restores the one it started from. Samsung's
+ * platform spec is where focus-on-the-bar comes from. The speed bump is YouTube's own
+ * December 2025 change. An earlier version of this player committed a seek on a 500ms
+ * timer instead, which is a worse design for a reason worth recording: a timer cannot
+ * express cancel, because by the time you have seen that you overshot, the seek has
+ * already happened.
+ *
+ * Two places deliberately part company with YouTube, both noted at the code: the
+ * chrome layout follows YouTube rather than Leanback, and a committed seek resumes
+ * playback rather than leaving the viewer paused.
  *
  * The media handling below — the paint loop, the buffered-range scan, the event
  * wiring — is carried over from the web player, which has been exercised against
@@ -159,9 +188,14 @@ fun TvVideoPlayer(
     /**
      * Five seconds, not the web player's 2.5. A remote is slower to aim than a
      * mouse, and the penalty for hiding too early is a press spent bringing the
-     * chrome back rather than doing what you meant.
+     * chrome back rather than doing what you meant. Media3's `PlayerControlView` and
+     * Samsung's TV spec both land on the same five.
+     *
+     * Does nothing mid-scrub: the scrub has its own readout, and swapping the control
+     * bar in over the top of it would hide the position being chosen.
      */
     fun revealControls() {
+        if (mode == Mode.Scrubbing) return
         if (mode == Mode.Idle) mode = Mode.Controls
         refs.hideTimer?.let { window.clearTimeout(it) }
         refs.hideTimer = window.setTimeout({
@@ -175,39 +209,103 @@ fun TvVideoPlayer(
         if (v.paused) v.play() else v.pause()
     }
 
-    // --------------------------------------------------------------- seeking
+    // -------------------------------------------------------------- scrubbing
 
-    fun commitSeek() {
-        val v = refs.video ?: return
-        val pending = refs.seek ?: return
-        refs.seek = null
-        refs.settleTimer?.let { window.clearTimeout(it) }
-        refs.settleTimer = null
-        seekPreview = null
-        if (!v.duration.isFinite() || v.duration <= 0) return
-        val target = pending.target(refs.preSeekPosition, v.duration)
-        runCatching { v.currentTime = target }
-            .onFailure { Log.w("tv-player", "seek to ${target}s rejected", it) }
-        if (mode == Mode.Seeking) mode = Mode.Idle
-    }
-
-    fun nudgeSeek(direction: Int) {
-        val v = refs.video ?: return
-        if (!v.duration.isFinite() || v.duration <= 0) return
-        val now = window.performance.now()
-        val existing = refs.seek
-        if (existing == null) refs.preSeekPosition = v.currentTime
-        refs.seek = existing?.press(direction, now) ?: TvSeek.start(direction, now)
-        mode = Mode.Seeking
-
-        val pending = refs.seek ?: return
-        val target = pending.target(refs.preSeekPosition, v.duration)
+    /** The preview readout: the offset chosen, and where it lands. */
+    fun paintScrub(pending: TvSeek, duration: Double) {
+        val target = pending.target(refs.scrubOrigin, duration)
         val sign = if (pending.offsetSeconds >= 0) "+" else "−"
-        seekPreview = "$sign${formatTime(kotlin.math.abs(pending.offsetSeconds))}  ${formatTime(target)}"
-
-        refs.settleTimer?.let { window.clearTimeout(it) }
-        refs.settleTimer = window.setTimeout({ commitSeek() }, TvSeek.SETTLE_MS.toInt())
+        seekPreview = "$sign${formatTime(abs(pending.offsetSeconds))}  ${formatTime(target)}"
+        // The ghost knob rides the bar at the previewed position while the real fill
+        // stays put, so the bar shows both where you are and where you are going.
+        refs.ghost?.style?.left = if (duration > 0) "${target / duration * 100}%" else "0%"
     }
+
+    /**
+     * Leaves scrub mode, restoring whatever playback was doing before it.
+     *
+     * **A deliberate divergence from YouTube.** YouTube leaves the episode paused
+     * after a seek and waits for another OK — a long-standing complaint, and the one
+     * thing third-party clients most often add a setting to undo. The pause during the
+     * gesture is worth having, because sweeping across ten minutes with the audio
+     * still running is unpleasant; making the viewer press OK twice to end up where
+     * one press should have taken them is not. Resuming only when it *was* playing
+     * keeps a deliberate pause deliberate.
+     */
+    fun endScrub() {
+        refs.scrub = null
+        seekPreview = null
+        if (refs.playingBeforeScrub) refs.video?.play()
+        if (mode == Mode.Scrubbing) mode = Mode.Controls
+        revealControls()
+    }
+
+    /**
+     * Applies the previewed position.
+     *
+     * The only place in scrub mode that touches `currentTime`, which is what makes
+     * holding the D-pad one seek rather than one re-buffer per repeat.
+     */
+    fun commitScrub() {
+        val v = refs.video ?: return
+        val pending = refs.scrub ?: return
+        if (v.duration.isFinite() && v.duration > 0) {
+            val target = pending.target(refs.scrubOrigin, v.duration)
+            runCatching { v.currentTime = target }
+                .onFailure { Log.w("tv-player", "seek to ${target}s rejected", it) }
+        }
+        endScrub()
+    }
+
+    /**
+     * Abandons the gesture.
+     *
+     * There is no position to put back. Nothing moved the media, so the restore step
+     * the contract asks for is the absence of an action rather than an undo — see
+     * [TvSeek].
+     */
+    fun cancelScrub() = endScrub()
+
+    /** A tap: ten seconds, applied at once. */
+    fun skip(direction: Int) {
+        val v = refs.video ?: return
+        if (!v.duration.isFinite() || v.duration <= 0) return
+        val target = TvSeek.start(direction).target(v.currentTime, v.duration)
+        runCatching { v.currentTime = target }
+            .onFailure { Log.w("tv-player", "skip to ${target}s rejected", it) }
+    }
+
+    /** A held press: accumulate into the preview, moving nothing. */
+    fun scrub(direction: Int) {
+        val v = refs.video ?: return
+        if (!v.duration.isFinite() || v.duration <= 0) return
+        val existing = refs.scrub
+        if (existing == null) {
+            refs.scrubOrigin = v.currentTime
+            refs.playingBeforeScrub = !v.paused
+            v.pause()
+            refs.hideTimer?.let { window.clearTimeout(it) }
+            refs.hideTimer = null
+        }
+        val pending = existing?.press(direction) ?: TvSeek.start(direction)
+        refs.scrub = pending
+        mode = Mode.Scrubbing
+        paintScrub(pending, v.duration)
+    }
+
+    /**
+     * One direction press, routed by whether it is a tap or auto-repeat.
+     *
+     * Already scrubbing means every further press accumulates, repeat or not — once
+     * the gesture is open, a deliberate extra nudge belongs to it.
+     */
+    fun seekPress(direction: Int, repeat: Boolean) {
+        if (repeat || refs.scrub != null) scrub(direction) else skip(direction)
+    }
+
+    /** Whether the progress bar, rather than a button, currently holds the ring. */
+    fun scrubFocused(): Boolean =
+        document.activeElement?.getAttribute("data-tv-item") == "scrub"
 
     // ---------------------------------------------------------------- input
 
@@ -223,7 +321,9 @@ fun TvVideoPlayer(
                 onBack = {
                     when {
                         qualityOpen -> { qualityOpen = false; true }
-                        refs.seek != null -> { refs.seek = null; seekPreview = null; mode = Mode.Idle; true }
+                        // Cancel, per the contract: the gesture is abandoned and the
+                        // position it started from is the one still playing.
+                        mode == Mode.Scrubbing -> { cancelScrub(); true }
                         mode == Mode.Controls -> { hideControls(); true }
                         else -> false
                     }
@@ -232,22 +332,45 @@ fun TvVideoPlayer(
                 // Without this the first button you push is spent revealing the
                 // thing you were aiming at.
                 onAnyKey = { key -> if (key !is Key.Back) revealControls() },
-                onDirection = { direction ->
+                onDirection = { direction, repeat ->
+                    val sign = if (direction == Direction.Left) -1 else 1
                     when {
-                        // In Controls the arrows belong to focus, so they are
-                        // handed straight back to the spatial engine.
-                        mode == Mode.Controls && direction.isHorizontal -> false
-                        mode == Mode.Controls && direction == Direction.Down -> { hideControls(); true }
-                        mode == Mode.Controls -> false
-                        direction == Direction.Left -> { nudgeSeek(-1); true }
-                        direction == Direction.Right -> { nudgeSeek(1); true }
-                        direction == Direction.Down -> { revealControls(); true }
-                        else -> { revealControls(); true }
+                        // Swallowed mid-scrub. The contract eats Up and Down in seek
+                        // mode so a stray press cannot abandon a gesture halfway
+                        // through, and horizontal presses are the gesture itself.
+                        mode == Mode.Scrubbing -> {
+                            if (direction.isHorizontal) seekPress(sign, repeat)
+                            true
+                        }
+
+                        /*
+                         * The speed bump. With the chrome hidden, the first press of
+                         * any direction only raises it — it does not seek.
+                         *
+                         * Straight from YouTube's December 2025 redesign, whose stated
+                         * reason is to stop a remote sat on by accident from scrubbing
+                         * a running episode. It costs one press and it means no
+                         * unintended jump is ever a single press away. `onAnyKey` has
+                         * already done the revealing; this only has to swallow.
+                         */
+                        mode == Mode.Idle -> true
+
+                        // Horizontal means seek when the bar holds the ring, and move
+                        // focus when a button does. One rule, no extra mode.
+                        direction.isHorizontal && scrubFocused() -> { seekPress(sign, repeat); true }
+                        direction.isHorizontal -> false
+
+                        // Down off the bottom of the cluster dismisses it. Anywhere
+                        // else, vertical movement is the engine's: the bar and the
+                        // button row are two rows of one group.
+                        direction == Direction.Down && !scrubFocused() -> { hideControls(); true }
+                        else -> false
                     }
                 },
                 onSelect = { focused ->
                     when {
-                        refs.seek != null -> { commitSeek(); true }
+                        // Confirm, per the contract.
+                        mode == Mode.Scrubbing -> { commitScrub(); true }
                         // A real control has the ring: let the click through.
                         mode == Mode.Controls && focused?.hasAttribute("data-tv-item") == true -> false
                         else -> { togglePlay(); true }
@@ -258,8 +381,11 @@ fun TvVideoPlayer(
                         MediaAction.PlayPause -> { togglePlay(); true }
                         MediaAction.Play -> { refs.video?.play(); true }
                         MediaAction.Pause -> { refs.video?.pause(); true }
-                        MediaAction.Forward -> { nudgeSeek(1); true }
-                        MediaAction.Rewind -> { nudgeSeek(-1); true }
+                        // A dedicated transport key is always a discrete skip: it has
+                        // no auto-repeat contract to lean on, and a remote that has
+                        // these keys expects them to do something on every press.
+                        MediaAction.Forward -> { skip(1); true }
+                        MediaAction.Rewind -> { skip(-1); true }
                         else -> false
                     }
                 },
@@ -276,7 +402,6 @@ fun TvVideoPlayer(
     DisposableEffect(Unit) {
         onDispose {
             refs.hideTimer?.let { window.clearTimeout(it) }
-            refs.settleTimer?.let { window.clearTimeout(it) }
             stopLoop()
         }
     }
@@ -363,57 +488,122 @@ fun TvVideoPlayer(
         }
 
         if (qualityOpen && ordered.size > 1) {
-            Div({ classes("tv-q-menu"); focusGroup("quality", FocusAxis.Y) }) {
+            Div({
+                classes("tv-q-menu")
+                focusGroup("quality", FocusAxis.Y)
+                actsAsOptionGroup(S.quality)
+            }) {
                 ordered.forEach { label ->
                     Div({
                         classNames("tv-q-item", if (label == quality) "on" else null)
                         focusItem("q-$label", entry = label == quality)
+                        actsAsOption(selected = label == quality)
                         onClick { qualityOpen = false; onQualitySelected(label) }
                     }) { Text(label) }
                 }
             }
         }
 
-        Div({ classNames("tv-ctl", if (mode == Mode.Controls) null else "hide") }) {
-            Div({ classes("tv-scrub") }) {
+        /*
+         * The scrubber on top, the buttons in a row beneath it.
+         *
+         * This is **not** the Leanback reference layout, which docks the primary
+         * transport row *above* the bar. It is what YouTube on a television actually
+         * does since its December 2025 redesign: the bar sits on top of the cluster
+         * with the buttons immediately below, and the episode title is lifted out of
+         * the cluster to the top-left of the screen entirely. Where the two disagree,
+         * the brief was to look like YouTube.
+         *
+         * Structurally the chrome is one `Y` group holding two rows, the lower of them
+         * a nested `X` group. That is what lets the engine own vertical movement
+         * between the bar and the buttons while the player only has to intercept
+         * horizontal presses, and nested groups are exactly the case the traversal
+         * rules were fixed for.
+         */
+        Div({
+            classNames("tv-ctl", if (mode == Mode.Controls) null else "hide")
+            focusGroup("player-chrome", FocusAxis.Y)
+        }) {
+            /*
+             * The bar is a focus stop, not decoration.
+             *
+             * Samsung's platform spec puts focus here when Left or Right opened the
+             * controls, and it is what makes "arrows seek" and "arrows move between
+             * buttons" coexist without a mode flag: the answer is simply which item
+             * holds the ring.
+             */
+            Div({
+                classes("tv-scrub")
+                focusItem("scrub", entry = true)
+                // A slider, not a button: it reports a position rather than firing an action,
+                // and the position is the thing worth announcing.
+                attr("role", "slider")
+                attr("aria-label", S.timeline)
+                attr("aria-valuemin", "0")
+                attr("aria-valuemax", durationSec.toString())
+                attr("aria-valuenow", currentSec.toString())
+            }) {
                 Div({ classes("tv-scrub-buf"); ref { el -> refs.fillBuf = el; onDispose { refs.fillBuf = null } } })
                 Div({ classes("tv-scrub-cur"); ref { el -> refs.fillCur = el; onDispose { refs.fillCur = null } } })
+                // Where a scrub would land, drawn only while one is open.
+                Div({
+                    classNames("tv-scrub-ghost", if (mode == Mode.Scrubbing) "on" else null)
+                    ref { el -> refs.ghost = el; onDispose { refs.ghost = null } }
+                })
             }
-            Div({ classes("tv-ctl-row"); focusGroup("player-controls", FocusAxis.X) }) {
-                Div({
-                    classes("tv-ctl-btn")
-                    focusItem("play", entry = true)
-                    attr("aria-label", if (playing) S.pause else S.play)
-                    onClick { togglePlay() }
-                }) { Icon(if (playing) Icons.pause else Icons.play) }
 
-                Div({
-                    classes("tv-ctl-btn")
-                    focusItem("back10")
-                    attr("aria-label", S.back10)
-                    onClick { nudgeSeek(-1) }
-                }) { Icon(Icons.back10) }
-
-                Div({
-                    classes("tv-ctl-btn")
-                    focusItem("forward10")
-                    attr("aria-label", S.forward10)
-                    onClick { nudgeSeek(1) }
-                }) { Icon(Icons.forward10) }
-
+            /*
+             * One `X` group for the whole row, even though it reads as three clusters.
+             * The clusters are a CSS concern; making them three focus groups would put
+             * a wall between the transport buttons and the quality button, because
+             * horizontal presses deliberately cannot leave an `X` group.
+             */
+            Div({ classes("tv-ctl-row"); focusGroup("player-buttons", FocusAxis.X) }) {
                 Span({ classes("tv-time", "mono") }) {
-                    Text("${formatTime(currentSec.toDouble())} / ${formatTime(durationSec.toDouble())}")
+                    Text(formatTime(currentSec.toDouble()))
+                    Span({ classes("tv-time-sep") }) { Text("/") }
+                    Text(formatTime(durationSec.toDouble()))
                 }
 
-                Div({ classes("grow") })
-
-                if (ordered.size > 1) {
+                Div({ classes("tv-ctl-mid") }) {
                     Div({
-                        classes("tv-ctl-btn", "tv-q-btn", "mono")
-                        focusItem("quality")
-                        attr("aria-label", S.quality)
-                        onClick { qualityOpen = !qualityOpen }
-                    }) { Text(quality ?: ordered.first()) }
+                        classes("tv-ctl-btn")
+                        focusItem("back10")
+                        actsAsButton(S.back10)
+                        onClick { skip(-1) }
+                    }) { Icon(Icons.back10) }
+
+                    Div({
+                        classes("tv-ctl-btn", "tv-ctl-btn-lg")
+                        focusItem("play")
+                        actsAsButton(if (playing) S.pause else S.play)
+                        onClick { togglePlay() }
+                    }) { Icon(if (playing) Icons.pause else Icons.play) }
+
+                    Div({
+                        classes("tv-ctl-btn")
+                        focusItem("forward10")
+                        actsAsButton(S.forward10)
+                        onClick { skip(1) }
+                    }) { Icon(Icons.forward10) }
+                }
+
+                Div({ classes("tv-ctl-end") }) {
+                    if (ordered.size > 1) {
+                        val shown = quality ?: ordered.first()
+                        Div({
+                            classes("tv-ctl-btn", "tv-q-btn", "mono")
+                            focusItem("quality")
+                            // The name carries the rendition, because the rendition is
+                            // what this button visibly shows. "Quality" alone replaced it
+                            // and left the current selection unannounced — the one thing
+                            // someone opening this menu wants to know first.
+                            actsAsButton("${S.quality}: $shown")
+                            // And it opens a menu, which an ordinary button does not.
+                            ownsPopup(qualityOpen)
+                            onClick { qualityOpen = !qualityOpen }
+                        }) { Text(shown) }
+                    }
                 }
             }
         }

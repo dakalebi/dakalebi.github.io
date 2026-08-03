@@ -51,8 +51,18 @@ fun TvSignInScreen() {
     var password by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
 
+    /**
+     * Whether a press would do anything.
+     *
+     * Named once and read twice — by [submit] as its guard and by the button as its
+     * `aria-disabled` — so the two cannot drift. They had: the button reported only
+     * `busy`, while the guard also refused a blank field, so a screen reader announced
+     * an enabled control that did nothing on an empty form.
+     */
+    val canSubmit = !busy && email.isNotBlank() && password.isNotBlank()
+
     fun submit() {
-        if (busy || email.isBlank() || password.isBlank()) return
+        if (!canSubmit) return
         busy = true
         scope.launch {
             try {
@@ -89,6 +99,14 @@ fun TvSignInScreen() {
             Div({
                 classes("tv-btn", "tv-btn-primary")
                 focusItem("submit")
+                // No accessible name: this control's own text already says "Sign in",
+                // and an `aria-label` would replace it — which mattered here, because
+                // the text changes to "Loading" while a sign-in is in flight and a
+                // fixed label would keep announcing "Sign in" throughout.
+                //
+                // Disabled and busy by ARIA only. The control stays focusable either
+                // way, because the ring cannot vanish from under the viewer mid-screen.
+                actsAsButton(disabled = !canSubmit, busy = busy)
                 onClick { submit() }
             }) { Text((if (busy) S.loading else S.signIn).caps) }
         }

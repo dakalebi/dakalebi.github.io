@@ -114,11 +114,16 @@ fun TvSeasonRail(seasons: List<Int>, selected: Int?, onPick: (Int) -> Unit) {
     if (seasons.isEmpty()) return
     Div({ classes("tv-band") }) {
         H2({ classes("tv-sub") }) { Text(S.seasons.caps) }
-        Div({ classes("tv-rail", "tv-chips"); focusGroup("seasons", FocusAxis.X) }) {
+        Div({
+            classes("tv-rail", "tv-chips")
+            focusGroup("seasons", FocusAxis.X)
+            actsAsOptionGroup(S.seasons)
+        }) {
             seasons.forEach { season ->
                 Div({
                     classNames("tv-chip", if (season == selected) "on" else null)
                     focusItem("season-$season")
+                    actsAsOption(selected = season == selected)
                     onClick { onPick(season) }
                 }) { Text(S.season(season).caps) }
             }

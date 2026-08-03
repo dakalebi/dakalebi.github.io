@@ -34,6 +34,24 @@ import kotlin.math.abs
  */
 internal object SpatialNav {
 
+    /**
+     * Told about every focus change, after it has happened.
+     *
+     * Exactly one hook, at the one place focus can move, so a subscriber cannot miss
+     * a change and there is nowhere else to keep in sync. The navigation rail is the
+     * only subscriber: it has to expand when the ring arrives in it and collapse when
+     * the ring leaves, and neither event is something CSS can see — `:focus-within`
+     * would do it, but the ring is an attribute here precisely because `:focus` is
+     * unreliable when the document is not frontmost.
+     *
+     * **Keep subscribers cheap and keep them off the tiles.** This runs on the
+     * critical path of every D-pad press. A subscriber that writes Compose state
+     * makes a keypress recompose, which is the cost this whole file exists to avoid;
+     * the rail gets away with it because it recomposes a rail of four items, and only
+     * on the two presses that cross its boundary.
+     */
+    var onFocusChanged: ((HTMLElement) -> Unit)? = null
+
     /** Every group inside [scope], in DOM order. */
     fun groupsIn(scope: Element): List<HTMLElement> =
         scope.querySelectorAll("[$GROUP_ATTR]").asList()
@@ -77,14 +95,29 @@ internal object SpatialNav {
      * means "the next band", whether the current one is a list that ran out or a
      * grid at its last row.
      *
-     * **Horizontal presses may only leave a `Y` group**, where sideways was never
-     * the group's own axis. Letting Right escape a rail or a grid is what produces
-     * the worst bug in a D-pad UI: reaching the last tile of a row and being
-     * teleported into an unrelated section. Running out of rail should feel like a
-     * wall, because that is what it is.
+     * **Rightward presses may only leave a `Y` group**, where sideways was never the
+     * group's own axis. Letting Right escape a rail or a grid produces the worst bug
+     * in a D-pad UI: reaching the last tile of a row and being teleported into an
+     * unrelated section. Running out of rail rightward should feel like a wall,
+     * because that is what it is — there is nothing over there.
+     *
+     * **Leftward is different, and it is asymmetric on purpose.** The navigation rail
+     * lives off the left edge of every screen, so "nothing left of here" is false in a
+     * way it is not on the right: from the first tile of any shelf there is exactly one
+     * sensible destination, and it is the rail. That is the whole interaction model of
+     * a left-navigation app — Google writes the path to Settings as "scroll to the
+     * left, then down" — and a wall on the left would make the rail unreachable from
+     * anything except a `Y` group.
+     *
+     * The asymmetry costs nothing on the right, where the teleport bug actually lived.
+     * See [leaveGroup] for why a leftward escape also has to drop the row-overlap
+     * requirement that every other horizontal move keeps.
      */
-    private fun mayLeave(axis: FocusAxis, direction: Direction): Boolean =
-        if (direction.isHorizontal) axis == FocusAxis.Y else true
+    private fun mayLeave(axis: FocusAxis, direction: Direction): Boolean = when {
+        !direction.isHorizontal -> true
+        axis == FocusAxis.Y -> true
+        else -> direction == Direction.Left
+    }
 
     /**
      * The element focus should move to, or null if the press goes nowhere.
@@ -126,6 +159,21 @@ internal object SpatialNav {
      * it from misbehaving in the case DOM order was chosen for — arriving at a rail
      * that is scrolled far off to one side lands where you left it, not wherever
      * happens to be under the cursor.
+     *
+     * **A horizontal escape does not require row overlap, and once did.** Overlap stops
+     * a sideways press landing in a band above or below, which is exactly right *inside*
+     * a group — [bestCandidate] still enforces it, and that is where it earns its keep.
+     * Applying it here as well turned out to be belt over braces, and the belt did
+     * damage: a navigation rail's *container* spans the screen height but its items do
+     * not, being 40px tall and clustered top and bottom, so no rail item ever shares a
+     * row with a shelf in the middle of the screen. With the requirement in place the
+     * rail could not be entered from a shelf, and — mirrored — could not be left again.
+     *
+     * Dropping it is safe because [mayLeave] already guards the case overlap was
+     * protecting. The bug on record ("Right at the end of a rail jumped into the grid")
+     * was a press escaping an `X` group, and `mayLeave` refuses that outright, whatever
+     * the geometry says. What reaches this line horizontally is a press leaving a `Y`
+     * group, or a leftward press with only the rail to its left.
      */
     private fun leaveGroup(
         from: Box,
@@ -138,7 +186,6 @@ internal object SpatialNav {
             val group = groupOf(element) ?: return@mapNotNull null
             val box = element.box()
             val distance = along(from, box, direction) ?: return@mapNotNull null
-            if (direction.isHorizontal && !overlaps(from, box, direction)) return@mapNotNull null
             Candidate(box, group, distance)
         }
         if (candidates.isEmpty()) return null
@@ -210,6 +257,9 @@ internal object SpatialNav {
                 group?.let { centre(it, setOf(Axis.Y), scope) }
             }
         }
+
+        // Last, so a subscriber reading geometry sees the settled position.
+        onFocusChanged?.invoke(item)
     }
 
     /**

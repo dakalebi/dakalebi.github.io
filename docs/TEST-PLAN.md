@@ -279,7 +279,8 @@ window.dispatchEvent(e);
 | N2 | `ArrowDown` in a `Y` group | next item in that group |
 | N3 | `ArrowDown` at the end of a `Y` group | first item of the band below |
 | N4 | `ArrowRight` in an `X` rail | next tile; the rail's `scrollLeft` grows |
-| N5 | `ArrowRight` at the end of a rail | **nothing moves.** Running out of rail is a wall, not a jump to another band |
+| N5 | `ArrowRight` at the end of a rail | **nothing moves.** Running out of rail rightward is a wall, not a jump to another band |
+| N5b | `ArrowLeft` at the *start* of a rail | the **navigation rail**, which is the one thing that is ever to the left. Deliberately asymmetric with N5: a wall on the left would make the rail unreachable from any shelf, and "scroll to the left" is how the platform documents reaching navigation |
 | N6 | `ArrowUp` out of a rail, then `ArrowDown` back into it | returns to the tile you left, not the first one |
 | N7 | `ArrowDown` into a grid | the column nearest where you came from |
 | N8 | `ArrowRight` at the end of a grid row | nothing moves — no wrap to the next row |
@@ -293,8 +294,28 @@ window.dispatchEvent(e);
 | N16 | `Backspace`, `Escape`, keyCode 10009, keyCode 461 | all reach Back; none move the ring |
 | N17 | legacy `Up`/`Down` names, and keyCode 37-40 with no `key` | move as the arrows do |
 | N18 | `Cmd`/`Ctrl`/`Alt` + arrow | ignored, so browser history and OS shortcuts still work |
-| N19 | any `[data-tv-item]` with the ring | computes a 3px solid outline **even when `document.hasFocus()` is false** |
+| N19 | any `[data-tv-item]` with the ring | computes a **4px solid `#f1f1f1`** outline at a 4px offset, **even when `document.hasFocus()` is false** |
+| N19b | a focused tile vs its neighbour | **identical rectangles and `transform: none`.** The ring is the whole effect; nothing scales, lifts or reflows. Measured on YouTube, whose browse tiles do not scale either |
+| N19c | a focused tile | 10%-white plate behind it, artwork corners square (0px) inside the rounded ring, title `#f1f1f1` against `#aaa` unfocused |
 | N20 | `/tv/` and `/?ui=tv` | `logo.png` resolves to the site root from both, and loads |
+| N20a | every `[data-tv-item]` on every screen | either a semantic element (`<a>`) **or** an explicit `role`. Most TV controls are `Div`s on purpose — a `<button>` brings a user-agent focus ring and its own activation behaviour, both of which fight an engine where the ring is the cursor — so the semantics have to be put back by hand. One-liner: <br>`[...document.querySelectorAll('[data-tv-item]')].filter(e => e.tagName !== 'A' && !e.getAttribute('role'))` <br>must be empty. Also: no `[role=radio]` outside a `[role=radiogroup]`, and no `aria-pressed` on anything that is not `role="button"` (it is inert there) |
+| N20d | every control that shows text **and** has an `aria-label` | the label **contains** the visible text (WCAG 2.5.3, Label in Name). `aria-label` *replaces* text rather than adding to it, which is a trap worth a standing check: a quality button labelled "Quality" hid the "1080p" it was displaying, and a sign-out button labelled "Sign out" hid which account it would sign out of. Both were real here. <br>`const n = s => (s\|\|'').replace(/\s+/g,' ').trim().toLowerCase();` <br>`[...document.querySelectorAll('[data-tv-item]')].filter(e => { const l = e.getAttribute('aria-label'), t = n(e.textContent); return l && t && !n(l).includes(t) })` <br>must be empty. Icon-only controls have no text and so are exempt — they are the only case an `aria-label` is the sole source of a name |
+| N20e | a control that opens a menu | `aria-haspopup` and a live `aria-expanded`. Only the quality button qualifies today. Without it a press opens something with no announcement that anything opened, and no way to tell it is already open |
+| N20b | the rail, ring outside it | 56px wide, labels at opacity 0, content inset 104px |
+| N20c | the rail, ring inside it | 260px wide, labels at opacity 1, content inset 308px. The content is **pushed**, not covered — the standard drawer variant, not the modal one |
+
+Anything with a `transition` needs care when asserting: `getComputedStyle` reports the
+*current* animated value, and with `requestAnimationFrame` stopped a transition never
+advances past its start. Read target values with transitions disabled:
+
+```js
+const kill = document.createElement('style');
+kill.textContent = '*,*::before,*::after{transition:none !important;animation:none !important}';
+document.head.appendChild(kill);
+```
+
+Three properties in N19c and both rows of N20b/N20c are transitioned, and every one of
+them reads as "not applied" without this.
 
 Not scriptable, and still device-only:
 
@@ -309,8 +330,10 @@ Not scriptable, and still device-only:
 
 | ID | Screen | Expected |
 |---|---|---|
-| N21 | browse, on arrival | ring on the hero's primary action, **not** the top bar. A screen declares its entry point; the engine would otherwise take whatever is first in the document |
-| N22 | hero | eyebrow reads continue / last-watched / fresh; remaining time when part-watched; two stops, resume and start-over |
+| N21 | browse, on arrival | ring on the masthead's primary action, **not** the navigation rail. A screen declares its entry point; the engine would otherwise take whatever is first in the document, which is now the rail |
+| N21b | browse layout | a masthead of text, then shelves. **No two-column hero** — its artwork panel cost half the screen height and pushed the first shelf below the fold |
+| N21c | the rail | two destinations only, Home and Settings, with Settings pinned to the bottom. No Back or Exit item: a virtual back button is documented as a "Don't" for TV |
+| N22 | masthead | eyebrow reads continue / last-watched / fresh; remaining time when part-watched; two stops, resume and start-over |
 | N23 | continue rail | only started-and-unfinished episodes, most recent first |
 | N24 | tiles | `E<n>` badge, duration, watched tick, and a progress bar only at 1% or more — three seconds of 25 minutes would otherwise draw an empty track |
 | N25 | season chips | one selected; `Left`/`Right` move the ring, and only `Enter` changes the season |
@@ -335,12 +358,44 @@ verifiable while playback itself is not — that part needs a real television.
 | N35 | a consumed arrow | `defaultPrevented` is true, so the document does not also scroll |
 | N36 | the `<video>` element | carries `playsinline`, and **never `crossorigin`** — the CDN sends no CORS headers and the attribute breaks playback outright |
 | N37 | on arrival | the player renders from the URL already in the catalog, without waiting for the live resolve |
-| N38 | control row | play, −10, +10, time, quality. `Right` walls at the end |
+| N38 | chrome layout | the **scrubber on top**, then one row of three clusters: time at the start, transport centred, quality at the end. This follows YouTube's December 2025 layout rather than Leanback's reference, which docks the buttons *above* the bar |
+| N38b | on arrival | ring on the **scrubber**, which is a real focus stop rather than decoration |
+| N38c | `Down` from the scrubber | the transport row. `Up` returns. The chrome is one `Y` group with a nested `X` row, so the engine owns vertical movement and the player only intercepts horizontal |
+| N38d | `Left`/`Right` **on the scrubber** | seeks; focus does not move |
+| N38e | `Left`/`Right` **on a button** | moves focus; nothing seeks. One rule — which item holds the ring — and no extra mode |
 | N39 | `Back` once | hides the chrome; the route does not change |
 | N40 | `Back` again | leaves for the browse screen. It must **not** pop the player's own input layer and strand a player nothing is listening to — that is what `TvLayer.dismissible = false` is for |
+| N40b | `Back` from any other screen's content | the **rail's active item** — not the previous URL and not the first rail item. Back on a left-navigation app is a jump out to the menu, so exiting is always two presses from anywhere |
+| N40c | `Back` **eight times** anywhere | the D-pad still moves the ring afterwards. The regression this guards is silent and total: the root `TvLayer` is the only global input handler, so popping it leaves a UI that draws and does not respond. Both it and the player are `dismissible = false`, and the check is simply that arrows still work after hammering Back past the point the stack could empty |
 | N41 | quality button | lists renditions best-first from `orderedQualityLabels`, never from map order |
-| N42 | held `Left`/`Right` | one seek per gesture, not per press. `TvSeekTest` pins the rule; the visible part is the centred readout |
 
-Device-only, still: whether playback is smooth, whether a held D-pad on real
-hardware produces the repeat rate `TvSeek.SETTLE_MS` assumes, and whether the
-chrome's fade is smooth on a television's SoC.
+The seek model is where this player changed most, and all of it is scriptable. Give the
+fixture element a duration first, since its source does not resolve:
+
+```js
+const v = document.querySelector('.tv-player video');
+let t = 100;
+Object.defineProperty(v, 'duration',    { configurable: true, get: () => 1500 });
+Object.defineProperty(v, 'currentTime', { configurable: true, get: () => t, set: x => { t = x } });
+```
+
+| ID | Press | Expected |
+|---|---|---|
+| N42 | a **tap** of `Left`/`Right` (`repeat: false`) | ±10s applied **at once**. A nudge that waits for confirmation reads as a dropped press |
+| N43 | a **held** `Left`/`Right` (`repeat: true`) | a preview only. `currentTime` **does not change**; the ghost knob moves +10/+20/+30 from the origin |
+| N44 | `Enter` during a held gesture | **commits** — `currentTime` becomes the previewed position |
+| N45 | `Back` during a held gesture | **cancels** — `currentTime` is untouched. There is no restore step because nothing ever moved the media |
+| N46 | `Up`/`Down` during a held gesture | swallowed, so a stray press cannot abandon a gesture halfway |
+| N47 | any direction with the chrome hidden | raises the chrome and **does not seek**. YouTube's own "speed bump", added so a remote sat on by accident cannot scrub a running episode |
+| N48 | a dedicated `MediaFastForward` / `MediaRewind` key | always a discrete skip. Those keys have no auto-repeat contract to lean on |
+
+Device-only, still: whether playback is smooth, whether a real remote's held D-pad
+actually sets `KeyboardEvent.repeat` (the tap-against-hold split is the one thing in
+N42/N43 that depends on hardware honouring it), and whether the chrome's fade is smooth
+on a television's SoC.
+
+Worth noting what is *no longer* device-dependent. The previous seek model committed on
+a 500ms settle timer, so it assumed a repeat rate — too slow a remote and every press
+became its own seek and its own re-buffer. Committing on `Enter` instead means no timing
+assumption survives, and the only hardware question left is whether `repeat` is set at
+all rather than how fast it arrives.

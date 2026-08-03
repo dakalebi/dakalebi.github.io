@@ -50,13 +50,20 @@ fun TvSettingsScreen() {
         // is a file, not a redesign.
         Div({ classes("tv-row") }) {
             Span({ classes("tv-row-label") }) { Text(S.language.caps) }
-            Div({ classes("tv-seg"); focusGroup("language", FocusAxis.X) }) {
+            Div({
+                classes("tv-seg")
+                focusGroup("language", FocusAxis.X)
+                actsAsOptionGroup(S.language)
+            }) {
                 I18n.available.forEach { language ->
                     val selected = language.tag == I18n.current.tag
                     Div({
                         classNames("tv-seg-item", if (selected) "on" else null)
                         focusItem("lang-${language.tag}", entry = selected)
-                        attr("aria-pressed", selected.toString())
+                        // `radio`, not a pressed button. `aria-pressed` was here and was
+                        // inert: it only has meaning on `role="button"`, which a bare
+                        // `Div` is not, so nothing announced the selection at all.
+                        actsAsOption(selected)
                         // Its own tag, so the label picks the right face and a
                         // screen reader picks the right voice for it.
                         attr("lang", language.tag)
@@ -96,6 +103,9 @@ fun TvSettingsScreen() {
             Div({
                 classes("tv-btn")
                 focusItem("sign-out")
+                // The visible text is the account, not the action, so the name has to
+                // carry both — "Sign out" alone would hide which account it signs out.
+                actsAsButton(session.email?.let { "${S.signOut}: $it" } ?: S.signOut)
                 onClick { scope.launch { session.signOut() } }
             }) { Text(session.email ?: S.signOut.caps) }
         }
