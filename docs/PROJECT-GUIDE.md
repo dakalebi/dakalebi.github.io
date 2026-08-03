@@ -388,9 +388,8 @@ admins/{uid}
     (existence is the whole payload; any fields are for humans)
 ```
 
-**As of `main`, `admins/` does not exist yet and nothing writes `autoplayNext`**
-— both arrive with PR #7, along with the cache described below. The rules on
-`main` already allow the field, so publishing them twice is not needed. See §9.
+All of the above is on `main`. What is **not** yet true of the live Firebase
+project is the `admins/{uid}` document and the published rules — see §9.
 
 Rules, in `firebase/firestore.rules`:
 
@@ -539,10 +538,10 @@ on a sideways-scrolled page.
 
 ## 8. What is verified, and what is not
 
-**Automated.** 28 domain tests on Node: the watched threshold, the
+**Automated.** 35 domain tests on Node: the watched threshold, the
 never-rewind guard, "continue watching" including its five-second floor,
-ordering across season boundaries, and hash-route parsing. PR #7 adds seven
-more covering the settings merge semantics and the admin lookup.
+ordering across season boundaries, hash-route parsing, the settings merge
+semantics, and the admin lookup.
 
 **Verified by hand, repeatedly.** The signed-out path — boot, redirect to
 `#/login`, language switching, the drawer's layout, responsive behaviour at
@@ -567,28 +566,33 @@ more covering the settings merge semantics and the admin lookup.
 
 ## 9. Current state and open work
 
-### On `main`
+### Code
 
-Everything described above **except** the Firestore admin roster and the catalog
-cache. `main` still carries the hardcoded allowlist in `FirebaseConfig.kt` and
-reads all 932 documents on every load.
+Everything in this document is merged to `main` and deployed.
 
-### Pending
+### Two console steps still outstanding
 
-**PR #7** — moves admin rights to `admins/{uid}`, moves autoplay into
-`users/{uid}` beside the language, and adds the catalog cache.
+The code for admin rights ships, but the Firebase project has not been set up
+for it yet. Until both of these are done, **the catalog refresh control will
+not appear**, because `FirestoreAdminRepository` reads `admins/{uid}` and the
+published rules currently deny that path.
 
-It needs **two manual console steps before merging, in this order**:
+Nothing else is affected: language and autoplay sync, the catalog cache and
+playback all work. The fix is recoverable at any time and needs no redeploy.
 
-1. Create `admins/PZ6HS4qhStUv8Ai1VxCGU72bW6G3` in the Firebase console.
-2. Publish `firebase/firestore.rules` **from the PR branch**.
+1. **Create `admins/PZ6HS4qhStUv8Ai1VxCGU72bW6G3`** in the Firebase console.
+   Fields are for humans only.
+2. **Publish `firebase/firestore.rules`** — Firestore → Rules → select all →
+   paste → Publish.
 
-Order matters: the new `isAdmin()` needs that document to exist, so publishing
-first locks the owner out of the catalog refresh. Both must be done in the
-console — the `admins` collection is write-denied to every client, which is the
-security property, not an obstacle to route around.
+**Order matters.** The new `isAdmin()` calls `exists()` on that document, so
+publishing first denies catalog writes until the document appears.
 
-A scheduled task, `dakalebi-finish-firestore-admin`, exists to do exactly these
+Both must be done in the console. `admins` is write-denied to every client —
+that is the security property, not an obstacle to route around — and no
+Firebase or gcloud CLI is installed on the owner's machine.
+
+A scheduled task, `dakalebi-finish-firestore-admin`, exists to walk these
 steps and verify them.
 
 ### Known gaps, unprioritised
