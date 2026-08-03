@@ -28,6 +28,7 @@ import ge.dakalebi.ui.tv.input.Key
 import ge.dakalebi.ui.tv.input.MediaAction
 import ge.dakalebi.ui.tv.input.TvInput
 import ge.dakalebi.ui.tv.input.TvLayer
+import ge.dakalebi.ui.tv.ownsPopup
 import kotlinx.browser.document
 import kotlinx.browser.window
 import org.jetbrains.compose.web.dom.Div
@@ -589,12 +590,19 @@ fun TvVideoPlayer(
 
                 Div({ classes("tv-ctl-end") }) {
                     if (ordered.size > 1) {
+                        val shown = quality ?: ordered.first()
                         Div({
                             classes("tv-ctl-btn", "tv-q-btn", "mono")
                             focusItem("quality")
-                            actsAsButton(S.quality)
+                            // The name carries the rendition, because the rendition is
+                            // what this button visibly shows. "Quality" alone replaced it
+                            // and left the current selection unannounced — the one thing
+                            // someone opening this menu wants to know first.
+                            actsAsButton("${S.quality}: $shown")
+                            // And it opens a menu, which an ordinary button does not.
+                            ownsPopup(qualityOpen)
                             onClick { qualityOpen = !qualityOpen }
-                        }) { Text(quality ?: ordered.first()) }
+                        }) { Text(shown) }
                     }
                 }
             }

@@ -23,17 +23,49 @@ import org.w3c.dom.Element
 /**
  * An activatable control: a button in everything but tag name.
  *
+ * [accessibleName] is `aria-label`, and **`aria-label` replaces the visible text rather
+ * than adding to it.** That is the whole reason this parameter is not called `label`:
+ * the obvious reading of "label" is "the thing to call this control", and passing the
+ * control's *purpose* while it visibly shows a *value* silently hides the value from
+ * anyone not looking at the screen. Three of the six call sites here did exactly that
+ * before it was named this way — a quality button announcing "Quality" instead of
+ * "1080p", a sign-out button announcing "Sign out" instead of the account it would
+ * sign out of, and a sign-in button still announcing "Sign in" while its own text had
+ * changed to "Loading".
+ *
+ * So the rule, which WCAG 2.5.3 states as Label in Name:
+ *
+ * - **No visible text** (an icon) — pass the name, because nothing else supplies one.
+ * - **Visible text that already names the action** — pass nothing. The text is the name.
+ * - **Visible text that is a value** — pass a name that *contains* that value.
+ *
  * [disabled] is `aria-disabled` rather than the `disabled` attribute, because a `Div`
- * has no such attribute and because the control stays focusable either way — the ring
- * must never vanish mid-screen just because the thing under it is briefly busy.
+ * has no such attribute and because the control must stay focusable either way — the
+ * ring cannot vanish mid-screen just because the thing under it is briefly unavailable.
+ * [busy] is the same idea for work in flight, and is what tells a screen reader that a
+ * press *was* registered when the only other evidence is a word changing.
  */
 internal fun <T : Element> AttrsScope<T>.actsAsButton(
-    label: String? = null,
+    accessibleName: String? = null,
     disabled: Boolean = false,
+    busy: Boolean = false,
 ) {
     attr("role", "button")
-    label?.let { attr("aria-label", it) }
+    accessibleName?.let { attr("aria-label", it) }
     if (disabled) attr("aria-disabled", "true")
+    if (busy) attr("aria-busy", "true")
+}
+
+/**
+ * A control that opens something: it owns a popup, and says whether it is open.
+ *
+ * Without this a menu button is announced as an ordinary button, so there is no way to
+ * know a press opened anything — and no way to know it is already open, which turns
+ * "close the menu" into a guess.
+ */
+internal fun <T : Element> AttrsScope<T>.ownsPopup(expanded: Boolean) {
+    attr("aria-haspopup", "menu")
+    attr("aria-expanded", expanded.toString())
 }
 
 /**

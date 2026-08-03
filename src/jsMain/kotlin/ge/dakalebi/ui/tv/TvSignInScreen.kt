@@ -99,10 +99,14 @@ fun TvSignInScreen() {
             Div({
                 classes("tv-btn", "tv-btn-primary")
                 focusItem("submit")
-                // Disabled by ARIA only, and by exactly the condition `submit` checks:
-                // the control stays focusable either way, because the ring must not
-                // vanish from under the viewer while a sign-in is in flight.
-                actsAsButton(S.signIn, disabled = !canSubmit)
+                // No accessible name: this control's own text already says "Sign in",
+                // and an `aria-label` would replace it — which mattered here, because
+                // the text changes to "Loading" while a sign-in is in flight and a
+                // fixed label would keep announcing "Sign in" throughout.
+                //
+                // Disabled and busy by ARIA only. The control stays focusable either
+                // way, because the ring cannot vanish from under the viewer mid-screen.
+                actsAsButton(disabled = !canSubmit, busy = busy)
                 onClick { submit() }
             }) { Text((if (busy) S.loading else S.signIn).caps) }
         }

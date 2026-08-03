@@ -103,7 +103,9 @@ fun TvSettingsScreen() {
             Div({
                 classes("tv-btn")
                 focusItem("sign-out")
-                actsAsButton(S.signOut)
+                // The visible text is the account, not the action, so the name has to
+                // carry both — "Sign out" alone would hide which account it signs out.
+                actsAsButton(session.email?.let { "${S.signOut}: $it" } ?: S.signOut)
                 onClick { scope.launch { session.signOut() } }
             }) { Text(session.email ?: S.signOut.caps) }
         }
