@@ -118,8 +118,8 @@ interface Strings {
 
     val language: String
 
-    /** The language changed here but could not be recorded for other devices. */
-    val languageNotSynced: String
+    /** A setting changed here but could not be recorded for other devices. */
+    val settingNotSynced: String
 
     val refreshEpisodes: String
     val downloadEpisodes: String

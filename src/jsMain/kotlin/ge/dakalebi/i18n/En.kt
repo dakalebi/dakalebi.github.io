@@ -86,7 +86,7 @@ object En : Strings {
         "iPhone and iPad use Apple's own player. Turn this off for the same " +
             "player the desktop site uses."
     override val language = "Language"
-    override val languageNotSynced = "Language changed on this device only"
+    override val settingNotSynced = "Changed on this device only"
     override val refreshEpisodes = "Refresh episodes"
     override val downloadEpisodes = "Download episodes"
     override val inProgress = "Working…"

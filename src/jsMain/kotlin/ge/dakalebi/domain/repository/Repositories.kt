@@ -1,6 +1,7 @@
 package ge.dakalebi.domain.repository
 
 import ge.dakalebi.domain.model.Account
+import ge.dakalebi.domain.model.Catalog
 import ge.dakalebi.domain.model.CatalogMeta
 import ge.dakalebi.domain.model.Episode
 import ge.dakalebi.domain.model.RefreshResult
@@ -20,6 +21,15 @@ import ge.dakalebi.domain.model.WatchProgress
  */
 
 interface CatalogRepository {
+    /**
+     * Episodes and metadata together.
+     *
+     * One call rather than two because the order matters: the metadata's
+     * refresh stamp is what says whether a cached catalog is still good, so it
+     * has to be read first. One document read then stands in for 932.
+     */
+    suspend fun load(): Catalog
+
     /**
      * The whole catalog, ordered.
      *
@@ -66,7 +76,14 @@ interface ProgressRepository {
 interface SettingsRepository {
     suspend fun load(uid: String): SettingsLoad
 
-    /** False when the write was rejected — offline, or the rules say no. */
+    /**
+     * Writes the fields that are set and leaves the rest alone.
+     *
+     * A null field means "no opinion", not "clear it" — two devices changing
+     * two different settings must not overwrite each other, and the language
+     * picker knows nothing about autoplay. Returns false when the write was
+     * rejected: offline, or the rules said no.
+     */
     suspend fun save(uid: String, settings: UserSettings): Boolean
 
     /** Live updates from other devices. Returns the unsubscribe function. */
@@ -86,9 +103,33 @@ interface AccountRepository {
     suspend fun sendPasswordReset(email: String)
 
     suspend fun signOut()
+}
 
-    /** Whether this account may rebuild the catalog. The rules still enforce it. */
-    fun isAdmin(account: Account): Boolean
+/**
+ * Who may rebuild the catalog.
+ *
+ * Separate from [AccountRepository] because it is stored separately, and that
+ * separation is the security property: an admin flag on the account's own
+ * settings document would be a flag the account can set on itself.
+ */
+interface AdminRepository {
+    suspend fun isAdmin(uid: String): Boolean
+}
+
+/**
+ * Local copy of the catalog, keyed by the server's last-refresh stamp.
+ *
+ * A port rather than an implementation detail of the repository so the caching
+ * decision — which is about cost, not correctness — is visible in the
+ * composition root and can be switched off there.
+ */
+interface CatalogCache {
+    /** The cached catalog, but only when [stamp] proves it is still current. */
+    fun read(stamp: Double?): List<Episode>?
+
+    fun write(stamp: Double?, episodes: List<Episode>)
+
+    fun clear()
 }
 
 /**

@@ -4,7 +4,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import ge.dakalebi.domain.model.Account
-import ge.dakalebi.domain.usecase.CanRefreshCatalog
+import ge.dakalebi.domain.usecase.CheckAdminRights
 import ge.dakalebi.domain.usecase.ObserveAccount
 import ge.dakalebi.domain.usecase.SendPasswordReset
 import ge.dakalebi.domain.usecase.SignInWithEmail
@@ -15,7 +15,7 @@ import ge.dakalebi.domain.usecase.SignUpWithEmail
 /** Who is signed in, as Compose state. */
 class SessionStore(
     private val observeAccount: ObserveAccount,
-    private val canRefreshCatalog: CanRefreshCatalog,
+    private val checkAdminRights: CheckAdminRights,
     private val signInWithEmail: SignInWithEmail,
     private val signUpWithEmail: SignUpWithEmail,
     private val signInWithGoogleUseCase: SignInWithGoogle,
@@ -33,17 +33,26 @@ class SessionStore(
     val email: String? get() = account?.email
 
     /**
-     * Whether to offer the catalog refresh. The Firestore rules are what
-     * actually enforce this; the flag only avoids showing a button that would
-     * certainly fail.
+     * Whether to offer the catalog refresh.
+     *
+     * State rather than a computed property now that answering costs a
+     * document read. It starts false and is corrected by
+     * [refreshAdminRights]: showing the control a moment late is better than
+     * showing it to everyone until the answer arrives.
      */
-    val isAdmin: Boolean get() = canRefreshCatalog(account)
+    var isAdmin: Boolean by mutableStateOf(false)
+        private set
 
     fun start() {
         observeAccount { next ->
             account = next
             loading = false
         }
+    }
+
+    /** Re-checks the roster. Called whenever the signed-in account changes. */
+    suspend fun refreshAdminRights() {
+        isAdmin = checkAdminRights(account)
     }
 
     suspend fun signIn(email: String, password: String) = signInWithEmail(email, password)

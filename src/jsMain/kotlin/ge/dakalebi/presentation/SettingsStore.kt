@@ -3,10 +3,15 @@ package ge.dakalebi.presentation
 import ge.dakalebi.core.Log
 import ge.dakalebi.domain.model.SettingsLoad
 import ge.dakalebi.domain.repository.PreferencesRepository
+import ge.dakalebi.domain.model.UserSettings
+import ge.dakalebi.domain.usecase.ChangeAutoplay
 import ge.dakalebi.domain.usecase.ChangeLanguage
 import ge.dakalebi.domain.usecase.LoadUserSettings
 import ge.dakalebi.domain.usecase.ObserveUserSettings
-import ge.dakalebi.domain.usecase.SeedLanguage
+import ge.dakalebi.domain.usecase.SeedSettings
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import ge.dakalebi.i18n.I18n
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -27,9 +32,20 @@ class SettingsStore(
     private val loadUserSettings: LoadUserSettings,
     private val observeUserSettings: ObserveUserSettings,
     private val changeLanguage: ChangeLanguage,
-    private val seedLanguage: SeedLanguage,
+    private val changeAutoplay: ChangeAutoplay,
+    private val seedSettings: SeedSettings,
     private val prefs: PreferencesRepository,
 ) {
+    /**
+     * Whether a finished episode rolls into the next one.
+     *
+     * Seeded from the device cache so the switch renders in its real state on
+     * the first frame rather than flashing the default while the network
+     * answers.
+     */
+    var autoplayNext: Boolean by mutableStateOf(prefs.autoplayNext())
+        private set
+
     private var unsubscribe: (() -> Unit)? = null
     private var uid: String? = null
 
@@ -53,8 +69,12 @@ class SettingsStore(
         scope.launch {
             when (val remote = loadUserSettings(uid)) {
                 is SettingsLoad.Found -> {
-                    val tag = remote.settings.language
-                    if (tag == null) seed(uid) else apply(tag)
+                    apply(remote.settings)
+                    // A document that exists but has never carried one of these
+                    // still needs seeding, or that setting never syncs.
+                    if (remote.settings.language == null || remote.settings.autoplayNext == null) {
+                        seed(uid)
+                    }
                 }
 
                 SettingsLoad.Missing -> {
@@ -70,9 +90,7 @@ class SettingsStore(
             }
         }
 
-        unsubscribe = observeUserSettings(uid) { settings ->
-            settings.language?.let { apply(it) }
-        }
+        unsubscribe = observeUserSettings(uid) { apply(it) }
     }
 
     fun stop() {
@@ -90,18 +108,39 @@ class SettingsStore(
      * silently here looks exactly like "my other phone never updates".
      */
     fun setLanguage(scope: CoroutineScope, tag: String, onSyncFailed: () -> Unit) {
-        apply(tag)
+        applyLanguage(tag)
         val id = uid ?: return
         scope.launch { if (!changeLanguage(id, tag)) onSyncFailed() }
     }
 
+    /**
+     * Switches autoplay now and records it for the account, exactly as
+     * [setLanguage] does — same reasoning about the write failing.
+     */
+    fun setAutoplayNext(scope: CoroutineScope, value: Boolean, onSyncFailed: () -> Unit) {
+        applyAutoplay(value)
+        val id = uid ?: return
+        scope.launch { if (!changeAutoplay(id, value)) onSyncFailed() }
+    }
+
     private suspend fun seed(uid: String) {
-        seedLanguage(uid, I18n.current.tag)
+        seedSettings(uid, UserSettings(language = I18n.current.tag, autoplayNext = autoplayNext))
+    }
+
+    /** Applies whatever the account had an opinion about, ignoring the rest. */
+    private fun apply(settings: UserSettings) {
+        settings.language?.let { applyLanguage(it) }
+        settings.autoplayNext?.let { applyAutoplay(it) }
     }
 
     /** Switches the active language and mirrors it into the local cache. */
-    private fun apply(tag: String) {
+    private fun applyLanguage(tag: String) {
         I18n.use(tag)
         prefs.setLanguage(I18n.current.tag)
+    }
+
+    private fun applyAutoplay(value: Boolean) {
+        autoplayNext = value
+        prefs.setAutoplayNext(value)
     }
 }

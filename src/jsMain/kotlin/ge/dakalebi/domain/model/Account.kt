@@ -20,7 +20,9 @@ data class UserSettings(
      * leave each device on whatever it was already showing rather than being
      * dragged to a default nobody picked.
      */
-    val language: String?,
+    val language: String? = null,
+    /** Null for the same reason: absent means "this account has not said". */
+    val autoplayNext: Boolean? = null,
 )
 
 /**

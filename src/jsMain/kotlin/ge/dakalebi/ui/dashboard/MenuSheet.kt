@@ -88,21 +88,30 @@ fun MenuSheet(
 @Composable
 private fun SettingsSection() {
     val prefs = preferences()
+    val settings = settings()
+    val toasts = toasts()
+    val scope = rememberCoroutineScope()
 
     Div {
         Div({ classes("eyebrow-mut"); style { property("margin-bottom", "8px") } }) {
             Text(S.settings.caps)
         }
         Div({ classes("settings-list") }) {
+            // Autoplay follows the account, not the device: it describes how
+            // someone watches, not which screen they are holding.
             Button({
                 classes("toggle-row")
-                onClick { prefs.setAutoplayNext(!prefs.autoplayNext) }
+                onClick {
+                    settings.setAutoplayNext(scope, !settings.autoplayNext) {
+                        toasts.error(S.settingNotSynced)
+                    }
+                }
             }) {
                 Div({ classes("lab") }) {
                     Div { Text(S.autoplayTitle.caps) }
                     Span { Text(S.autoplayBody) }
                 }
-                Div({ classNames("switch", if (prefs.autoplayNext) "on" else null) }) { Div() }
+                Div({ classNames("switch", if (settings.autoplayNext) "on" else null) }) { Div() }
             }
 
             // Offered only where there are two players to choose between.
@@ -153,7 +162,7 @@ private fun LanguagePicker() {
                     onClick {
                         if (!selected) {
                             settings.setLanguage(scope, language.tag) {
-                                toasts.error(S.languageNotSynced)
+                                toasts.error(S.settingNotSynced)
                             }
                         }
                     }

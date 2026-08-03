@@ -30,7 +30,11 @@ class FirestoreSettingsRepository(private val clock: Clock) : SettingsRepository
 
     override suspend fun save(uid: String, settings: UserSettings): Boolean {
         val payload = jsObject()
-        payload.language = settings.language
+        // Only what was actually set. Writing a null would clear a field the
+        // caller has no opinion about — the language picker knows nothing
+        // about autoplay, and two devices must not undo each other.
+        settings.language?.let { payload.language = it }
+        settings.autoplayNext?.let { payload.autoplayNext = it }
         payload.updatedAtMillis = clock.nowMillis()
         return runCatching {
             // merge: this document will gain fields later, and a settings write
@@ -56,8 +60,15 @@ class FirestoreSettingsRepository(private val clock: Clock) : SettingsRepository
 
     private fun ref(uid: String) = doc(Firebase.db, USERS, uid)
 
-    private fun read(snapshot: DocumentSnapshot): UserSettings =
-        UserSettings(language = dynString(snapshot.data().language))
+    private fun read(snapshot: DocumentSnapshot): UserSettings {
+        val data = snapshot.data()
+        return UserSettings(
+            language = dynString(data.language),
+            // Absent must stay absent: `dynBool` would turn "never set" into
+            // an explicit false and switch autoplay off on a fresh account.
+            autoplayNext = dynBoolOrNull(data.autoplayNext),
+        )
+    }
 
     private companion object {
         const val USERS = "users"

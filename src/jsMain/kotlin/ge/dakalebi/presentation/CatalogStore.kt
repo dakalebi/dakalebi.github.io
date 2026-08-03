@@ -8,6 +8,7 @@ import ge.dakalebi.domain.model.CatalogMeta
 import ge.dakalebi.domain.model.Episode
 import ge.dakalebi.domain.model.RefreshResult
 import ge.dakalebi.domain.model.WatchProgress
+import ge.dakalebi.domain.repository.CatalogCache
 import ge.dakalebi.domain.service.CatalogQueries
 import ge.dakalebi.domain.service.WatchStats
 import ge.dakalebi.domain.usecase.ClearEpisodeProgress
@@ -42,6 +43,7 @@ class CatalogStore(
     private val resetSeasonProgressUseCase: ResetSeasonProgress,
     private val resetAllProgressUseCase: ResetAllProgress,
     private val recordEpisodeDuration: RecordEpisodeDuration,
+    private val cache: CatalogCache,
 ) {
     var episodes: List<Episode> by mutableStateOf(emptyList())
         private set
@@ -115,9 +117,10 @@ class CatalogStore(
         refreshNote = progressLabel(0, 0)
         return try {
             val result = refreshCatalogUseCase { done, total -> refreshNote = progressLabel(done, total) }
-            val reloaded = loadCatalog()
-            episodes = reloaded.episodes
-            meta = reloaded.meta
+            // Straight from the rebuild rather than a re-read: asking Firestore
+            // to tell us what we just wrote costs another 932 reads.
+            episodes = result.catalog
+            meta = loadCatalog().meta
             Result.success(result)
         } catch (e: Throwable) {
             // Surface the raw failure: a mapped message hides which stage broke.
@@ -182,6 +185,10 @@ class CatalogStore(
         episodes = episodes.map {
             if (it.id == episodeId) it.copy(durationSeconds = seconds) else it
         }
+        // Durations are learned locally and do not move the catalog's refresh
+        // stamp, so without this the cache keeps serving the old value and
+        // every reload forgets the runtime it just measured.
+        cache.write(meta?.lastRefreshAtMillis, episodes)
     }
 
     // -------------------------------------------------------------- derived

@@ -9,20 +9,12 @@ import ge.dakalebi.domain.repository.CatalogRepository
 /**
  * Loads the catalog and its metadata.
  *
- * Metadata is decoration — the "last refreshed" line in the drawer — so losing
- * it must not fail the load. The episodes are not optional: if they cannot be
- * read the caller has to know, because the alternative is a screen that tells
- * the viewer the database is empty when it is merely unreachable.
+ * The episodes are not optional: if they cannot be read the caller has to
+ * know, because the alternative is a screen telling the viewer the database is
+ * empty when it is merely unreachable.
  */
-class LoadCatalog(
-    private val catalog: CatalogRepository,
-    private val onMetaFailure: (Throwable) -> Unit = {},
-) {
-    suspend operator fun invoke(): Catalog {
-        val episodes = catalog.listEpisodes()
-        val meta = runCatching { catalog.getMeta() }.onFailure(onMetaFailure).getOrNull()
-        return Catalog(episodes = episodes, meta = meta)
-    }
+class LoadCatalog(private val catalog: CatalogRepository) {
+    suspend operator fun invoke(): Catalog = catalog.load()
 }
 
 class RefreshCatalog(

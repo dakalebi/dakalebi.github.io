@@ -1,20 +1,24 @@
 package ge.dakalebi.di
 
-import ge.dakalebi.core.Log
 import ge.dakalebi.data.SystemClock
 import ge.dakalebi.data.firebase.FirebaseAccountRepository
+import ge.dakalebi.data.firebase.FirestoreAdminRepository
 import ge.dakalebi.data.firebase.FirestoreCatalogRepository
 import ge.dakalebi.data.firebase.FirestoreProgressRepository
 import ge.dakalebi.data.firebase.FirestoreSettingsRepository
 import ge.dakalebi.data.formula.FormulaApi
 import ge.dakalebi.data.local.BrowserPreferencesRepository
+import ge.dakalebi.data.local.LocalCatalogCache
 import ge.dakalebi.domain.Clock
 import ge.dakalebi.domain.repository.AccountRepository
+import ge.dakalebi.domain.repository.AdminRepository
+import ge.dakalebi.domain.repository.CatalogCache
 import ge.dakalebi.domain.repository.CatalogRepository
 import ge.dakalebi.domain.repository.PreferencesRepository
 import ge.dakalebi.domain.repository.ProgressRepository
 import ge.dakalebi.domain.repository.SettingsRepository
-import ge.dakalebi.domain.usecase.CanRefreshCatalog
+import ge.dakalebi.domain.usecase.ChangeAutoplay
+import ge.dakalebi.domain.usecase.CheckAdminRights
 import ge.dakalebi.domain.usecase.ChangeLanguage
 import ge.dakalebi.domain.usecase.ClearEpisodeProgress
 import ge.dakalebi.domain.usecase.LoadCatalog
@@ -29,7 +33,7 @@ import ge.dakalebi.domain.usecase.ResetAllProgress
 import ge.dakalebi.domain.usecase.ResetSeasonProgress
 import ge.dakalebi.domain.usecase.ResolveEpisodeVideo
 import ge.dakalebi.domain.usecase.SaveProgress
-import ge.dakalebi.domain.usecase.SeedLanguage
+import ge.dakalebi.domain.usecase.SeedSettings
 import ge.dakalebi.domain.usecase.SendPasswordReset
 import ge.dakalebi.domain.usecase.SignInWithEmail
 import ge.dakalebi.domain.usecase.SignInWithGoogle
@@ -55,10 +59,12 @@ import ge.dakalebi.presentation.ToastStore
  */
 class AppGraph(
     clock: Clock = SystemClock,
-    catalogRepository: CatalogRepository = FirestoreCatalogRepository(FormulaApi()),
+    catalogCache: CatalogCache = LocalCatalogCache(),
+    catalogRepository: CatalogRepository = FirestoreCatalogRepository(FormulaApi(), catalogCache),
     progressRepository: ProgressRepository = FirestoreProgressRepository(),
     settingsRepository: SettingsRepository = FirestoreSettingsRepository(clock),
     accountRepository: AccountRepository = FirebaseAccountRepository(),
+    adminRepository: AdminRepository = FirestoreAdminRepository(),
     preferencesRepository: PreferencesRepository = BrowserPreferencesRepository(),
 ) {
     val router = Router()
@@ -67,12 +73,7 @@ class AppGraph(
     val preferences = PreferencesStore(preferencesRepository)
 
     val catalog = CatalogStore(
-        loadCatalog = LoadCatalog(catalogRepository) {
-            // Metadata is decoration — the "last refreshed" line. Losing it must
-            // not fail the load, but it should still say so: a permission error
-            // here means the rules are wrong for `meta/catalog` too.
-            Log.w("catalog", "metadata unavailable", it)
-        },
+        loadCatalog = LoadCatalog(catalogRepository),
         loadProgress = LoadProgress(progressRepository),
         refreshCatalogUseCase = RefreshCatalog(catalogRepository, clock),
         saveProgressUseCase = SaveProgress(progressRepository, clock),
@@ -81,11 +82,12 @@ class AppGraph(
         resetSeasonProgressUseCase = ResetSeasonProgress(progressRepository),
         resetAllProgressUseCase = ResetAllProgress(progressRepository),
         recordEpisodeDuration = RecordEpisodeDuration(catalogRepository),
+        cache = catalogCache,
     )
 
     val session = SessionStore(
         observeAccount = ObserveAccount(accountRepository),
-        canRefreshCatalog = CanRefreshCatalog(accountRepository),
+        checkAdminRights = CheckAdminRights(adminRepository),
         signInWithEmail = SignInWithEmail(accountRepository),
         signUpWithEmail = SignUpWithEmail(accountRepository),
         signInWithGoogleUseCase = SignInWithGoogle(accountRepository),
@@ -97,7 +99,8 @@ class AppGraph(
         loadUserSettings = LoadUserSettings(settingsRepository),
         observeUserSettings = ObserveUserSettings(settingsRepository),
         changeLanguage = ChangeLanguage(settingsRepository),
-        seedLanguage = SeedLanguage(settingsRepository),
+        changeAutoplay = ChangeAutoplay(settingsRepository),
+        seedSettings = SeedSettings(settingsRepository),
         prefs = preferencesRepository,
     )
 

@@ -15,6 +15,7 @@ import ge.dakalebi.di.catalog
 import ge.dakalebi.di.preferences
 import ge.dakalebi.di.router
 import ge.dakalebi.di.session
+import ge.dakalebi.di.settings
 import ge.dakalebi.di.toasts
 import ge.dakalebi.domain.service.orderedQualityLabels
 import ge.dakalebi.i18n.S
@@ -75,7 +76,7 @@ fun WatchScreen(episodeId: String) {
     val savedSeconds = entry?.progressSeconds ?: 0
     val progressReady = !catalog.loading
     val nextEpisode = episode?.let { catalog.next(it) }
-    val autoplay = prefs.autoplayNext
+    val autoplay = settings().autoplayNext
 
     val shouldAutoplay = remember(episodeId) {
         prefs.playIntent(episodeId) != "paused"
