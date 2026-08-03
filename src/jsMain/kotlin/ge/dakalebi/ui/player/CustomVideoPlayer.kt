@@ -52,6 +52,9 @@ private class PlayerRefs {
     var pendingSeek: Double? = null
     var pendingPlay: Boolean = false
     var scrubbing: Boolean = false
+
+    /** Last position the animation loop saw, for detecting real progress. */
+    var lastTickTime: Double = -1.0
 }
 
 @Composable
@@ -131,6 +134,7 @@ fun CustomVideoPlayer(
 
     fun startLoop() {
         stopLoop()
+        refs.lastTickTime = -1.0
         fun tick(@Suppress("UNUSED_PARAMETER") ts: Double) {
             val v = refs.video
             if (v == null) {
@@ -139,6 +143,24 @@ fun CustomVideoPlayer(
             }
             paintBars()
             syncClock()
+
+            // A clock that is moving is the only trustworthy evidence that we
+            // are not waiting for data, and the only one every browser agrees
+            // on. Safari fires `stalled` repeatedly *during healthy playback* —
+            // measured against cdn.formula.ge, six times in 45 seconds while
+            // the clock ran normally — and then sends no event at all when
+            // data resumes, because as far as it is concerned nothing ever
+            // stopped. A spinner driven only by events therefore stays up over
+            // a playing video forever. This is the escape hatch.
+            //
+            // The upper bound keeps a seek from clearing it early: a seek jumps
+            // the clock by far more than one frame's worth, and the spinner
+            // should stay up until `seeked`.
+            val now = v.currentTime
+            val advanced = now > refs.lastTickTime && now - refs.lastTickTime < 1.0
+            if (buffering && advanced && !v.paused) buffering = false
+            refs.lastTickTime = now
+
             refs.raf = if (!v.paused && !v.ended) window.requestAnimationFrame(::tick) else null
         }
         refs.raf = window.requestAnimationFrame(::tick)
@@ -402,7 +424,13 @@ fun CustomVideoPlayer(
                 events.onPause()
             }
             addEventListener("waiting") { buffering = refs.video?.paused == false }
-            addEventListener("stalled") { buffering = refs.video?.paused == false }
+            // `stalled` is deliberately NOT wired to the spinner. It means "no
+            // data has arrived for three seconds", which for a progressively
+            // downloaded MP4 is the normal state once the browser has read
+            // ahead and stopped fetching — not a sign that playback halted.
+            // Safari fires it throughout untroubled playback; Chrome does not.
+            // `waiting` is the event that actually means "stopped, needs data",
+            // and the animation loop clears it once the clock moves again.
             addEventListener("seeking") { buffering = true }
             addEventListener("seeked") {
                 buffering = false
