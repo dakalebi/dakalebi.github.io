@@ -38,7 +38,7 @@ Output lands in `build/dist/js/productionExecutable/`.
 ./gradlew jsNodeTest
 ```
 
-28 domain tests, about a second, no browser. The domain layer is plain Kotlin —
+35 domain tests, about a second, no browser. The domain layer is plain Kotlin —
 no Compose, no Firebase, no DOM — which is what makes that possible.
 
 ## Layout
@@ -62,29 +62,18 @@ that check this are in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 ```
 episodes/{formulaEpisodeId}   the shared catalog, admin-writable
 meta/catalog                  lastRefreshAtMillis, seasonCount, episodeCount
-users/{uid}                   language — settings that follow the person
+users/{uid}                   language, autoplayNext — settings that follow the person
 users/{uid}/progress/{id}     progressSeconds, durationSeconds, isWatched, lastWatchedAtMillis
+admins/{uid}                  existence grants catalog-write; writable by nobody
 ```
 
 Document ids are Formula's own episode ids, so `#/watch/531` survives a full
 catalog rebuild.
 
 `meta/catalog.lastRefreshAtMillis` is bumped by exactly the operation that
-changes the catalog, which makes it a usable cache validator: one small read
-says whether the other 932 are still current.
-
-### Pending — PR #7
-
-Not yet on `main`. It adds `admins/{uid}` (existence grants catalog-write,
-writable by nobody), `autoplayNext` alongside `language`, and the catalog cache
-that turns a 932-read page load into a 1-read one. Today's `main` still carries
-a hardcoded admin allowlist in `FirebaseConfig.kt` and re-reads the whole
-catalog on every load — which exhausted the free tier's daily 50,000 reads in a
-single afternoon.
-
-It needs two console steps before merging, in order: create the admin document,
-**then** publish the rules. See
-[`docs/PROJECT-GUIDE.md`](docs/PROJECT-GUIDE.md#9-current-state-and-open-work).
+changes the catalog, which makes it the cache validator: one small read says
+whether the other 932 are still current. Without it a page load cost 932 reads
+and exhausted the free tier's daily 50,000 in an afternoon.
 
 ## Setup
 
@@ -103,9 +92,9 @@ The consoles are yours; the code is already written against them.
    are public by design: they identify the project, they authorize nothing.
 6. **Firestore → Rules** → paste `firebase/firestore.rules` and publish. These
    rules are the entire security boundary — there is no server behind them.
-7. Catalog-refresh rights are a UID in `FirebaseConfig.ADMIN_UIDS`, which must
-   match the allowlist in the rules. PR #7 replaces both with an `admins/{uid}`
-   document created by hand in the console.
+7. To grant catalog-refresh rights, create `admins/{uid}` by hand in the
+   console. That collection is write-denied to every client, which is the
+   point — a flag the user could write is a flag they could grant themselves.
 
 ### GitHub Pages
 
