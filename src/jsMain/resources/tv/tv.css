@@ -402,8 +402,8 @@ body {
 
    The **standard** variant, which pushes the content aside, rather than the modal one
    which overlays it behind a scrim. That is what YouTube does, and it is the reason
-   `.tv-shell` animates `padding-left` below rather than the rail animating over the
-   top of anything.
+   `.tv-root` animates `padding-left` rather than the rail animating over the top of
+   anything.
 
    No `:hover` anywhere: expansion is driven by focus, which the engine reports. */
 .tv-rail-nav {
