@@ -89,6 +89,10 @@ fun TvSignInScreen() {
             Div({
                 classes("tv-btn", "tv-btn-primary")
                 focusItem("submit")
+                // Disabled by ARIA only: the press is ignored while busy or blank, but
+                // the control stays focusable, because the ring must not vanish from
+                // under the viewer while a sign-in is in flight.
+                actsAsButton(S.signIn, disabled = busy)
                 onClick { submit() }
             }) { Text((if (busy) S.loading else S.signIn).caps) }
         }

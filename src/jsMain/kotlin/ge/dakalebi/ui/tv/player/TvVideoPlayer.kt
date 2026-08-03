@@ -16,6 +16,9 @@ import ge.dakalebi.ui.Icon
 import ge.dakalebi.ui.Icons
 import ge.dakalebi.ui.classNames
 import ge.dakalebi.ui.player.PlayerEvents
+import ge.dakalebi.ui.tv.actsAsButton
+import ge.dakalebi.ui.tv.actsAsOption
+import ge.dakalebi.ui.tv.actsAsOptionGroup
 import ge.dakalebi.ui.tv.focus.Direction
 import ge.dakalebi.ui.tv.focus.FocusAxis
 import ge.dakalebi.ui.tv.focus.SpatialNav
@@ -484,11 +487,16 @@ fun TvVideoPlayer(
         }
 
         if (qualityOpen && ordered.size > 1) {
-            Div({ classes("tv-q-menu"); focusGroup("quality", FocusAxis.Y) }) {
+            Div({
+                classes("tv-q-menu")
+                focusGroup("quality", FocusAxis.Y)
+                actsAsOptionGroup(S.quality)
+            }) {
                 ordered.forEach { label ->
                     Div({
                         classNames("tv-q-item", if (label == quality) "on" else null)
                         focusItem("q-$label", entry = label == quality)
+                        actsAsOption(selected = label == quality)
                         onClick { qualityOpen = false; onQualitySelected(label) }
                     }) { Text(label) }
                 }
@@ -526,7 +534,13 @@ fun TvVideoPlayer(
             Div({
                 classes("tv-scrub")
                 focusItem("scrub", entry = true)
+                // A slider, not a button: it reports a position rather than firing an action,
+                // and the position is the thing worth announcing.
+                attr("role", "slider")
                 attr("aria-label", S.timeline)
+                attr("aria-valuemin", "0")
+                attr("aria-valuemax", durationSec.toString())
+                attr("aria-valuenow", currentSec.toString())
             }) {
                 Div({ classes("tv-scrub-buf"); ref { el -> refs.fillBuf = el; onDispose { refs.fillBuf = null } } })
                 Div({ classes("tv-scrub-cur"); ref { el -> refs.fillCur = el; onDispose { refs.fillCur = null } } })
@@ -554,21 +568,21 @@ fun TvVideoPlayer(
                     Div({
                         classes("tv-ctl-btn")
                         focusItem("back10")
-                        attr("aria-label", S.back10)
+                        actsAsButton(S.back10)
                         onClick { skip(-1) }
                     }) { Icon(Icons.back10) }
 
                     Div({
                         classes("tv-ctl-btn", "tv-ctl-btn-lg")
                         focusItem("play")
-                        attr("aria-label", if (playing) S.pause else S.play)
+                        actsAsButton(if (playing) S.pause else S.play)
                         onClick { togglePlay() }
                     }) { Icon(if (playing) Icons.pause else Icons.play) }
 
                     Div({
                         classes("tv-ctl-btn")
                         focusItem("forward10")
-                        attr("aria-label", S.forward10)
+                        actsAsButton(S.forward10)
                         onClick { skip(1) }
                     }) { Icon(Icons.forward10) }
                 }
@@ -578,7 +592,7 @@ fun TvVideoPlayer(
                         Div({
                             classes("tv-ctl-btn", "tv-q-btn", "mono")
                             focusItem("quality")
-                            attr("aria-label", S.quality)
+                            actsAsButton(S.quality)
                             onClick { qualityOpen = !qualityOpen }
                         }) { Text(quality ?: ordered.first()) }
                     }

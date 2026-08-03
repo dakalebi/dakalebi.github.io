@@ -298,6 +298,7 @@ window.dispatchEvent(e);
 | N19b | a focused tile vs its neighbour | **identical rectangles and `transform: none`.** The ring is the whole effect; nothing scales, lifts or reflows. Measured on YouTube, whose browse tiles do not scale either |
 | N19c | a focused tile | 10%-white plate behind it, artwork corners square (0px) inside the rounded ring, title `#f1f1f1` against `#aaa` unfocused |
 | N20 | `/tv/` and `/?ui=tv` | `logo.png` resolves to the site root from both, and loads |
+| N20a | every `[data-tv-item]` on every screen | either a semantic element (`<a>`) **or** an explicit `role`. Most TV controls are `Div`s on purpose — a `<button>` brings a user-agent focus ring and its own activation behaviour, both of which fight an engine where the ring is the cursor — so the semantics have to be put back by hand. One-liner: <br>`[...document.querySelectorAll('[data-tv-item]')].filter(e => e.tagName !== 'A' && !e.getAttribute('role'))` <br>must be empty. Also: no `[role=radio]` outside a `[role=radiogroup]`, and no `aria-pressed` on anything that is not `role="button"` (it is inert there) |
 | N20b | the rail, ring outside it | 56px wide, labels at opacity 0, content inset 104px |
 | N20c | the rail, ring inside it | 260px wide, labels at opacity 1, content inset 308px. The content is **pushed**, not covered — the standard drawer variant, not the modal one |
 
