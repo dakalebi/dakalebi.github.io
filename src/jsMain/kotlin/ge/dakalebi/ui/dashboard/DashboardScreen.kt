@@ -26,6 +26,7 @@ import ge.dakalebi.ui.Icon
 import ge.dakalebi.ui.Icons
 import ge.dakalebi.ui.Rail
 import ge.dakalebi.ui.Thumb
+import ge.dakalebi.ui.assetBase
 import ge.dakalebi.ui.classNames
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -236,7 +237,7 @@ private fun DashboardNav(onMenu: () -> Unit) {
         }) { Icon(Icons.menu, S.menu) }
         // The mark is lettering, so it *is* the wordmark — the name lives in
         // `alt` rather than being repeated beside it.
-        Img(src = "logo.png", alt = S.appName) { classes("nav-mark") }
+        Img(src = "${assetBase}logo.png", alt = S.appName) { classes("nav-mark") }
         Div({ classes("nav-right") }) {
             if (catalog.refreshing) {
                 Span({

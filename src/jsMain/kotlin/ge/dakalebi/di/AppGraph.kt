@@ -7,6 +7,7 @@ import ge.dakalebi.data.firebase.FirestoreCatalogRepository
 import ge.dakalebi.data.firebase.FirestoreProgressRepository
 import ge.dakalebi.data.firebase.FirestoreSettingsRepository
 import ge.dakalebi.data.formula.FormulaApi
+import ge.dakalebi.data.local.BrowserKeyValueStore
 import ge.dakalebi.data.local.BrowserPreferencesRepository
 import ge.dakalebi.data.local.LocalCatalogCache
 import ge.dakalebi.domain.Clock
@@ -41,10 +42,12 @@ import ge.dakalebi.domain.usecase.SignOut
 import ge.dakalebi.domain.usecase.SignUpWithEmail
 import ge.dakalebi.presentation.CatalogStore
 import ge.dakalebi.presentation.PreferencesStore
-import ge.dakalebi.presentation.Router
+import ge.dakalebi.presentation.HashRouter
 import ge.dakalebi.presentation.SessionStore
 import ge.dakalebi.presentation.SettingsStore
 import ge.dakalebi.presentation.ToastStore
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.MainScope
 
 /**
  * The composition root: the one place that says which implementation is which.
@@ -59,7 +62,9 @@ import ge.dakalebi.presentation.ToastStore
  */
 class AppGraph(
     clock: Clock = SystemClock,
-    catalogCache: CatalogCache = LocalCatalogCache(),
+    /** Lives as long as the graph, which is as long as the page. */
+    scope: CoroutineScope = MainScope(),
+    catalogCache: CatalogCache = LocalCatalogCache(BrowserKeyValueStore()),
     catalogRepository: CatalogRepository = FirestoreCatalogRepository(FormulaApi(), catalogCache),
     progressRepository: ProgressRepository = FirestoreProgressRepository(),
     settingsRepository: SettingsRepository = FirestoreSettingsRepository(clock),
@@ -67,8 +72,9 @@ class AppGraph(
     adminRepository: AdminRepository = FirestoreAdminRepository(),
     preferencesRepository: PreferencesRepository = BrowserPreferencesRepository(),
 ) {
-    val router = Router()
-    val toasts = ToastStore()
+    /** Typed as the implementation, because only the entry point calls `start()`. */
+    val router = HashRouter()
+    val toasts = ToastStore(scope)
 
     val preferences = PreferencesStore(preferencesRepository)
 

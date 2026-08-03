@@ -1,0 +1,46 @@
+/* ============================================================================
+   დაქალები — the design tokens, shared by every front end.
+
+   Split out of styles.css so the TV stylesheet can share the palette without
+   also inheriting a phone type scale and nineteen `:hover` rules. This block
+   references nothing below it, which is what makes the split safe.
+
+   Deliberately single-theme: this is a cinema surface, and a light variant
+   would fight the video it exists to frame. True black rather than charcoal so
+   the player has no visible seam against the page on OLED screens.
+   ========================================================================== */
+
+:root {
+  --bg: #000000;
+  --elev: #0d0d0f;
+  --elev2: #141417;
+  --line: #1c1c20;
+  --line-strong: #2a2a30;
+  --tx: #ffffff;
+  --tx-dim: #b6b6bd;
+  --mut: #8a8a93;
+  --red: #e1352f;
+  --red-dim: #7a1c19;
+  --ok: #3ecf8e;
+
+  --pad: clamp(16px, 3.4vw, 40px);
+  --rail-gap: 14px;
+
+  /* Rounding scale. The original 2px was a deliberate "hard cut" look; the
+     brief now asks for something closer to Apple's, where the radius grows
+     with the surface and controls are capsules. */
+  --radius: 14px;      /* cards, panels, the player */
+  --radius-sm: 9px;    /* small chrome sitting on top of media */
+  --radius-pill: 999px;
+
+  /* Apple's standard ease-out. Short, decisive, no bounce. */
+  --ease: cubic-bezier(0.32, 0.72, 0, 1);
+
+  --f-sans: "Noto Sans Georgian", "BPG Arial", Sylfaen, ui-sans-serif, system-ui,
+    -apple-system, "Segoe UI", sans-serif;
+  /* Timecodes, counters and quality labels. A face of its own so numbers read
+     as data rather than as more of the sentence around them. */
+  --f-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  color-scheme: dark;
+}

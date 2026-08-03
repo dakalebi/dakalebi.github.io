@@ -48,6 +48,12 @@ object Icons {
            <text x="12" y="15.6" font-size="8" font-family="ui-monospace,monospace"
                  fill="currentColor" stroke="none" text-anchor="middle">10</text>""",
     )
+    /** [back10] mirrored. A remote has no keyboard, so forward needs a button. */
+    val forward10 = svg(
+        """<path d="M20.5 8.5A9 9 0 1 0 21 12"/><path d="M20.5 3.5v5h-5"/>
+           <text x="12" y="15.6" font-size="8" font-family="ui-monospace,monospace"
+                 fill="currentColor" stroke="none" text-anchor="middle">10</text>""",
+    )
     val volumeOn = svg(
         """<path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z" fill="currentColor"/>
            <path d="M16 9a4 4 0 0 1 0 6"/><path d="M18.5 6.5a7.5 7.5 0 0 1 0 11"/>""",

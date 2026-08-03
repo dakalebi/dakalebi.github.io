@@ -8,7 +8,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import ge.dakalebi.core.Log
-import ge.dakalebi.core.fallbackGradient
 import ge.dakalebi.core.formatDuration
 import ge.dakalebi.di.router
 import ge.dakalebi.di.toasts

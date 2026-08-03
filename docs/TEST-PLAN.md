@@ -235,3 +235,112 @@ rather than the absence of it.
 | M4 | Change a pref in a second tab | First tab syncs via the `storage` event |
 | M5 | Set a volume, reload | Documented either way — is volume meant to persist? |
 | M6 | Hard reload | Preferences survive |
+
+---
+
+## N — the TV UI at `/tv/`
+
+Unlike every section above, this one is **scriptable**, and that is not an accident
+of the implementation but a property of it. The focus engine moves the ring with
+plain `element.focus()` calls on raw DOM nodes, so unlike anything Compose renders
+it does not need a frame — which means it works, and can be asserted on, in a
+headless or occluded browser where recomposition is stopped.
+
+Serve the built output, size the window to **960x540** (what a 1080p Android TV
+WebView actually reports), and open one of two URLs:
+
+- `/tv/` — the real app. Everything past sign-in needs a Firebase session.
+- `/tv/?ui=tv-demo` — **the same screens against fixtures.** No Firebase, three
+  seasons of eight, and a viewing history arranged so the hero, the continue rail
+  and the progress bars all have something to show. This is how the screens are
+  verified at all, and it also pre-loads before the first paint, because a screen
+  that needs a second frame to show its data shows nothing in a browser whose
+  `requestAnimationFrame` is stopped.
+
+Then drive it:
+
+```js
+const at = () => document.activeElement?.getAttribute('data-tv-item');
+const press = k => { window.dispatchEvent(
+  new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true })); return at(); };
+```
+
+For the remotes that report no `key`, set `keyCode` explicitly:
+
+```js
+const e = new KeyboardEvent('keydown', { key: 'Unidentified', bubbles: true });
+Object.defineProperty(e, 'keyCode', { value: 10009 });   // Tizen Back; 461 is webOS
+window.dispatchEvent(e);
+```
+
+| ID | Press | Expected |
+|---|---|---|
+| N1 | page load | ring lands on the first item, unprompted |
+| N2 | `ArrowDown` in a `Y` group | next item in that group |
+| N3 | `ArrowDown` at the end of a `Y` group | first item of the band below |
+| N4 | `ArrowRight` in an `X` rail | next tile; the rail's `scrollLeft` grows |
+| N5 | `ArrowRight` at the end of a rail | **nothing moves.** Running out of rail is a wall, not a jump to another band |
+| N6 | `ArrowUp` out of a rail, then `ArrowDown` back into it | returns to the tile you left, not the first one |
+| N7 | `ArrowDown` into a grid | the column nearest where you came from |
+| N8 | `ArrowRight` at the end of a grid row | nothing moves — no wrap to the next row |
+| N9 | `ArrowDown` / `ArrowUp` in a grid | one row, straight down or up |
+| N10 | `ArrowDown` out of a nested group | the parent group's next row, not nothing |
+| N11 | `ArrowUp` back into a nested group | the item that group remembers |
+| N12 | any horizontal move | the page's own `scrollTop` does **not** change |
+| N13 | any vertical move | the page scrolls, and the focused band's heading stays visible |
+| N14 | `Enter` | clicks the focused element, so `<a href>` and `onClick` behave as with a mouse |
+| N15 | after any move | exactly **one** element has `tabIndex === 0`, and it is the focused one |
+| N16 | `Backspace`, `Escape`, keyCode 10009, keyCode 461 | all reach Back; none move the ring |
+| N17 | legacy `Up`/`Down` names, and keyCode 37-40 with no `key` | move as the arrows do |
+| N18 | `Cmd`/`Ctrl`/`Alt` + arrow | ignored, so browser history and OS shortcuts still work |
+| N19 | any `[data-tv-item]` with the ring | computes a 3px solid outline **even when `document.hasFocus()` is false** |
+| N20 | `/tv/` and `/?ui=tv` | `logo.png` resolves to the site root from both, and loads |
+
+Not scriptable, and still device-only:
+
+- Whether `KEYCODE_BACK` reaches the page at all inside an Android WebView. Three
+  paths are implemented for it (a key, a `popstate`, and `window.__tvShell.onBack`);
+  which one fires is the host's choice.
+- Real overscan. Only a panel settles `--safe-x` / `--safe-y`.
+- Whether a focus ring animating across a large grid is smooth on a television's
+  SoC. If it is not, the ring is the thing to simplify.
+
+### Screens, against `?ui=tv-demo`
+
+| ID | Screen | Expected |
+|---|---|---|
+| N21 | browse, on arrival | ring on the hero's primary action, **not** the top bar. A screen declares its entry point; the engine would otherwise take whatever is first in the document |
+| N22 | hero | eyebrow reads continue / last-watched / fresh; remaining time when part-watched; two stops, resume and start-over |
+| N23 | continue rail | only started-and-unfinished episodes, most recent first |
+| N24 | tiles | `E<n>` badge, duration, watched tick, and a progress bar only at 1% or more — three seconds of 25 minutes would otherwise draw an empty track |
+| N25 | season chips | one selected; `Left`/`Right` move the ring, and only `Enter` changes the season |
+| N26 | season grid | column count comes from CSS at the current width; the engine never declares it |
+| N27 | `Enter` on a tile | `location.hash` becomes `#/watch/<id>` |
+| N28 | settings, on arrival | ring on the currently selected language |
+| N29 | settings, language | `ქართული` renders in Mtavruli and `English` is left alone, each cased by its own language |
+| N30 | settings, `Down` from the language row | escapes the nested segment to autoplay, then sign-out, then walls |
+| N31 | settings footer | build number, short commit and publish time as `dd.MM.yyyy, HH:mm`, plus the catalog's last-refresh line |
+| N32 | sign-in | email and password only. **No Google button** — Google blocks OAuth in embedded WebViews, so it could only ever fail |
+| N33 | `/#/settings` on the **web** | falls through to the dashboard. The route is inert there by design |
+
+### The TV player
+
+Reachable at `/tv/?ui=tv-demo#/watch/204`. The fixture's video URLs do not resolve
+on purpose, so the chrome, the focus behaviour and the input routing are all
+verifiable while playback itself is not — that part needs a real television.
+
+| ID | Press | Expected |
+|---|---|---|
+| N34 | any arrow, player mounted | **focus moves.** This is the whole point of `PlayerKeyPolicy`: the web player `preventDefault`s all four arrows for its whole lifetime, which would freeze D-pad navigation for as long as it is on screen |
+| N35 | a consumed arrow | `defaultPrevented` is true, so the document does not also scroll |
+| N36 | the `<video>` element | carries `playsinline`, and **never `crossorigin`** — the CDN sends no CORS headers and the attribute breaks playback outright |
+| N37 | on arrival | the player renders from the URL already in the catalog, without waiting for the live resolve |
+| N38 | control row | play, −10, +10, time, quality. `Right` walls at the end |
+| N39 | `Back` once | hides the chrome; the route does not change |
+| N40 | `Back` again | leaves for the browse screen. It must **not** pop the player's own input layer and strand a player nothing is listening to — that is what `TvLayer.dismissible = false` is for |
+| N41 | quality button | lists renditions best-first from `orderedQualityLabels`, never from map order |
+| N42 | held `Left`/`Right` | one seek per gesture, not per press. `TvSeekTest` pins the rule; the visible part is the centred readout |
+
+Device-only, still: whether playback is smooth, whether a held D-pad on real
+hardware produces the repeat rate `TvSeek.SETTLE_MS` assumes, and whether the
+chrome's fade is smooth on a television's SoC.

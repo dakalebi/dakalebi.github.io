@@ -1,0 +1,662 @@
+/* ============================================================================
+   The 10-foot stylesheet. Loaded only by tv/index.html, after tokens.css.
+
+   Two things make this a separate sheet rather than a media query on web.css:
+
+   1. There is no pointer. Nineteen `:hover` rules and a `@media (hover: none)`
+      block in web.css describe affordances a remote cannot produce, and one of
+      them force-shows controls that do not exist here.
+   2. The type scale is different in kind, not degree. Every size in web.css is a
+      hardcoded px literal tuned for arm's length.
+
+   Sizes are clamped against `vw` with **960px as the reference width**, because
+   that is what a 1080p Android TV WebView actually reports (device pixel ratio
+   2). Opening this page on a 1920px desktop scales up; a 720p set scales down.
+   ========================================================================== */
+
+:root {
+  /* Overscan. A television crops roughly 5% of each edge, and that is not
+     something the page can detect — it has to be assumed. 5% of 960 is 48. */
+  --safe-x: clamp(24px, 5vw, 72px);
+  --safe-y: clamp(16px, 5vh, 40px);
+
+  /* Type scale. Reference values at 960px: 14 / 16 / 20 / 28 / 40. */
+  --t-label: clamp(12px, 1.5vw, 20px);
+  --t-meta: clamp(13px, 1.7vw, 22px);
+  --t-body: clamp(16px, 2.1vw, 27px);
+  --t-title: clamp(21px, 2.9vw, 38px);
+  --t-h: clamp(30px, 4.2vw, 54px);
+
+  /* Spacing. A rail gap has to read as a gap from across a room. */
+  --tv-gap: clamp(12px, 1.7vw, 22px);
+  --tv-gap-lg: clamp(20px, 3vw, 40px);
+
+  /* The focus ring. This is the entire cursor, so it is not subtle. */
+  --focus: var(--tx);
+  --focus-w: 3px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--tx);
+  font-family: var(--f-sans);
+  font-size: var(--t-body);
+  /* A television has no scrollbar and nothing to scroll it with. Panning is done
+     by moving focus, and the focus engine scrolls the container itself. */
+  overflow: hidden;
+}
+
+/* The mount point Compose renders into. It needs an explicit height or the
+   percentage on `.tv-root` below has nothing to resolve against and collapses to
+   the content height — which makes the screen taller than the television, with
+   nothing able to scroll it. */
+#root {
+  height: 100%;
+}
+
+.mono {
+  font-family: var(--f-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------------ focus
+   The ring is driven by `[data-tv-focus]`, which the engine maintains, and only
+   secondarily by `:focus`.
+
+   `:focus` alone is not enough. Measured: with the document not frontmost,
+   `document.activeElement` was still the right element while
+   `document.hasFocus()` was false and `:focus` did not match — so the ring
+   disappeared. An Android WebView that has not been given Android focus is that
+   state exactly, and on a television the ring is the entire cursor.
+
+   Not `:focus-visible` either: that is a heuristic about whether the user "meant"
+   it, and with no pointer in the room there is no case where a ring is unwanted. */
+[data-tv-item][data-tv-focus],
+[data-tv-item]:focus {
+  outline: var(--focus-w) solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* --------------------------------------------------------------- structure */
+/* The vertical scroller for the whole screen.
+   `auto`, and it has to be a real scroller: the focus engine centres the focused
+   band on this element, and an `overflow: visible` box reports
+   `scrollHeight > clientHeight` while ignoring `scrollTop`, so vertical centring
+   would silently do nothing and the ring would walk off the bottom of the screen.
+   Same trap as the rails, one level up. */
+.tv-root {
+  height: 100%;
+  padding: var(--safe-y) var(--safe-x);
+  display: flex;
+  flex-direction: column;
+  gap: var(--tv-gap-lg);
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.tv-root::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+/* Bands keep their own height. A flex child shrinks by default, so without this
+   a screen with more content than fits silently squashes every band to make it
+   fit instead of overflowing — which means the root never scrolls, and the focus
+   engine has nothing to centre the focused band in. Measured: with shrink left on,
+   `scrollHeight === clientHeight` no matter how many rails are added. */
+.tv-root > * {
+  flex: none;
+}
+
+.tv-note {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  color: var(--mut);
+  font-size: var(--t-title);
+}
+
+.tv-h {
+  margin: 0;
+  font-size: var(--t-h);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.tv-sub {
+  margin: 0;
+  font-size: var(--t-meta);
+  color: var(--tx-dim);
+}
+
+/* ------------------------------------------------------------------ shared
+   Rails and grids are used by every band, so they are declared once. Both are
+   real scrollers (`auto`, bar suppressed) because the focus engine drives them,
+   and neither uses `scroll-behavior: smooth` — see the notes at the top. */
+.tv-band {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tv-gap);
+  min-width: 0;
+}
+
+.tv-rail {
+  display: flex;
+  gap: var(--tv-gap);
+  overflow-x: auto;
+  scrollbar-width: none;
+  /* Room for the ring, which sits 2px outside the box and would otherwise be
+     clipped by the scroller on the first and last item. */
+  padding: 4px;
+  margin: -4px;
+}
+
+.tv-rail::-webkit-scrollbar,
+.tv-grid::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.tv-grid {
+  display: grid;
+  /* `auto-fill`, so the column count is CSS's decision at every width. The focus
+     engine reads it back off the rectangles rather than being told. */
+  grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr));
+  gap: var(--tv-gap);
+  padding: 4px;
+  margin: -4px;
+}
+
+/* ------------------------------------------------------------------- tiles */
+.tv-tile {
+  flex: none;
+  width: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-decoration: none;
+  color: var(--tx);
+  border-radius: var(--radius);
+}
+
+.tv-tile-art {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  /* A definite width is what keeps `aspect-ratio` driving the height rather than
+     the reverse — the trap that made the web hero wider than a phone. */
+  width: 100%;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: var(--elev2);
+}
+
+.tv-tile-art img,
+.tv-tile-art .tile-fallback {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.tv-tile-badge,
+.tv-tile-dur,
+.tv-tile-seen {
+  position: absolute;
+  font-size: var(--t-label);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.66);
+  color: var(--tx);
+}
+
+.tv-tile-badge { top: 6px; left: 6px; }
+.tv-tile-dur { bottom: 6px; right: 6px; }
+.tv-tile-seen { top: 6px; right: 6px; color: var(--ok); }
+
+.tv-tile-prog {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.24);
+}
+
+/* A child `div`, not an `<i>`. The web sheet had eight rules pointed at elements
+   Compose never emits, and every one of them was a fill with no colour. */
+.tv-tile-prog > div {
+  height: 100%;
+  background: var(--red);
+}
+
+.tv-tile-name {
+  font-size: var(--t-label);
+  color: var(--tx-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------------------------------------------------------------- top bar */
+.tv-topbar {
+  display: flex;
+  align-items: center;
+  gap: var(--tv-gap);
+}
+
+.tv-mark {
+  height: clamp(22px, 3vw, 40px);
+  width: auto;
+}
+
+.grow { flex: 1 1 auto; }
+
+/* ------------------------------------------------------------------- hero */
+.tv-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: var(--tv-gap-lg);
+  align-items: center;
+}
+
+.tv-hero-art {
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: var(--elev2);
+}
+
+.tv-hero-art img,
+.tv-hero-art .tile-fallback {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.tv-hero-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tv-gap);
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.tv-hero-sub { color: var(--tx-dim); font-size: var(--t-meta); }
+
+.tv-hero-acts { display: flex; gap: var(--tv-gap); padding: 4px; margin: -4px; }
+
+.tv-eyebrow {
+  font-size: var(--t-label);
+  letter-spacing: 0.14em;
+  color: var(--red);
+}
+
+/* --------------------------------------------------------------- controls */
+.tv-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0.55em 1.5em;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-pill);
+  background: var(--elev);
+  color: var(--tx);
+  font-family: var(--f-sans);
+  font-size: var(--t-meta);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.tv-btn-primary {
+  background: var(--tx);
+  color: #000;
+  border-color: var(--tx);
+  font-weight: 600;
+}
+
+.tv-chip {
+  flex: none;
+  padding: 0.45em 1.2em;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-pill);
+  background: var(--elev);
+  color: var(--tx-dim);
+  font-size: var(--t-meta);
+  white-space: nowrap;
+}
+
+.tv-chip.on {
+  background: var(--red);
+  border-color: var(--red);
+  color: var(--tx);
+}
+
+/* --------------------------------------------------------------- settings */
+.tv-settings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tv-gap-lg);
+  max-width: 900px;
+}
+
+.tv-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--tv-gap);
+  padding: 4px;
+  margin: -4px;
+}
+
+.tv-row-label { font-size: var(--t-body); }
+
+.tv-seg { display: flex; gap: 8px; }
+
+.tv-seg-item {
+  padding: 0.45em 1.2em;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-pill);
+  background: var(--elev);
+  color: var(--tx-dim);
+  font-size: var(--t-meta);
+}
+
+.tv-seg-item.on { background: var(--tx); color: #000; border-color: var(--tx); }
+
+/* iOS proportions, scaled for the room. */
+.tv-switch {
+  position: relative;
+  width: 74px;
+  height: 42px;
+  flex: none;
+  border-radius: var(--radius-pill);
+  background: #39393d;
+  transition: background 0.25s var(--ease);
+}
+
+.tv-switch.on { background: var(--red); }
+
+.tv-switch > div {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.45);
+  transition: transform 0.25s var(--ease);
+}
+
+.tv-switch.on > div { transform: translateX(32px); }
+
+.tv-foot { font-size: var(--t-label); color: var(--mut); }
+
+/* ---------------------------------------------------------------- sign in */
+.tv-signin {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tv-gap);
+  align-items: flex-start;
+  justify-content: center;
+  height: 100%;
+  max-width: 640px;
+}
+
+.tv-signin-mark { height: clamp(30px, 4vw, 56px); width: auto; }
+
+.tv-signin-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tv-gap);
+  align-self: stretch;
+  padding: 4px;
+  margin: -4px;
+}
+
+/* 16px minimum is what stops a focus zoom on iOS if this page is ever opened on a
+   phone; on a television it is simply the smallest readable size. */
+.tv-field {
+  font-size: var(--t-body);
+  font-family: var(--f-sans);
+  padding: 0.7em 1em;
+  border-radius: var(--radius);
+  border: 1px solid var(--line-strong);
+  background: var(--elev);
+  color: var(--tx);
+}
+
+/* The web sheet sets `.field:focus { outline: none }`, which on a television is a
+   dead end with no way out. This sheet never loads that rule, and the ring above
+   applies here like anywhere else — stated so nobody re-adds it. */
+.tv-field::placeholder { color: var(--mut); }
+
+/* ------------------------------------------------------------------ toasts
+   The host is reused from the web UI unchanged; only the placement is new. */
+.toasts {
+  position: fixed;
+  left: 50%;
+  bottom: var(--safe-y);
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 40;
+}
+
+.toast {
+  padding: 0.6em 1.4em;
+  border-radius: var(--radius-pill);
+  background: var(--elev2);
+  border: 1px solid var(--line-strong);
+  font-size: var(--t-meta);
+}
+
+.toast.err { border-color: var(--red); }
+.toast.ok { border-color: var(--ok); }
+
+/* The hero's heading names an episode, it is not the page title, and at the
+   width the body column gets it would otherwise break mid-label and orphan the
+   episode number on a line of its own. Measured at 960px: "სეზონი 2 · სერია 4"
+   wrapped after "სერია". */
+.tv-hero .tv-h {
+  font-size: var(--t-title);
+  text-wrap: balance;
+}
+
+/* ------------------------------------------------------------------ player
+   The watch screen fills the panel: overscan padding would letterbox the video
+   inside a frame the television is already cropping. */
+.tv-root-bare {
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+}
+
+.tv-player {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: #000;
+}
+
+.tv-player video {
+  width: 100%;
+  height: 100%;
+  /* `contain`, not `cover`: cropping someone's episode to fill the panel is worse
+     than the bars. */
+  object-fit: contain;
+  display: block;
+}
+
+/* The control bar and the thin line are the only two states, and exactly one of
+   them is visible at any moment — so there is never a frame with no position
+   indicator at all. */
+.tv-ctl {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: var(--safe-y) var(--safe-x);
+  display: flex;
+  flex-direction: column;
+  gap: var(--tv-gap);
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.92), rgba(0, 0, 0, 0));
+  transition: opacity 0.25s var(--ease);
+}
+
+.tv-ctl.hide {
+  opacity: 0;
+  /* Focus must not stay on a control nobody can see. */
+  visibility: hidden;
+}
+
+.tv-scrub {
+  position: relative;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.24);
+  overflow: hidden;
+}
+
+.tv-scrub-buf,
+.tv-scrub-cur {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0;
+}
+
+.tv-scrub-buf { background: rgba(255, 255, 255, 0.34); }
+.tv-scrub-cur { background: var(--red); }
+
+.tv-ctl-row {
+  display: flex;
+  align-items: center;
+  gap: var(--tv-gap);
+  padding: 4px;
+  margin: -4px;
+}
+
+.tv-ctl-btn {
+  display: grid;
+  place-items: center;
+  min-width: 56px;
+  height: 56px;
+  padding: 0 1em;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--tx);
+}
+
+/* One rule rescales every glyph: `Icons.svg()` hardcodes width="20", and a
+   presentation attribute has zero specificity, so CSS always wins. */
+.tv-ctl-btn .ic svg {
+  width: 28px;
+  height: 28px;
+}
+
+.tv-q-btn { font-size: var(--t-meta); }
+
+.tv-time {
+  font-size: var(--t-meta);
+  color: var(--tx-dim);
+  white-space: nowrap;
+}
+
+.tv-thinbar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.18);
+  transition: opacity 0.25s var(--ease);
+}
+
+.tv-thinbar.hide { opacity: 0; }
+
+.tv-thinbar > div {
+  height: 100%;
+  background: var(--red);
+}
+
+/* The seek readout. The only confirmation that a press registered, since the seek
+   itself is deliberately deferred until the gesture ends. */
+.tv-seek-osd {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  padding: 0.5em 1.2em;
+  border-radius: var(--radius);
+  background: rgba(0, 0, 0, 0.78);
+  font-size: var(--t-title);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.tv-q-menu {
+  position: absolute;
+  right: var(--safe-x);
+  bottom: calc(var(--safe-y) + 90px);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border-radius: var(--radius);
+  background: rgba(0, 0, 0, 0.9);
+  border: 1px solid var(--line-strong);
+}
+
+.tv-q-item {
+  padding: 0.45em 1.4em;
+  border-radius: var(--radius-sm);
+  font-family: var(--f-mono);
+  font-size: var(--t-meta);
+  color: var(--tx-dim);
+}
+
+.tv-q-item.on { color: var(--tx); background: rgba(255, 255, 255, 0.14); }
+
+.tv-spinner {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  border: 4px solid rgba(255, 255, 255, 0.22);
+}
+
+.tv-spinner > div {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 4px solid transparent;
+  border-top-color: var(--tx);
+  margin: -4px;
+  animation: tv-spin 0.9s linear infinite;
+}
+
+@keyframes tv-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tv-spinner > div { animation: none; }
+  .tv-ctl, .tv-thinbar { transition: none; }
+}
