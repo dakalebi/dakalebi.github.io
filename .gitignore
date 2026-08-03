@@ -3,6 +3,9 @@
 build/
 !gradle/wrapper/gradle-wrapper.jar
 
+# Kotlin compiler session state, written into the project root.
+.kotlin/
+
 # Kotlin/JS — the yarn lockfile IS committed so CI resolves the same npm tree.
 node_modules/
 kotlin-js-store/*
@@ -16,11 +19,15 @@ kotlin-js-store/*
 *.iml
 .vscode/
 
+# Android SDK location, which is per-machine. Note `*.local` below does not
+# match this name.
+local.properties
+
 # OS
 .DS_Store
 
 # Local secrets. The Firebase web config is public by design and IS committed
-# (src/jsMain/kotlin/ge/dakalebi/firebase/FirebaseConfig.kt); this is only for
-# service-account keys used by the optional nightly refresh action.
+# (src/jsMain/kotlin/ge/dakalebi/data/firebase/FirebaseConfig.kt); this is only
+# for service-account keys used by the optional nightly refresh action.
 serviceAccount*.json
 *.local

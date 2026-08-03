@@ -269,45 +269,30 @@ fun CustomVideoPlayer(
     DisposableEffect(Unit) {
         val onKey: (Event) -> Unit = handler@{ raw ->
             val event = raw as? KeyboardEvent ?: return@handler
-            val target = event.target.asDynamic()
-            val tag = (target?.tagName as? String)?.uppercase()
-            if (tag == "INPUT" || tag == "TEXTAREA" || tag == "SELECT" ||
-                target?.isContentEditable == true
-            ) return@handler
 
-            // Space and Enter are how a keyboard user presses whatever is
-            // focused. Claiming them unconditionally - which this did - also
-            // calls preventDefault, so the button never fires and the video
-            // toggles instead: every control on the page becomes unreachable
-            // without a mouse. Only take them when focus is somewhere inert.
-            val role = runCatching { target?.getAttribute("role") as? String }.getOrNull()
-            val focusIsActivatable = tag == "BUTTON" || tag == "A" ||
-                tag == "SUMMARY" || !role.isNullOrBlank()
+            // The rules live in `mapPlayerKey` so the TV player can share them
+            // under a policy that claims no arrows. `None` is not swallowed: a
+            // key this player did not act on has to reach whatever is focused.
+            fun volumeBy(delta: Double) {
+                applyVolume((refs.video?.volume ?: 1.0) + delta)
+                flashFeedback(S.volumeFeedback(((refs.video?.volume ?: 0.0) * 100).roundToInt()))
+            }
 
-            when {
-                event.code == "Space" || event.key == "Enter" -> {
-                    if (focusIsActivatable) return@handler
-                    event.preventDefault(); togglePlay()
-                }
-                event.code == "ArrowRight" -> { event.preventDefault(); seekBy(10.0) }
-                event.code == "ArrowLeft" -> { event.preventDefault(); seekBy(-10.0) }
-                event.code == "ArrowUp" -> {
-                    event.preventDefault()
-                    applyVolume((refs.video?.volume ?: 1.0) + 0.05)
-                    flashFeedback(S.volumeFeedback(((refs.video?.volume ?: 0.0) * 100).roundToInt()))
-                }
-                event.code == "ArrowDown" -> {
-                    event.preventDefault()
-                    applyVolume((refs.video?.volume ?: 1.0) - 0.05)
-                    flashFeedback(S.volumeFeedback(((refs.video?.volume ?: 0.0) * 100).roundToInt()))
-                }
-                event.key == "f" || event.key == "F" -> toggleFullscreen()
-                event.key == "m" || event.key == "M" -> {
+            when (mapPlayerKey(event, PlayerKeyPolicy.Keyboard)) {
+                PlayerKeyAction.None -> return@handler
+                PlayerKeyAction.TogglePlay -> togglePlay()
+                PlayerKeyAction.SeekForward -> seekBy(10.0)
+                PlayerKeyAction.SeekBack -> seekBy(-10.0)
+                PlayerKeyAction.VolumeUp -> volumeBy(0.05)
+                PlayerKeyAction.VolumeDown -> volumeBy(-0.05)
+                PlayerKeyAction.ToggleFullscreen -> toggleFullscreen()
+                PlayerKeyAction.ToggleMute -> {
                     val v = refs.video ?: return@handler
                     v.muted = !v.muted
                     muted = v.muted
                 }
             }
+            event.preventDefault()
         }
         window.addEventListener("keydown", onKey)
         onDispose { window.removeEventListener("keydown", onKey) }

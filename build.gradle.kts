@@ -42,7 +42,9 @@ val repoUrl: String = git("config", "--get", "remote.origin.url")
     .removeSuffix(".git")
     .replace("git@github.com:", "https://github.com/")
 
-val generateBuildInfo by tasks.registering {
+// `tasks.register`, not the `by tasks.registering` delegate: that delegate is
+// deprecated in Gradle 9.6 and removed in 10.
+val generateBuildInfo = tasks.register("generateBuildInfo") {
     // Everything the action touches is copied into locals first. Referring to
     // the script's own properties from inside doLast captures the build script
     // object, which the configuration cache cannot serialise.
@@ -97,16 +99,12 @@ kotlin {
             commonWebpackConfig {
                 outputFileName = "app.js"
             }
-            // The app itself is never tested in a browser here; what is
-            // tested is the domain layer, which has no browser in it. That
-            // runs on the `nodejs` target below instead.
+            // Nothing in this module is testable without a browser and a
+            // signed-in session, and there is no fake for either. Everything
+            // that can be tested lives in `:shared` and runs on Node in about a
+            // second, which is why there is no Karma here.
             testTask { enabled = false }
         }
-        // Test-only target. The domain layer is plain Kotlin — no Firebase, no
-        // Compose, no DOM — so its tests need Node and nothing else. Keeping
-        // them off the browser target avoids standing up Karma and a headless
-        // Chrome to run assertions about sorting.
-        nodejs()
 
         binaries.executable()
     }
@@ -117,7 +115,13 @@ kotlin {
             // BuildInfo.kt is always regenerated before compilation.
             kotlin.srcDir(generateBuildInfo)
             dependencies {
+                implementation(project(":shared"))
                 implementation("org.jetbrains.compose.runtime:runtime:1.11.1")
+                // Compose HTML is Kotlin/JS only and has no multiplatform
+                // variant, so it cannot move into `:shared`. Neither can the
+                // Firebase npm package: npm dependencies are only legal in a
+                // Kotlin/JS source set, and the `@JsModule` externals that use
+                // it are browser-only anyway.
                 implementation("org.jetbrains.compose.html:html-core:1.11.1")
                 implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
                 implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
@@ -125,11 +129,7 @@ kotlin {
             }
         }
 
-        getByName("jsTest") {
-            dependencies {
-                implementation(kotlin("test"))
-                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")
-            }
-        }
+        // No `jsTest`: the tests are in `:shared`, where the code they exercise
+        // now lives. `./gradlew jsNodeTest` still runs them.
     }
 }

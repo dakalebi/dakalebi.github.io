@@ -1,0 +1,206 @@
+package ge.dakalebi.ui.tv.input
+
+import ge.dakalebi.core.Log
+import ge.dakalebi.ui.tv.focus.Direction
+import ge.dakalebi.ui.tv.focus.SpatialNav
+import kotlinx.browser.document
+import kotlinx.browser.window
+import org.w3c.dom.Element
+import org.w3c.dom.HTMLElement
+import org.w3c.dom.events.Event
+import org.w3c.dom.events.KeyboardEvent
+
+/**
+ * One layer of the input stack. A screen is a layer; so is a dialog, and so is the
+ * player's control overlay.
+ *
+ * Every hook returns whether it consumed the press. An unconsumed direction key
+ * falls through to the spatial engine scoped to this layer's [root] — which is
+ * what makes a dialog a focus trap without a separate trap helper, because the
+ * engine simply cannot see anything outside it.
+ *
+ * [onAnyKey] runs before everything else and consumes nothing. It exists for the
+ * player: on a television the controls have to come back on *any* press, and
+ * before the press is acted on, or the first button you push is spent revealing
+ * the thing you were aiming at.
+ */
+class TvLayer(
+    val key: String,
+    val root: () -> Element?,
+    /**
+     * Whether an unhandled Back removes this layer.
+     *
+     * True for anything that sits *over* a screen — a dialog, a menu. False for a
+     * layer that **is** the screen: the player pushes one, and popping it would
+     * leave the player on screen with its input handling gone. A non-dismissible
+     * layer passes an unhandled Back down to the layer beneath instead.
+     */
+    val dismissible: Boolean = true,
+    val onBack: () -> Boolean = { false },
+    val onAnyKey: (Key) -> Unit = {},
+    /**
+     * A direction press, and whether it is auto-repeat rather than a fresh press.
+     *
+     * The player is the reason the second argument exists. A tap and a hold are
+     * different intentions — "skip a bit" against "take me somewhere" — and the only
+     * thing that separates them is `KeyboardEvent.repeat`. Without it a held key is
+     * indistinguishable from someone pressing very fast, and the player has to guess
+     * with a timer.
+     */
+    val onDirection: (Direction, Boolean) -> Boolean = { _, _ -> false },
+    val onSelect: (HTMLElement?) -> Boolean = { false },
+    val onMedia: (MediaAction) -> Boolean = { false },
+)
+
+/** Handle for removing a layer again. */
+class TvLayerHandle internal constructor(private val input: TvInput, private val layer: TvLayer) {
+    fun dismiss() = input.pop(layer)
+}
+
+/**
+ * The single keyboard entry point for the whole TV UI.
+ *
+ * **Exactly one `window` listener.** The web UI's `DismissOnEscape` adds one per
+ * open dialog, which is fine when the only question is "did someone press
+ * Escape". Here the questions are which layer owns a press, whether a direction
+ * key means move-focus or seek, and where Back goes — and none of those can be
+ * answered by listeners that cannot see each other. So layers register into a
+ * stack instead, and the topmost one is asked first.
+ */
+class TvInput {
+    private val layers = mutableListOf<TvLayer>()
+
+    /** Set by the host bridge so the page can ask to be closed. See [back]. */
+    var onExitRequested: (() -> Unit)? = null
+
+    private var pendingExit = false
+
+    fun install(): () -> Unit {
+        val handler: (Event) -> Unit = { raw -> (raw as? KeyboardEvent)?.let(::dispatch) }
+        window.addEventListener("keydown", handler)
+
+        // If the host lets its WebView consume Back as history-back, the page sees
+        // a popstate and no keydown at all. Hash routing means an unexplained
+        // popstate is a Back press.
+        val onPop: (Event) -> Unit = { back() }
+        window.addEventListener("popstate", onPop)
+
+        // The documented seam for an Android host: `evaluateJavascript` this from
+        // `onBackPressed`, because KEYCODE_BACK never reaches the page by itself.
+        window.asDynamic().__tvShell = js("({})")
+        window.asDynamic().__tvShell.onBack = { back() }
+
+        return {
+            window.removeEventListener("keydown", handler)
+            window.removeEventListener("popstate", onPop)
+        }
+    }
+
+    fun push(layer: TvLayer): TvLayerHandle {
+        layers.add(layer)
+        return TvLayerHandle(this, layer)
+    }
+
+    internal fun pop(layer: TvLayer) {
+        layers.remove(layer)
+    }
+
+    /**
+     * Back, from any source: a key, a popstate, or the host bridge.
+     *
+     * Asks the top layer, then pops it, and only asks to leave once the stack is
+     * down to the bottom-most screen. A web page cannot close an Activity, so the
+     * last step is a request the host may ignore — which is why it is
+     * press-twice-to-exit rather than a silent dead end.
+     */
+    fun back() {
+        // Top down, giving every layer a chance rather than only the topmost. A
+        // layer that is a screen rather than an overlay declines and passes the
+        // press down; see [TvLayer.dismissible].
+        for (index in layers.indices.reversed()) {
+            val layer = layers[index]
+            if (layer.onBack()) {
+                pendingExit = false
+                return
+            }
+            if (layer.dismissible && layers.size > 1) {
+                pop(layer)
+                pendingExit = false
+                return
+            }
+        }
+        if (!pendingExit) {
+            pendingExit = true
+            window.setTimeout({ pendingExit = false }, EXIT_WINDOW_MS)
+            Log.d("tv", "back at the top level; press again to exit")
+            return
+        }
+        onExitRequested?.invoke() ?: Log.d("tv", "no host to exit to")
+    }
+
+    /** Moves focus to a known place, used when a screen opens. */
+    fun focus(item: HTMLElement, scope: Element) = SpatialNav.focus(item, direction = null, scope = scope)
+
+    private fun dispatch(event: KeyboardEvent) {
+        val layer = layers.lastOrNull() ?: return
+        val key = keyOf(event)
+        layer.onAnyKey(key)
+
+        // A text field owns its own arrows and its own space bar. Only Back is
+        // still ours, so a viewer who focused the email box can get out of it.
+        if (isTextEntry(document.activeElement)) {
+            if (key is Key.Back) {
+                event.preventDefault()
+                back()
+            }
+            return
+        }
+
+        // Browser and OS shortcuts stay theirs. Without this, Cmd+Left is a
+        // ten-second seek instead of history-back.
+        if (event.ctrlKey || event.metaKey || event.altKey) return
+
+        val consumed = when (key) {
+            is Key.Dir -> layer.onDirection(key.direction, event.repeat) ||
+                moveFocus(layer, key.direction)
+            Key.Select -> layer.onSelect(document.activeElement as? HTMLElement) || activate()
+            Key.Back -> { back(); true }
+            is Key.Media -> layer.onMedia(key.action)
+            is Key.Other -> false
+        }
+        if (consumed) event.preventDefault()
+    }
+
+    private fun moveFocus(layer: TvLayer, direction: Direction): Boolean {
+        val scope = layer.root() ?: return false
+        val from = SpatialNav.ensureFocused(scope) ?: return false
+        val target = SpatialNav.move(from, direction, scope) ?: return true
+        SpatialNav.focus(target, direction, scope)
+        return true
+    }
+
+    /**
+     * Select falls through to a real click.
+     *
+     * So an `<a href>` navigates and a `<button onClick>` fires exactly as it does
+     * with a mouse. Building a parallel activation path would mean every control
+     * needs registering twice, and the two would drift.
+     */
+    private fun activate(): Boolean {
+        val active = document.activeElement as? HTMLElement ?: return false
+        if (!active.hasAttribute("data-tv-item")) return false
+        active.click()
+        return true
+    }
+
+    private fun isTextEntry(node: Element?): Boolean {
+        val tag = node?.tagName?.uppercase()
+        if (tag == "INPUT" || tag == "TEXTAREA" || tag == "SELECT") return true
+        return runCatching { node.asDynamic().isContentEditable == true }.getOrDefault(false)
+    }
+
+    private companion object {
+        /** How long "press Back again to exit" stays armed. */
+        const val EXIT_WINDOW_MS = 2000
+    }
+}

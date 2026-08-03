@@ -63,7 +63,7 @@ fun LoginScreen() {
 
         Div({ classes("login-card") }) {
             Div({ classes("login-head") }) {
-                Img(src = "logo.png", alt = S.seriesTitle) { classes("login-mark") }
+                Img(src = "${assetBase}logo.png", alt = S.seriesTitle) { classes("login-mark") }
                 Div({ classes("eyebrow") }) { Text(S.signInEyebrow.caps) }
                 H1({ classes("login-h") }) { Text(S.seriesTitle.caps) }
             }

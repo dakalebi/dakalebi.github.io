@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ka" class="tv">
+  <head>
+    <meta charset="utf-8" />
+    <!--
+      No `user-scalable=no` and no `maximum-scale`: there is no pinch on a
+      television, so the only thing those would do is make this page worse if it
+      is ever opened on a phone to look at it.
+
+      A 1080p Android TV WebView reports a device pixel ratio of 2, so this page
+      gets roughly 960x540 CSS pixels. Design to that, not to 1920x1080 — every
+      size in tv.css is a clamp against `vw` with 960 as the reference width.
+    -->
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ჩემი ცოლის დაქალები</title>
+    <meta name="theme-color" content="#000000" />
+
+    <link rel="icon" href="../favicon.ico" sizes="any" />
+    <link rel="apple-touch-icon" sizes="180x180" href="../icon-180.png" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    />
+    <!--
+      The palette is shared; the layout is not. `web.css` is deliberately absent:
+      it carries nineteen `:hover` rules, a `@media (hover: none)` block that
+      force-shows controls a remote cannot reach, and a phone type scale.
+    -->
+    <link rel="stylesheet" href="../tokens.css" />
+    <link rel="stylesheet" href="tv.css" />
+  </head>
+  <body>
+    <!--
+      `data-shell` is what `ui/Shell.kt` reads to pick the root composable. The
+      bundle is the same one the web page loads; only the entry point differs.
+    -->
+    <div id="root" data-shell="tv"></div>
+    <script src="../app.js"></script>
+  </body>
+</html>

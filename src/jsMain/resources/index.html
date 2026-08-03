@@ -45,7 +45,7 @@
       JetBrains Mono is for timecodes and counters only.
 
       `display=swap` keeps text visible if fonts.gstatic.com is slow or blocked;
-      the stack in styles.css is the fallback in that case.
+      the stack in tokens.css is the fallback in that case.
     -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -53,7 +53,12 @@
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
     />
-    <link rel="stylesheet" href="styles.css" />
+    <!--
+      Two links rather than an `@import` chain, which would cost a serialised
+      round trip before first paint. Order matters: tokens first.
+    -->
+    <link rel="stylesheet" href="tokens.css" />
+    <link rel="stylesheet" href="web.css" />
   </head>
   <body>
     <div id="root"></div>

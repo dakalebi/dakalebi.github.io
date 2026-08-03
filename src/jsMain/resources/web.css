@@ -1,0 +1,1632 @@
+/* ============================================================================
+   The phone and desktop stylesheet. Tokens live in tokens.css, which must be
+   linked first. The TV UI does not load this file at all.
+   ========================================================================== */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+}
+
+body {
+  min-height: 100vh;
+  font-family: var(--f-sans);
+  color: var(--tx);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+
+  /* Drops double-tap-to-zoom, which on a phone is mostly a way to zoom the
+     page by mistake while aiming at a control — and takes the ~300ms tap delay
+     that came with it. Panning and a deliberate pinch still work; `none` would
+     have killed scrolling too. Unlike `user-scalable=no` in the viewport tag,
+     iOS Safari does honour this. */
+  touch-action: manipulation;
+
+  /* Stops the long-press callout and the blue flash on tap. On a page whose
+     tiles are all images and links, both read as the browser interrupting. */
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+/* Underlined links read as a 1998 document, not an app. Every anchor here is
+   either a card or a button, so none of them want the default decoration. */
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* Zero-specificity reset so component classes below always win. */
+:where(button) {
+  border: 0;
+  background: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--tx);
+  outline-offset: 2px;
+}
+
+.mono {
+  font-family: var(--f-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "zero" 1;
+  letter-spacing: -0.01em;
+}
+
+/*
+ * Mtavruli (Georgian uppercase) is applied in Kotlin, not here.
+ *
+ * `text-transform: uppercase` deliberately skips the Mkhedruli -> Mtavruli
+ * mapping. Measured in Chrome with Noto Sans Georgian loaded: `ქართული` renders
+ * 210px both plain and with `text-transform: uppercase`, while the literal
+ * `ᲥᲐᲠᲗᲣᲚᲘ` renders 220px. Latin *is* transformed, so leaving the rule on would
+ * have produced "GOOGLE-ით შესვლა" - half shouted, half not.
+ *
+ * See Strings.caps and the `.caps` extension in the i18n package.
+ */
+
+/* ------------------------------------------------------------------ type */
+
+.eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--red);
+  font-weight: 700;
+}
+
+.eyebrow-mut {
+  font-size: 10px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--mut);
+  font-weight: 700;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  text-wrap: balance;
+  letter-spacing: -0.03em;
+  font-weight: 700;
+}
+
+/* --------------------------------------------------------------- buttons */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 20px;
+  border-radius: var(--radius-pill);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  transition: background 0.2s var(--ease), border-color 0.2s var(--ease),
+    opacity 0.2s var(--ease), transform 0.2s var(--ease);
+}
+.btn:active {
+  transform: scale(0.97);
+}
+
+.btn-primary {
+  background: #fff;
+  color: #000;
+}
+.btn-primary:hover {
+  background: #d8d8dc;
+}
+
+.btn-ghost {
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: var(--tx);
+}
+.btn-ghost:hover {
+  border-color: #fff;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.btn-quiet {
+  color: var(--mut);
+  padding: 9px 14px;
+}
+.btn-quiet:hover {
+  color: var(--tx);
+}
+
+.btn-danger {
+  border: 1px solid rgba(225, 53, 47, 0.5);
+  color: #ff8a85;
+}
+.btn-danger:hover {
+  background: rgba(225, 53, 47, 0.14);
+  border-color: var(--red);
+}
+
+.btn[disabled] {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.icon-btn {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--tx);
+  transition: background 0.2s var(--ease), transform 0.2s var(--ease);
+}
+.icon-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+.icon-btn:active {
+  transform: scale(0.92);
+}
+
+/* Icon sizing lives here rather than in the SVG markup, so the same glyph can
+   be small in the nav and comfortably large in the player. */
+.ic svg {
+  width: 20px;
+  height: 20px;
+}
+.ctl .ic svg {
+  width: 24px;
+  height: 24px;
+}
+.player-center .ic svg {
+  width: 34px;
+  height: 34px;
+}
+
+/* ------------------------------------------------------------------- nav */
+
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px var(--pad);
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.92), rgba(0, 0, 0, 0));
+}
+
+.nav-solid {
+  background: rgba(0, 0, 0, 0.88);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--line);
+}
+
+/* The logo is a transparent PNG of hand lettering, so it needs no plate and
+   no colour treatment - it sits straight on the black. Height-driven with
+   `width: auto` so the wide mark keeps its proportions at any size. */
+.nav-mark {
+  height: 30px;
+  width: auto;
+  flex: none;
+  display: block;
+}
+
+.login-head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.login-mark {
+  height: 78px;
+  width: auto;
+  align-self: flex-start;
+  display: block;
+  margin-bottom: 6px;
+}
+
+@media (max-width: 720px) {
+  .nav-mark {
+    height: 26px;
+  }
+}
+
+.nav-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(140deg, var(--red), var(--red-dim));
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  flex: none;
+}
+
+/* ------------------------------------------------------------------ hero */
+
+.hero {
+  position: relative;
+  /* `width` must stay explicit. With only `aspect-ratio` and `min-height` set,
+     a narrow viewport makes the browser derive the *width* from the clamped
+     height (340px x 4/3 = 453px on phones), which pushed the whole page into
+     horizontal scroll below ~453px. */
+  width: 100%;
+  min-height: 300px;
+  aspect-ratio: 21 / 9;
+  /* At 21/9 the hero is taller than the viewport on most laptops, so the grid
+     below never appears without scrolling and the page reads as one giant
+     image. Capping the height lets the first row of episodes sit just under
+     the fold, which is the balance Netflix strikes. */
+  max-height: min(62vh, 620px);
+  background: var(--elev);
+  margin-top: -68px;
+  border-radius: 0 0 calc(var(--radius) + 6px) calc(var(--radius) + 6px);
+  overflow: hidden;
+}
+
+.hero-img {
+  position: absolute;
+  inset: 0;
+}
+.hero-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.hero-scrim {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to right, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.72) 34%, rgba(0, 0, 0, 0.08) 76%),
+    linear-gradient(to top, #000 0%, rgba(0, 0, 0, 0.15) 46%, rgba(0, 0, 0, 0.55) 100%);
+}
+
+.hero-body {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  z-index: 2;
+  padding: 0 var(--pad) clamp(24px, 4vw, 44px);
+  max-width: 620px;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+
+.hero-h {
+  font-size: clamp(30px, 6.4vw, 58px);
+  line-height: 0.95;
+}
+
+.hero-sub {
+  font-size: 13px;
+  color: var(--tx-dim);
+}
+
+.hero-bar {
+  height: 4px;
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.22);
+  max-width: 340px;
+}
+.hero-bar > div {
+  display: block;
+  height: 100%;
+  background: var(--red);
+}
+
+.hero-cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-top: 4px;
+}
+
+/* ----------------------------------------------------------------- rails */
+
+.rails {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(32px, 4vw, 52px);
+  padding: clamp(28px, 4vw, 44px) 0 96px;
+}
+
+.rail-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 0 var(--pad);
+  margin-bottom: 16px;
+}
+.rail-head h2 {
+  font-size: 20px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+.rail-head .count {
+  font-size: 12.5px;
+  color: var(--mut);
+}
+.rail-head .spacer {
+  flex: 1;
+}
+
+.rail {
+  display: flex;
+  gap: var(--rail-gap);
+  overflow-x: auto;
+  padding: 0 var(--pad) 4px;
+  scrollbar-width: none;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+}
+.rail::-webkit-scrollbar {
+  display: none;
+}
+
+/* A row that deliberately does not scroll - see EpisodeRow. */
+.fixedrow {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--rail-gap);
+}
+.fixedrow .tile {
+  width: auto;
+}
+@media (max-width: 900px) {
+  .fixedrow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
+  gap: 28px var(--rail-gap);
+  padding: 0 var(--pad);
+}
+
+/* Season picker — a rail of chips rather than a <select>, so the whole run of
+   18 seasons is scannable and thumb-scrollable on a phone. */
+.chips {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 0 var(--pad) 2px;
+  scrollbar-width: none;
+}
+.chips::-webkit-scrollbar {
+  display: none;
+}
+.chip {
+  flex: none;
+  padding: 9px 17px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--tx-dim);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+  transition: background 0.2s var(--ease), color 0.2s var(--ease);
+}
+.chip:hover {
+  color: var(--tx);
+  background: rgba(255, 255, 255, 0.12);
+}
+.chip.sel {
+  color: #000;
+  background: #fff;
+  border-color: #fff;
+}
+.chip .done {
+  color: var(--ok);
+  margin-left: 5px;
+  font-size: 10px;
+}
+.chip.sel .done {
+  color: #12794f;
+}
+
+/* ----------------------------------------------------------------- tiles */
+
+.tile {
+  position: relative;
+  width: 300px;
+  flex: none;
+  scroll-snap-align: start;
+}
+.grid .tile {
+  width: auto;
+}
+
+/* The whole card is one link; the hover actions sit outside it so we never
+   nest buttons inside an anchor. */
+.tile-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+.tile-img {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: var(--elev);
+  overflow: hidden;
+  border-radius: var(--radius);
+}
+.tile-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.35s ease;
+}
+.tile-link {
+  transition: transform 0.28s var(--ease);
+}
+.tile:hover .tile-link {
+  transform: translateY(-4px);
+}
+.tile:hover .tile-img img {
+  transform: scale(1.05);
+}
+.tile:hover .tile-img {
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55);
+}
+
+/* Deterministic gradient stand-in when Formula has no still for an episode. */
+.tile-fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  text-align: center;
+}
+.tile-fallback .fb-s {
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+}
+.tile-fallback .fb-e {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-top: 4px;
+}
+
+.tile-badge {
+  position: absolute;
+  top: 9px;
+  left: 9px;
+  border-radius: var(--radius-sm);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  background: rgba(0, 0, 0, 0.72);
+  padding: 3px 6px;
+  z-index: 2;
+}
+
+.tile-dur {
+  position: absolute;
+  right: 9px;
+  bottom: 11px;
+  border-radius: var(--radius-sm);
+  font-size: 10.5px;
+  background: rgba(0, 0, 0, 0.8);
+  padding: 2px 5px;
+  z-index: 2;
+}
+
+.tile-seen {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  z-index: 2;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.72);
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  color: var(--ok);
+}
+
+.tile-prog {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.24);
+  z-index: 2;
+}
+.tile-prog > div {
+  display: block;
+  height: 100%;
+  background: var(--red);
+}
+.tile-prog.done > div {
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.tile-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding-top: 10px;
+}
+.tile-name {
+  font-size: 14.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.tile-side {
+  font-size: 12px;
+  color: var(--mut);
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.tile-actions {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  z-index: 3;
+  display: flex;
+  gap: 5px;
+  opacity: 0;
+  transition: opacity 0.18s;
+}
+.tile:hover .tile-actions,
+.tile:focus-within .tile-actions {
+  opacity: 1;
+}
+@media (hover: none) {
+  .tile-actions {
+    opacity: 1;
+  }
+}
+.tile-act {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.75);
+  font-size: 11px;
+}
+.tile-act:hover {
+  background: rgba(0, 0, 0, 0.92);
+}
+
+/* ---------------------------------------------------------------- player */
+
+.player {
+  position: relative;
+  background: #000;
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  overflow: hidden;
+  border-radius: var(--radius);
+}
+/* Fullscreen fills the display; a rounded corner there would just show the
+   desktop through it. */
+.player:fullscreen,
+.player:-webkit-full-screen {
+  border-radius: 0;
+}
+.player video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.player-center {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.32);
+  z-index: 3;
+}
+.player-center .big {
+  width: 78px;
+  height: 78px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.94);
+  color: #000;
+  display: grid;
+  place-items: center;
+  font-size: 26px;
+  transition: transform 0.18s;
+}
+.player-center:hover .big {
+  transform: scale(1.05);
+}
+
+.spinner {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  z-index: 3;
+}
+.spinner > div {
+  width: 38px;
+  height: 38px;
+  border: 3px solid rgba(255, 255, 255, 0.24);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.ctl {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
+  padding: 0 14px 12px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.92) 0%, rgba(0, 0, 0, 0.3) 42%, transparent 72%);
+  transition: opacity 0.25s;
+}
+.ctl.hide {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.scrub {
+  position: relative;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+.scrub-track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.24);
+}
+.scrub-buf {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: rgba(255, 255, 255, 0.4);
+}
+.scrub-cur {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--red);
+}
+.scrub-knob {
+  position: absolute;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--red);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.scrub input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  opacity: 0;
+  cursor: pointer;
+  margin: 0;
+}
+
+.ctl-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.vol-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.vol {
+  width: 76px;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.3);
+  position: relative;
+  border-radius: 2px;
+}
+.vol > div {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: #fff;
+  border-radius: 2px;
+}
+.vol input {
+  position: absolute;
+  inset: -8px 0;
+  width: 100%;
+  opacity: 0;
+  cursor: pointer;
+  margin: 0;
+}
+
+.time {
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.92);
+}
+.grow {
+  flex: 1;
+}
+
+.q-btn {
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  padding: 7px 12px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.16);
+}
+.q-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.q-menu {
+  position: absolute;
+  right: 14px;
+  bottom: 64px;
+  border-radius: var(--radius);
+  z-index: 8;
+  background: rgba(10, 10, 12, 0.96);
+  border: 1px solid var(--line-strong);
+  min-width: 118px;
+  padding: 4px;
+}
+.q-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 12px;
+  font-size: 13px;
+  border-radius: var(--radius-sm);
+  text-align: left;
+}
+.q-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+.q-item.sel {
+  color: var(--red);
+  font-weight: 650;
+}
+
+/* Always-visible position line — stays when the control bar fades out, in
+   windowed and fullscreen alike. */
+.thinbar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.18);
+  z-index: 4;
+  pointer-events: none;
+  transition: opacity 0.25s;
+}
+.thinbar > div {
+  display: block;
+  height: 100%;
+  background: var(--red);
+}
+.thinbar.hide {
+  opacity: 0;
+}
+
+.feedback {
+  position: absolute;
+  left: 50%;
+  top: 18px;
+  transform: translateX(-50%);
+  z-index: 9;
+  background: rgba(0, 0, 0, 0.75);
+  padding: 6px 13px;
+  font-size: 13px;
+  border-radius: 999px;
+  pointer-events: none;
+}
+
+/* -------------------------------------------------------- next-up card */
+
+.nextcard {
+  position: absolute;
+  right: 14px;
+  bottom: 82px;
+  border-radius: var(--radius);
+  z-index: 6;
+  width: min(330px, calc(100% - 28px));
+  background: rgba(10, 10, 12, 0.93);
+  border: 1px solid var(--line-strong);
+  padding: 11px;
+  display: flex;
+  gap: 11px;
+  animation: rise 0.3s ease both;
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+.nextcard-th {
+  width: 96px;
+  aspect-ratio: 16 / 9;
+  flex: none;
+  background: var(--elev);
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+}
+.nextcard-b {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+.nextcard-t {
+  font-size: 13.5px;
+  font-weight: 620;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.nextcard-s {
+  font-size: 11px;
+  color: var(--mut);
+}
+.nextcard-bar {
+  height: 2px;
+  background: rgba(255, 255, 255, 0.22);
+  margin-top: 6px;
+}
+.nextcard-bar > div {
+  display: block;
+  height: 100%;
+  background: var(--red);
+  transition: width 0.2s linear;
+}
+.nextcard-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 7px;
+}
+
+/* ------------------------------------------------------------ watch page */
+
+/* Two columns from 1180px up: the episode on the left, what to watch next on
+   the right. Below that they stack, and the side list simply becomes the last
+   block on the page. */
+.watch-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: clamp(28px, 3vw, 44px);
+  padding: clamp(16px, 2.2vw, 26px) var(--pad) 96px;
+  max-width: 1760px;
+  margin: 0 auto;
+}
+@media (min-width: 1180px) {
+  .watch-grid {
+    grid-template-columns: minmax(0, 1fr) 384px;
+    align-items: start;
+  }
+}
+
+.watch-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(20px, 2.4vw, 30px);
+}
+.watch-aside {
+  min-width: 0;
+}
+
+/* Rails and grids inside the columns already sit within the page gutter. */
+.watch-grid .rail-head,
+.watch-grid .rail,
+.watch-grid .grid {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+/* Cap the player by capping its *width*, never its height. `.player` derives
+   height from width through aspect-ratio, so a max-height would clip rather
+   than scale - the same trap that made the hero overflow on phones. */
+.player-frame {
+  width: min(100%, calc(72vh * 16 / 9));
+  margin-inline: auto;
+}
+
+.watch-body {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.watch-h {
+  font-size: clamp(22px, 3.6vw, 34px);
+  line-height: 1.04;
+}
+.watch-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ended {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line-strong);
+  background: linear-gradient(to right, rgba(225, 53, 47, 0.1), transparent);
+}
+
+.notice {
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  border: 1px solid rgba(225, 53, 47, 0.4);
+  background: rgba(225, 53, 47, 0.08);
+  font-size: 13px;
+  color: #ff9d99;
+}
+
+.uplist {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.uprow {
+  display: flex;
+  gap: 12px;
+  padding: 8px;
+  border-radius: var(--radius);
+  color: inherit;
+  transition: background 0.2s var(--ease);
+}
+.uprow:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.uprow-th {
+  position: relative;
+  width: 156px;
+  flex: none;
+  aspect-ratio: 16 / 9;
+  background: var(--elev);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.uprow-th img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.uprow-b {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-top: 2px;
+}
+.uprow-t {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.uprow-s {
+  font-size: 12px;
+  color: var(--mut);
+}
+
+/* Stacked below the player, a single tall column of rows is a lot of empty
+   space on the right, so let them flow into however many fit. */
+@media (max-width: 1179px) {
+  .uplist {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
+    gap: 8px 16px;
+  }
+}
+
+/* ----------------------------------------------------------------- login */
+
+.login-wrap {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: var(--pad);
+  position: relative;
+  overflow: hidden;
+}
+.login-bg {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(70% 55% at 50% 0%, rgba(225, 53, 47, 0.16), transparent 70%),
+    #000;
+}
+.login-card {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 380px;
+  border-radius: calc(var(--radius) + 4px);
+  border: 1px solid var(--line-strong);
+  background: rgba(13, 13, 15, 0.9);
+  padding: 30px 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.login-h {
+  font-size: 25px;
+  line-height: 1.1;
+}
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.field {
+  width: 100%;
+  padding: 11px 13px;
+  background: #000;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  color: var(--tx);
+  font: inherit;
+  font-size: 14px;
+}
+/* iOS Safari zooms the viewport whenever a focused field is under 16px, and
+   never zooms back out — you finish signing in on a page scrolled sideways.
+   Raising it only on touch pointers keeps the desktop form at 14px. */
+@media (pointer: coarse) {
+  .field {
+    font-size: 16px;
+  }
+}
+.field:focus {
+  outline: none;
+  border-color: var(--red);
+}
+.field::placeholder {
+  color: #5f5f68;
+}
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--mut);
+  font-size: 11px;
+}
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line-strong);
+}
+
+/* ----------------------------------------------------------------- panel */
+
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(3px);
+}
+
+/*
+ * Click-catcher for dropdowns. Deliberately not `.scrim`.
+ *
+ * `.scrim` is for modal surfaces - the drawer and the dialogs - so it dims and
+ * blurs the page and sits above them at z-index 60. A dropdown needs the
+ * opposite of both: catch the click outside, change nothing visually, and stay
+ * *below* the menu it belongs to.
+ *
+ * The season menu reused `.scrim` and cancelled it with an inline
+ * `background: transparent`. That cleared the dim but not `backdrop-filter`, so
+ * the entire page blurred; and at z-index 60 against `.menu`'s 50 it covered
+ * the very menu it had been opened for, so neither item could be clicked.
+ */
+.popover-catch {
+  position: fixed;
+  inset: 0;
+  /* Above the sticky nav (40), below .menu (50). */
+  z-index: 49;
+  background: none;
+  backdrop-filter: none;
+}
+
+.sheet {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 61;
+  width: min(360px, 88vw);
+  background: var(--elev);
+  border-right: 1px solid var(--line-strong);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  padding: 22px var(--pad);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  overflow-y: auto;
+  animation: slide 0.22s ease both;
+}
+@keyframes slide {
+  from {
+    transform: translateX(-100%);
+  }
+}
+
+.sheet-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.stat {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+}
+.stat .mono {
+  display: block;
+  font-size: 17px;
+  font-weight: 680;
+}
+.stat span {
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--mut);
+}
+
+.sheet-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.sheet-item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  padding: 12px 14px;
+  text-align: left;
+  font-size: 14.5px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+}
+.sheet-item:hover {
+  background: var(--elev2);
+  border-color: var(--line);
+}
+.sheet-item.danger {
+  color: #ff8a85;
+}
+
+.toggle-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+}
+.toggle-row .lab {
+  flex: 1;
+  min-width: 0;
+}
+/* Element selectors here have to match what Compose actually emits, which is a
+   plain <div> in both places — not the <b>/<i> this block was first written
+   against. Neither rule matched, so the label lost its weight and the switch
+   lost its knob entirely. */
+.toggle-row .lab > div {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.toggle-row .lab span {
+  font-size: 11.5px;
+  color: var(--mut);
+}
+.switch {
+  width: 51px;
+  height: 31px;
+  border-radius: 999px;
+  background: #39393d;
+  position: relative;
+  flex: none;
+  transition: background 0.25s var(--ease);
+}
+.switch > div {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.45);
+  transition: transform 0.25s var(--ease);
+}
+.switch.on {
+  background: var(--red);
+}
+.switch.on > div {
+  transform: translateX(20px);
+}
+
+/* Settings stack. The rows are separate elements rather than one bordered
+   group, so the spacing has to come from the container — margins between
+   siblings collapse differently depending on which rows are present, and the
+   native-player row only exists on iPhone and iPad. */
+.settings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* A setting whose control is not a switch. Same frame as .toggle-row, but a
+   plain div: here the row itself does nothing, the segments inside it do. */
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+}
+.setting-row .lab > div {
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.seg {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--radius-pill);
+  background: var(--elev2);
+  flex: none;
+}
+.seg-item {
+  padding: 6px 13px;
+  border-radius: var(--radius-pill);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--tx-dim);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s var(--ease), color 0.2s var(--ease);
+}
+.seg-item:hover:not(.on) {
+  color: var(--tx);
+}
+.seg-item.on {
+  background: var(--tx);
+  color: #000;
+  cursor: default;
+}
+
+/* --------------------------------------------------------------- dialogs */
+
+.dialog {
+  position: fixed;
+  z-index: 70;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(420px, calc(100vw - 32px));
+  background: var(--elev);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.dialog h3 {
+  font-size: 17px;
+}
+.dialog p {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--tx-dim);
+}
+.dialog-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 50;
+  min-width: 220px;
+  background: var(--elev);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  padding: 5px;
+}
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 13.5px;
+  text-align: left;
+  border-radius: var(--radius-sm);
+}
+.menu-item:hover {
+  background: var(--elev2);
+}
+.menu-item.danger {
+  color: #ff8a85;
+}
+
+.rel {
+  position: relative;
+}
+
+/* ---------------------------------------------------------------- toasts */
+
+.toasts {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(400px, calc(100vw - 24px));
+  pointer-events: none;
+}
+.toast {
+  background: rgba(22, 22, 26, 0.94);
+  backdrop-filter: blur(18px);
+  border: 1px solid var(--line-strong);
+  border-left: 3px solid var(--tx);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  font-size: 13.5px;
+  animation: rise 0.22s ease both;
+}
+.toast.ok {
+  border-left-color: var(--ok);
+}
+.toast.err {
+  border-left-color: var(--red);
+}
+
+/* ------------------------------------------------------------- skeletons */
+
+.skel {
+  background: linear-gradient(90deg, var(--elev) 25%, var(--elev2) 50%, var(--elev) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.3s linear infinite;
+}
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+.skel-tile {
+  aspect-ratio: 16 / 9;
+}
+.skel-line {
+  height: 10px;
+  margin-top: 8px;
+  width: 62%;
+}
+
+.center-note {
+  min-height: 60vh;
+  display: grid;
+  place-items: center;
+  color: var(--mut);
+  font-size: 14px;
+}
+
+.empty {
+  margin: 0 var(--pad);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius);
+  padding: 48px 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  color: var(--mut);
+}
+
+/* ------------------------------------------------------------ responsive */
+
+@media (max-width: 720px) {
+  .hero {
+    aspect-ratio: 4 / 3;
+    min-height: 340px;
+  }
+  .hero-scrim {
+    background: linear-gradient(to top, #000 6%, rgba(0, 0, 0, 0.25) 55%, rgba(0, 0, 0, 0.5) 100%);
+  }
+  .tile {
+    width: 190px;
+  }
+  .grid {
+    grid-template-columns: repeat(auto-fill, minmax(min(150px, 100%), 1fr));
+  }
+  .nextcard {
+    right: 8px;
+    left: 8px;
+    width: auto;
+    bottom: 70px;
+  }
+  .ctl-row {
+    gap: 6px;
+  }
+  .vol-wrap {
+    display: none;
+  }
+
+  /* One action per line, each filling the width. Capsules sized to their own
+     label wrap into a ragged stack on a phone, and the widest target ends up
+     being whichever action happens to have the longest name. `> *` rather than
+     `.btn` because one of these is an <a>. */
+  .watch-acts {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .watch-acts > * {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Inline SVG icon wrapper. */
+.ic {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+  flex: none;
+}
+.tile-act .ic svg,
+.tile-seen .ic svg {
+  width: 14px;
+  height: 14px;
+}
+.btn .ic svg {
+  width: 16px;
+  height: 16px;
+}
+.player-center .big .ic svg {
+  width: 30px;
+  height: 30px;
+  margin-left: 3px;
+}
+
+/* --------------------------------------------------------- build stamp */
+
+/* Two different facts live in this footer — when the catalog was last pulled
+   and when the app itself was deployed — so they get their own lines rather
+   than running together. */
+.sheet-foot {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--mut);
+}
+.build-stamp {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.build-stamp a {
+  color: var(--mut);
+  transition: color 0.2s var(--ease);
+}
+.build-stamp a:hover {
+  color: var(--tx-dim);
+  text-decoration: underline;
+}
+.build-stamp .mono {
+  font-size: 10.5px;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--tx-dim);
+}
+.build-dev {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  background: rgba(225, 53, 47, 0.18);
+  color: #ff8a85;
+}

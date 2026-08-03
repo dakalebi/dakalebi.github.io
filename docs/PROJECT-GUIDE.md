@@ -167,10 +167,15 @@ unambiguous constructor calls.
 
 ### Tests on Node, not in a browser
 
-The domain layer has no browser in it, so `jsNodeTest` runs it in about a
-second. Standing up Karma and a headless Chrome to assert things about sorting
-would be slower and more fragile for no gain. The browser-facing code is tested
-by hand — see §8.
+`:shared` has no browser in it, so `jsNodeTest` runs it in about a second.
+Standing up Karma and a headless Chrome to assert things about sorting would be
+slower and more fragile for no gain. The browser-facing code is tested by hand —
+see §8.
+
+That split is now a Gradle module rather than a convention, so the property is
+enforced by the compiler: `:shared` does not depend on the root, and the browser
+is reachable from exactly three `expect` functions. See
+[`ARCHITECTURE.md`](ARCHITECTURE.md).
 
 ### The cache serialises a DTO, not the domain model
 
@@ -433,7 +438,7 @@ cache).
 
 ```bash
 ./gradlew jsBrowserDistribution   # production bundle -> build/dist/js/productionExecutable/
-./gradlew jsNodeTest              # domain tests, ~1s, no browser
+./gradlew jsNodeTest              # 60 tests in :shared, ~1s, no browser
 ```
 
 Local preview is a static server over the built output — see
@@ -538,10 +543,12 @@ on a sideways-scrolled page.
 
 ## 8. What is verified, and what is not
 
-**Automated.** 35 domain tests on Node: the watched threshold, the
+**Automated.** 60 tests on Node, in `:shared`: the watched threshold, the
 never-rewind guard, "continue watching" including its five-second floor,
 ordering across season boundaries, hash-route parsing, the settings merge
-semantics, and the admin lookup.
+semantics, the admin lookup, timestamp formatting, toast dismissal, the catalog
+cache's stamp rule and its thirteen-field round trip, and the Firebase error-code
+spellings.
 
 **Verified by hand, repeatedly.** The signed-out path — boot, redirect to
 `#/login`, language switching, the drawer's layout, responsive behaviour at

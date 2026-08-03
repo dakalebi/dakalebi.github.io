@@ -1,0 +1,1009 @@
+/* ============================================================================
+   The 10-foot stylesheet. Loaded only by tv/index.html, after tokens.css.
+
+   Two things make this a separate sheet rather than a media query on web.css:
+
+   1. There is no pointer. Nineteen `:hover` rules and a `@media (hover: none)`
+      block in web.css describe affordances a remote cannot produce, and one of
+      them force-shows controls that do not exist here.
+   2. The type scale is different in kind, not degree. Every size in web.css is a
+      hardcoded px literal tuned for arm's length.
+
+   Sizes are clamped against `vw` with **960px as the reference width**, because
+   that is what a 1080p Android TV WebView actually reports (device pixel ratio
+   2). Opening this page on a 1920px desktop scales up; a 720p set scales down.
+   ========================================================================== */
+
+:root {
+  /* The app surface is near-black, not the black in tokens.css.
+     Deliberate, and measured rather than guessed: YouTube's television app paints
+     `#container` `#0f0f0f` and reserves pure `#000` for the letterbox outside it,
+     which is also what the TV quality checklist asks for ("use only black for bars
+     on original-format videos"). The web sheet's true black is right for a page that
+     scrolls under a player; a 10-foot surface wants the near-black so large flat
+     areas do not crush against the video's own black. */
+  --bg: #0f0f0f;
+
+  /* Overscan. A television crops roughly 5% of each edge, and that is not
+     something the page can detect — it has to be assumed. 5% of 960 is 48.
+
+     Google publishes three different side margins (48 / 58dp) and three vertical
+     ones (24 / 27 / 28dp) on a single page; 58/28 is the pair that actually adds up
+     against their 12-column grid, and 48/27 is the legacy overscan figure. The
+     clamp below spans both, so the safe area is never tighter than the smaller
+     claim. YouTube itself is more generous still, at roughly 8% left. */
+  --safe-x: clamp(24px, 5vw, 72px);
+  --safe-y: clamp(16px, 5vh, 40px);
+
+  /* Type scale. Reference values at 960px: 14 / 16 / 20 / 28 / 40.
+     YouTube's smallest text anywhere is 14px on a 1280 canvas, about 10.5px at this
+     reference, so the 12px floor below is already the more conservative of the two. */
+  --t-label: clamp(12px, 1.5vw, 20px);
+  --t-meta: clamp(13px, 1.7vw, 22px);
+  --t-body: clamp(16px, 2.1vw, 27px);
+  --t-title: clamp(21px, 2.9vw, 38px);
+  --t-h: clamp(30px, 4.2vw, 54px);
+
+  /* Spacing. A rail gap has to read as a gap from across a room. */
+  --tv-gap: clamp(12px, 1.7vw, 22px);
+  --tv-gap-lg: clamp(20px, 3vw, 40px);
+
+  /* ------------------------------------------------------------- focus
+     The cursor. Every value here was measured off YouTube's shipped television
+     stylesheet and scaled from its 1280px canvas to this 960px one (x0.75).
+
+     `#f1f1f1`, not `#fff`: the shipped ring is near-white, which reads as bright
+     without the hard edge pure white gives against artwork.
+
+     The ring sits *outside* the tile and the tile does not move. See the note on
+     `.tv-tile` for why that matters more than it sounds. */
+  --focus: #f1f1f1;
+  --focus-w: 4px;
+  --focus-gap: 4px;
+
+  /* The plate behind a focused tile: 10% white, straight from the shipped
+     `WholeTileFocusRing` variant. */
+  --focus-plate: rgba(255, 255, 255, 0.1);
+
+  /* ------------------------------------------------------------ motion
+     Two durations, both measured. Focus state changes are 150ms — YouTube's
+     stylesheet is dominated by .15s and .3s, and the fast one is what focus uses.
+     Travel (a rail sliding, a drawer widening) is 300ms.
+
+     Compose for TV ships 300ms in / 500ms out for its own focus scale, which is
+     much slower; on a surface where the ring is the cursor, slow is lag. */
+  --t-focus: 150ms;
+  --t-travel: 300ms;
+  --ease-tv: cubic-bezier(0, 0, 0.2, 1);
+
+  /* ---------------------------------------------------------- nav rail
+     Collapsed matches `tv-material`'s `CollapsedDrawerItemWidth` of 56dp exactly,
+     which is also what YouTube ships (3.5rem on its canvas). Expanded sits between
+     YouTube's 314px and `tv-material`'s 256dp. */
+  --rail-w: 56px;
+  --rail-w-open: 260px;
+
+  /* What the content is inset by: the rail, plus its own breathing room. YouTube's
+     104px left inset decomposes exactly this way — a 56px rail plus 48px of
+     padding. */
+  --content-x: calc(var(--rail-w) + var(--safe-x));
+
+  /* How much clearance a scroller has to leave so a ring is not clipped. Derived,
+     not typed twice: the ring's own gap plus its stroke, plus a pixel of slack. */
+  --ring-room: calc(var(--focus-gap) + var(--focus-w) + 1px);
+
+  /* One tile width, used by both the rail and the grid so a shelf and a season
+     cannot disagree about how big an episode is. */
+  --tile-w: clamp(150px, 18vw, 300px);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--tx);
+  font-family: var(--f-sans);
+  font-size: var(--t-body);
+  /* A television has no scrollbar and nothing to scroll it with. Panning is done
+     by moving focus, and the focus engine scrolls the container itself. */
+  overflow: hidden;
+}
+
+/* The mount point Compose renders into. It needs an explicit height or the
+   percentage on `.tv-root` below has nothing to resolve against and collapses to
+   the content height — which makes the screen taller than the television, with
+   nothing able to scroll it. */
+#root {
+  height: 100%;
+}
+
+.mono {
+  font-family: var(--f-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------------ focus
+   The ring is driven by `[data-tv-focus]`, which the engine maintains, and only
+   secondarily by `:focus`.
+
+   `:focus` alone is not enough. Measured: with the document not frontmost,
+   `document.activeElement` was still the right element while
+   `document.hasFocus()` was false and `:focus` did not match — so the ring
+   disappeared. An Android WebView that has not been given Android focus is that
+   state exactly, and on a television the ring is the entire cursor.
+
+   Not `:focus-visible` either: that is a heuristic about whether the user "meant"
+   it, and with no pointer in the room there is no case where a ring is unwanted.
+
+   **The focused thing does not move.** Measured on YouTube: a focused tile and its
+   unfocused neighbour have identical rectangles and a computed transform of `none`.
+   There is no scale, no lift and no shadow. The apparent growth is the ring alone —
+   a gap plus a stroke adds about 8px per side here, which on a 170px tile reads as a
+   ~10% enlargement while costing no reflow and never nudging a neighbour.
+
+   That is worth stating because the obvious implementation is `transform: scale()`,
+   and it is wrong three times over: it clips inside the rail's `overflow-x`, it
+   makes the engine's `getBoundingClientRect()` geometry disagree with the layout
+   mid-animation, and Google's own guidance to scale focused cards is a thing
+   YouTube itself does not do for browse content. `scale(1.1)` appears eight times in
+   its entire 443KB sheet, on profile tiles and keyboard keys.
+
+   `outline` rather than a `::after` ring: an outline is drawn outside the border box
+   and is not clipped by the element's own overflow, so it works on the tile and on
+   chrome sitting over the video without either needing a wrapper.
+
+   It *is* clipped by an **ancestor's** overflow, though, which is why every scroller
+   below reserves `--ring-room` and why the navigation rail — which must clip, to hide
+   its labels — inverts its entries instead of ringing them.
+
+   The ring is the one rule that applies to everything focusable. What sits *behind*
+   the ring is per-component and is set further down, because a blanket
+   `background-color` here is a trap: `[data-tv-item][data-tv-focus]` is two attribute
+   selectors and outranks any single class, so it silently repainted
+   `.tv-btn-primary` — a white button — to 10% white over dark, i.e. grey. Anything
+   with a background of its own has to opt in. */
+[data-tv-item][data-tv-focus],
+[data-tv-item]:focus {
+  outline: var(--focus-w) solid var(--focus);
+  outline-offset: var(--focus-gap);
+}
+
+/* A tile has no background of its own, so it takes the plate.
+   Measured on YouTube's `WholeTileFocusRing`: a 10%-white plate behind the whole
+   tile, under the ring. */
+.tv-tile[data-tv-focus],
+.tv-tile:focus {
+  background-color: var(--focus-plate);
+  transition: background-color var(--t-focus) var(--ease-tv);
+}
+
+/* Chrome inverts instead: light plate, dark ink.
+   Measured: the focused variant sets the chip background to `#f1f1f1` and its text to
+   `#0f0f0f`. Inversion reads from across a room in a way a 10% tint does not, and on a
+   button that is already light the tint is worse than nothing. */
+.tv-btn[data-tv-focus],
+.tv-btn:focus,
+.tv-chip[data-tv-focus],
+.tv-chip:focus,
+.tv-seg-item[data-tv-focus],
+.tv-seg-item:focus {
+  background: var(--focus);
+  border-color: var(--focus);
+  color: #0f0f0f;
+}
+
+/* --------------------------------------------------------------- structure */
+/* The vertical scroller for the whole screen.
+   `auto`, and it has to be a real scroller: the focus engine centres the focused
+   band on this element, and an `overflow: visible` box reports
+   `scrollHeight > clientHeight` while ignoring `scrollTop`, so vertical centring
+   would silently do nothing and the ring would walk off the bottom of the screen.
+   Same trap as the rails, one level up. */
+.tv-root {
+  height: 100%;
+  /* Inset past the rail on the left. Only the padding animates, which is what makes
+     this the "standard" push drawer rather than a modal overlay: the content moves
+     aside instead of being covered. */
+  padding: var(--safe-y) var(--safe-x) var(--safe-y) var(--content-x);
+  display: flex;
+  flex-direction: column;
+  gap: var(--tv-gap-lg);
+  overflow-y: auto;
+  scrollbar-width: none;
+  transition: padding-left var(--t-travel) var(--ease-tv);
+}
+
+/* Pushed aside while the rail is expanded. */
+.tv-root.rail-open {
+  padding-left: calc(var(--rail-w-open) + var(--safe-x));
+}
+
+.tv-root::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+/* Bands keep their own height. A flex child shrinks by default, so without this
+   a screen with more content than fits silently squashes every band to make it
+   fit instead of overflowing — which means the root never scrolls, and the focus
+   engine has nothing to centre the focused band in. Measured: with shrink left on,
+   `scrollHeight === clientHeight` no matter how many rails are added. */
+.tv-root > * {
+  flex: none;
+}
+
+.tv-note {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  color: var(--mut);
+  font-size: var(--t-title);
+}
+
+.tv-h {
+  margin: 0;
+  font-size: var(--t-h);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.tv-sub {
+  margin: 0;
+  font-size: var(--t-meta);
+  color: var(--tx-dim);
+}
+
+/* ------------------------------------------------------------------ shared
+   Rails and grids are used by every band, so they are declared once. Both are
+   real scrollers (`auto`, bar suppressed) because the focus engine drives them,
+   and neither uses `scroll-behavior: smooth` — see the notes at the top. */
+.tv-band {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tv-gap);
+  min-width: 0;
+}
+
+.tv-rail {
+  display: flex;
+  gap: var(--tv-gap);
+  overflow-x: auto;
+  scrollbar-width: none;
+  /* Room for the ring, which sits outside the box and would otherwise be clipped by
+     the scroller on the first and last item. Must cover the gap plus the stroke;
+     `--ring-room` is derived so the two cannot drift apart. */
+  padding: var(--ring-room);
+  margin: calc(-1 * var(--ring-room));
+}
+
+.tv-rail::-webkit-scrollbar,
+.tv-grid::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.tv-grid {
+  display: grid;
+  /* `auto-fill`, so the column count is CSS's decision at every width. The focus
+     engine reads it back off the rectangles rather than being told. */
+  grid-template-columns: repeat(auto-fill, minmax(min(var(--tile-w), 100%), 1fr));
+  gap: var(--tv-gap);
+  padding: var(--ring-room);
+  margin: calc(-1 * var(--ring-room));
+}
+
+/* ------------------------------------------------------------------- tiles
+   Sized so a shelf shows about five and a half tiles, which is what YouTube's
+   geometry works out to: a 288px tile on a 1920 canvas with a 324px pitch against a
+   1764px content width is 5.44. Matching the *count* rather than the pixel figure is
+   the transferable part, since this canvas is 960 rather than 1920. */
+.tv-tile {
+  flex: none;
+  width: var(--tile-w);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-decoration: none;
+  color: var(--tx);
+  border-radius: var(--radius);
+}
+
+.tv-tile-art {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  /* A definite width is what keeps `aspect-ratio` driving the height rather than
+     the reverse — the trap that made the web hero wider than a phone. */
+  width: 100%;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: var(--elev2);
+  transition: border-radius var(--t-focus) var(--ease-tv);
+}
+
+/* Focused artwork squares its corners and the ring supplies the rounding instead.
+   Measured on YouTube: the unfocused header carries an 18px radius with
+   `overflow: hidden`, and the focused class simply omits that rule, so the thumbnail
+   computes `border-radius: 0`. The effect is that the picture appears to fill out
+   into the ring rather than sitting inside it. */
+[data-tv-focus] > .tv-tile-art {
+  border-radius: 0;
+}
+
+.tv-tile-art img,
+.tv-tile-art .tile-fallback {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.tv-tile-badge,
+.tv-tile-dur,
+.tv-tile-seen {
+  position: absolute;
+  font-size: var(--t-label);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.66);
+  color: var(--tx);
+}
+
+.tv-tile-badge { top: 6px; left: 6px; }
+.tv-tile-dur { bottom: 6px; right: 6px; }
+.tv-tile-seen { top: 6px; right: 6px; color: var(--ok); }
+
+.tv-tile-prog {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.24);
+}
+
+/* A child `div`, not an `<i>`. The web sheet had eight rules pointed at elements
+   Compose never emits, and every one of them was a fill with no colour. */
+.tv-tile-prog > div {
+  height: 100%;
+  background: var(--red);
+}
+
+/* Dim to bright, not clipped to full.
+   Measured on YouTube: a focused title keeps its line clamp and changes colour,
+   `#aaa` unfocused to `#f1f1f1` focused. Expanding the text on focus is the obvious
+   guess and it is wrong — it reflows the row every time the ring moves. */
+.tv-tile-name {
+  font-size: var(--t-label);
+  color: #aaa;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color var(--t-focus) var(--ease-tv);
+}
+
+[data-tv-focus] > .tv-tile-name {
+  color: var(--focus);
+}
+
+/* ------------------------------------------------------------------- rail
+   A permanent left-edge navigation rail, collapsed to icons and expanding to
+   icon-plus-label when focus enters it.
+
+   Permanent is the documented distinction from a phone: "in contrast to the mobile
+   navigation drawer, the navigation drawer on TV has both expanded and collapsed
+   states visible to the user". It is never off-screen, so there is no drawer to open
+   and nothing to discover — the icons are always there telling you the rail exists.
+
+   The **standard** variant, which pushes the content aside, rather than the modal one
+   which overlays it behind a scrim. That is what YouTube does, and it is the reason
+   `.tv-root` animates `padding-left` rather than the rail animating over the top of
+   anything.
+
+   No `:hover` anywhere: expansion is driven by focus, which the engine reports. */
+.tv-rail-nav {
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 3;
+  width: var(--rail-w);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--safe-y) 8px;
+  background: var(--bg);
+  transition: width var(--t-travel) var(--ease-tv),
+    background-color var(--t-travel) var(--ease-tv);
+  overflow: hidden;
+}
+
+/* Expanded. Set by the shell when focus is inside the rail, not by a pseudo-class. */
+.tv-rail-nav.open {
+  width: var(--rail-w-open);
+  /* Slightly lifted off the page so the pushed content has a visible edge to sit
+     against while it is still moving. */
+  background: var(--elev);
+}
+
+.tv-rail-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 40px;
+  padding: 0 6px;
+  margin-bottom: var(--tv-gap);
+}
+
+.tv-mark {
+  height: clamp(22px, 3vw, 40px);
+  width: auto;
+  flex: none;
+}
+
+/* One rail entry. Fixed height so the icon column never shifts as labels appear. */
+.tv-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  height: 40px;
+  padding: 0 6px;
+  flex: none;
+  border-radius: var(--radius-pill);
+  color: var(--tx-dim);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color var(--t-focus) var(--ease-tv),
+    background-color var(--t-focus) var(--ease-tv);
+}
+
+.tv-nav-item .ic {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+}
+
+.tv-nav-item .ic svg {
+  width: 24px;
+  height: 24px;
+}
+
+/* The active destination, which is not the same thing as the focused one. The rail
+   has to say where you are even while the ring is somewhere else entirely. */
+.tv-nav-item.on {
+  color: var(--tx);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* A focused rail entry inverts and takes no ring.
+   Two reasons, and the first is a hard constraint rather than a preference: an outline
+   is not clipped by its *own* element's overflow, but it very much is clipped by an
+   **ancestor's**, and this rail sets `overflow: hidden` to keep the labels from
+   spilling out while it is collapsed. At 56px wide with 8px of padding there is exactly
+   0px of room for an 8px ring, so the ring simply did not render — measured.
+   The second reason is that inversion is what YouTube does to focused chrome anyway,
+   and on a pill that already carries a background it reads better than a ring. */
+.tv-nav-item[data-tv-focus],
+.tv-nav-item:focus {
+  outline: none;
+  background: var(--focus);
+  color: #0f0f0f;
+}
+
+/* The label. Present in the DOM in both states and clipped by the rail's width when
+   collapsed, so expanding is one width transition rather than a content swap that
+   would reflow mid-animation. */
+.tv-nav-label {
+  font-size: var(--t-meta);
+  opacity: 0;
+  transition: opacity var(--t-travel) var(--ease-tv);
+}
+
+.tv-rail-nav.open .tv-nav-label {
+  opacity: 1;
+}
+
+/* Settings pinned to the bottom, which is where every source puts it: the drawer's
+   documented bottom section is "ideal for pages like settings, help, or profile",
+   and the literal remote path in Google's own help is "scroll to the left, then down
+   and select Settings". */
+.tv-nav-foot {
+  margin-top: auto;
+}
+
+/* --------------------------------------------------------------- masthead
+   Metadata for the top item, above the first shelf. Not a two-column hero: that shape
+   is a web landing page, and its artwork panel cost half the screen height, which
+   pushed every shelf below the fold. A television home screen is shelves, and the
+   masthead is the band of text above them. */
+.tv-masthead {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  /* Room for the buttons' ring without the flex gap doubling it. */
+  padding-bottom: 4px;
+}
+
+.tv-hero-sub { color: var(--tx-dim); font-size: var(--t-meta); }
+
+.tv-hero-acts {
+  display: flex;
+  gap: var(--tv-gap);
+  padding: var(--ring-room);
+  margin: calc(-1 * var(--ring-room));
+}
+
+.tv-eyebrow {
+  font-size: var(--t-label);
+  letter-spacing: 0.14em;
+  color: var(--red);
+}
+
+/* --------------------------------------------------------------- controls */
+.tv-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0.55em 1.5em;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-pill);
+  background: var(--elev);
+  color: var(--tx);
+  font-family: var(--f-sans);
+  font-size: var(--t-meta);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.tv-btn-primary {
+  background: var(--tx);
+  color: #000;
+  border-color: var(--tx);
+  font-weight: 600;
+}
+
+.tv-chip {
+  flex: none;
+  padding: 0.45em 1.2em;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-pill);
+  background: var(--elev);
+  color: var(--tx-dim);
+  font-size: var(--t-meta);
+  white-space: nowrap;
+}
+
+.tv-chip.on {
+  background: var(--red);
+  border-color: var(--red);
+  color: var(--tx);
+}
+
+/* --------------------------------------------------------------- settings */
+.tv-settings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tv-gap-lg);
+  max-width: 900px;
+}
+
+.tv-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--tv-gap);
+  padding: 4px;
+  margin: -4px;
+}
+
+.tv-row-label { font-size: var(--t-body); }
+
+.tv-seg { display: flex; gap: 8px; }
+
+.tv-seg-item {
+  padding: 0.45em 1.2em;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-pill);
+  background: var(--elev);
+  color: var(--tx-dim);
+  font-size: var(--t-meta);
+}
+
+.tv-seg-item.on { background: var(--tx); color: #000; border-color: var(--tx); }
+
+/* iOS proportions, scaled for the room. */
+.tv-switch {
+  position: relative;
+  width: 74px;
+  height: 42px;
+  flex: none;
+  border-radius: var(--radius-pill);
+  background: #39393d;
+  transition: background 0.25s var(--ease);
+}
+
+.tv-switch.on { background: var(--red); }
+
+.tv-switch > div {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.45);
+  transition: transform 0.25s var(--ease);
+}
+
+.tv-switch.on > div { transform: translateX(32px); }
+
+.tv-foot { font-size: var(--t-label); color: var(--mut); }
+
+/* ---------------------------------------------------------------- sign in */
+.tv-signin {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tv-gap);
+  align-items: flex-start;
+  justify-content: center;
+  height: 100%;
+  max-width: 640px;
+}
+
+.tv-signin-mark { height: clamp(30px, 4vw, 56px); width: auto; }
+
+.tv-signin-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--tv-gap);
+  align-self: stretch;
+  padding: 4px;
+  margin: -4px;
+}
+
+/* 16px minimum is what stops a focus zoom on iOS if this page is ever opened on a
+   phone; on a television it is simply the smallest readable size. */
+.tv-field {
+  font-size: var(--t-body);
+  font-family: var(--f-sans);
+  padding: 0.7em 1em;
+  border-radius: var(--radius);
+  border: 1px solid var(--line-strong);
+  background: var(--elev);
+  color: var(--tx);
+}
+
+/* The web sheet sets `.field:focus { outline: none }`, which on a television is a
+   dead end with no way out. This sheet never loads that rule, and the ring above
+   applies here like anywhere else — stated so nobody re-adds it. */
+.tv-field::placeholder { color: var(--mut); }
+
+/* ------------------------------------------------------------------ toasts
+   The host is reused from the web UI unchanged; only the placement is new. */
+.toasts {
+  position: fixed;
+  left: 50%;
+  bottom: var(--safe-y);
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 40;
+}
+
+.toast {
+  padding: 0.6em 1.4em;
+  border-radius: var(--radius-pill);
+  background: var(--elev2);
+  border: 1px solid var(--line-strong);
+  font-size: var(--t-meta);
+}
+
+.toast.err { border-color: var(--red); }
+.toast.ok { border-color: var(--ok); }
+
+/* The masthead's heading names an episode, it is not the page title. `balance` because
+   it would otherwise break mid-label and orphan the episode number on a line of its
+   own. Measured at 960px: "სეზონი 2 · სერია 4" wrapped after "სერია". */
+.tv-masthead .tv-h {
+  font-size: var(--t-title);
+  text-wrap: balance;
+}
+
+/* ------------------------------------------------------------------ player
+   The watch screen fills the panel: overscan padding would letterbox the video
+   inside a frame the television is already cropping. */
+.tv-root-bare {
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+}
+
+.tv-player {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: #000;
+}
+
+.tv-player video {
+  width: 100%;
+  height: 100%;
+  /* `contain`, not `cover`: cropping someone's episode to fill the panel is worse
+     than the bars. */
+  object-fit: contain;
+  display: block;
+}
+
+/* The control bar and the thin line are the only two states, and exactly one of
+   them is visible at any moment — so there is never a frame with no position
+   indicator at all. */
+.tv-ctl {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: var(--safe-y) var(--safe-x);
+  display: flex;
+  flex-direction: column;
+  gap: var(--tv-gap);
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.92), rgba(0, 0, 0, 0));
+  transition: opacity 0.25s var(--ease);
+}
+
+.tv-ctl.hide {
+  opacity: 0;
+  /* Focus must not stay on a control nobody can see. */
+  visibility: hidden;
+}
+
+/* The progress bar, which is a focus stop rather than decoration.
+   Leanback thickens its track from 4dp to 6dp when active and gives it a knob; that
+   is a better focused state here than a ring, because a 6px-tall bar wrapped in a 4px
+   ring is mostly ring. So this grows and brightens instead, and the ring is
+   suppressed below. */
+.tv-scrub {
+  position: relative;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.24);
+  transition: height var(--t-focus) var(--ease-tv),
+    background-color var(--t-focus) var(--ease-tv);
+}
+
+/* No outline and no plate on the bar: it says it has focus by growing. */
+.tv-scrub[data-tv-focus],
+.tv-scrub:focus {
+  outline: none;
+  height: 10px;
+  background: rgba(255, 255, 255, 0.34);
+}
+
+.tv-scrub-buf,
+.tv-scrub-cur {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-radius: inherit;
+}
+
+.tv-scrub-buf { background: rgba(255, 255, 255, 0.34); }
+.tv-scrub-cur { background: var(--red); }
+
+/* Where a scrub would land. Only drawn while a gesture is open, because the whole
+   point of the preview model is that this and the red fill disagree until you
+   commit. */
+.tv-scrub-ghost {
+  position: absolute;
+  top: 50%;
+  width: 4px;
+  height: 22px;
+  margin-left: -2px;
+  border-radius: var(--radius-pill);
+  background: var(--focus);
+  transform: translateY(-50%);
+  opacity: 0;
+  transition: opacity var(--t-focus) var(--ease-tv);
+}
+
+.tv-scrub-ghost.on { opacity: 1; }
+
+/* Three clusters: the clock, the transport buttons centred, and the rest at the end.
+   YouTube's own row is left / centre / right in exactly this shape. It is one focus
+   group regardless; see the note in TvVideoPlayer. */
+.tv-ctl-row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: var(--tv-gap);
+  padding: var(--ring-room);
+  margin: calc(-1 * var(--ring-room));
+}
+
+.tv-ctl-mid {
+  display: flex;
+  align-items: center;
+  gap: var(--tv-gap);
+  justify-self: center;
+}
+
+.tv-ctl-end {
+  display: flex;
+  align-items: center;
+  gap: var(--tv-gap);
+  justify-self: end;
+}
+
+.tv-ctl-btn {
+  display: grid;
+  place-items: center;
+  min-width: 48px;
+  height: 48px;
+  padding: 0 1em;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--tx);
+  transition: background-color var(--t-focus) var(--ease-tv),
+    color var(--t-focus) var(--ease-tv);
+}
+
+/* Play/pause is the one button a viewer aims at without looking, so it is bigger. */
+.tv-ctl-btn-lg {
+  min-width: 64px;
+  height: 64px;
+}
+
+.tv-ctl-btn-lg .ic svg {
+  width: 34px;
+  height: 34px;
+}
+
+/* Focused chrome inverts to light-on-dark rather than taking a plate.
+   Measured on YouTube: the focused variant sets the chip background to `#f1f1f1` and
+   its text to `#0f0f0f`. Inversion carries much further across a room than a 10%
+   tint does, and on chrome floating over video the tint is nearly invisible. */
+.tv-ctl-btn[data-tv-focus],
+.tv-ctl-btn:focus {
+  background: var(--focus);
+  color: #0f0f0f;
+  outline: none;
+}
+
+/* One rule rescales every glyph: `Icons.svg()` hardcodes width="20", and a
+   presentation attribute has zero specificity, so CSS always wins. */
+.tv-ctl-btn .ic svg {
+  width: 28px;
+  height: 28px;
+}
+
+.tv-q-btn { font-size: var(--t-meta); }
+
+.tv-time {
+  font-size: var(--t-meta);
+  color: var(--tx-dim);
+  white-space: nowrap;
+}
+
+/* A separator element rather than a "/" inside the string, so the two timecodes are
+   their own text nodes. Leanback splits them the same way, into `current_time`, a
+   separator view and `total_time`. */
+.tv-time-sep {
+  margin: 0 0.5em;
+  color: var(--mut);
+}
+
+.tv-thinbar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.18);
+  transition: opacity 0.25s var(--ease);
+}
+
+.tv-thinbar.hide { opacity: 0; }
+
+.tv-thinbar > div {
+  height: 100%;
+  background: var(--red);
+}
+
+/* The scrub readout: the offset chosen, and the position it lands on.
+   The only confirmation that a held press registered, since a scrub deliberately does
+   not move the media until it is committed. A tap needs none, because the picture
+   itself has already jumped. */
+.tv-seek-osd {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  padding: 0.5em 1.2em;
+  border-radius: var(--radius);
+  background: rgba(0, 0, 0, 0.78);
+  font-size: var(--t-title);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.tv-q-menu {
+  position: absolute;
+  right: var(--safe-x);
+  bottom: calc(var(--safe-y) + 90px);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border-radius: var(--radius);
+  background: rgba(0, 0, 0, 0.9);
+  border: 1px solid var(--line-strong);
+}
+
+.tv-q-item {
+  padding: 0.45em 1.4em;
+  border-radius: var(--radius-sm);
+  font-family: var(--f-mono);
+  font-size: var(--t-meta);
+  color: var(--tx-dim);
+}
+
+.tv-q-item.on { color: var(--tx); background: rgba(255, 255, 255, 0.14); }
+
+.tv-spinner {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  border: 4px solid rgba(255, 255, 255, 0.22);
+}
+
+.tv-spinner > div {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 4px solid transparent;
+  border-top-color: var(--tx);
+  margin: -4px;
+  animation: tv-spin 0.9s linear infinite;
+}
+
+@keyframes tv-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Everything that moves, turned off in one place.
+   The focus ring itself is not a transition — it appears instantly either way — so
+   reducing motion never costs the cursor its visibility. What stops is the colour
+   fading, the rail widening and the content sliding. */
+@media (prefers-reduced-motion: reduce) {
+  .tv-spinner > div { animation: none; }
+
+  .tv-ctl,
+  .tv-thinbar,
+  .tv-root,
+  .tv-rail-nav,
+  .tv-nav-item,
+  .tv-nav-label,
+  .tv-tile-art,
+  .tv-tile-name,
+  .tv-scrub,
+  .tv-scrub-ghost,
+  .tv-ctl-btn,
+  [data-tv-item] {
+    transition: none;
+  }
+}

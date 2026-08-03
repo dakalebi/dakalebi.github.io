@@ -38,24 +38,44 @@ Output lands in `build/dist/js/productionExecutable/`.
 ./gradlew jsNodeTest
 ```
 
-35 domain tests, about a second, no browser. The domain layer is plain Kotlin —
-no Compose, no Firebase, no DOM — which is what makes that possible.
+73 tests, about a second, no browser. They live in `:shared`, which is plain
+Kotlin — no Compose HTML, no Firebase, no DOM — which is what makes that
+possible.
 
 ## Layout
 
+Two Gradle modules. The root is the web app; `:shared` is everything that is not
+about being a web page.
+
 ```
-src/jsMain/kotlin/ge/dakalebi/
+shared/src/commonMain/kotlin/ge/dakalebi/
   domain/        models, repository interfaces, use cases, pure queries
-  data/          Firestore, the Formula API, localStorage
-  presentation/  Compose state holders, error-to-text mapping
-  ui/            Compose HTML only
-  di/            the composition root
-  core/          logging, formatting, generated build info
+  presentation/  Compose state holders, error-to-text mapping, routes
+  data/          the Formula DTOs, the catalog cache
+  di/            the composition locals
+  core/          logging and formatting policy
   i18n/          every user-facing string, one file per language
+shared/src/jsMain/kotlin/ge/dakalebi/
+  *.js.kt        the three platform halves: console, clock, fetch
+
+src/jsMain/kotlin/ge/dakalebi/
+  ui/            Compose HTML only
+  ui/tv/         the 10-foot UI: a navigation rail, shelves, and a remote's player
+  ui/tv/focus/   D-pad navigation — geometry within a band, memory across bands
+  ui/tv/input/   one window listener and a layer stack, for the whole TV UI
+  data/firebase/ the Firestore and Auth SDK, behind the domain interfaces
+  data/local/    localStorage
+  di/            the composition root that names the implementations
+  Main.kt        the entry point
 ```
 
-Dependencies point inwards and `domain` names no framework at all. The greps
-that check this are in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+Two front ends, one bundle. `/` is the phone and desktop site; `/tv/` is the same
+data behind a 10-foot UI, sharing the palette and nothing else — `web.css` carries
+nineteen `:hover` rules describing affordances a remote cannot produce.
+
+Dependencies point inwards, and the whole of `commonMain` names no framework at
+all. The greps that check this are in
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ## Data model
 
