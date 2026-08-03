@@ -70,6 +70,21 @@ fun TvApp() {
                 key = "tv-root",
                 root = { refs.root },
                 /*
+                 * **This layer is the app.** Popping it removes the only global input
+                 * handler there is, leaving a UI that draws but does not respond, so it
+                 * must never be dismissed — the same reason the player sets this, one
+                 * level down.
+                 *
+                 * It was the default `true` until Copilot's review of #12 pointed at it,
+                 * and the hole was real and reachable: on the watch route `onBack` below
+                 * returns false (there is no rail to jump to), the player above declines
+                 * as well, and `TvInput.back` then pops the first dismissible layer it
+                 * finds — this one. The previous ladder happened to return true on that
+                 * route, which masked the missing flag rather than removing the need for
+                 * it.
+                 */
+                dismissible = false,
+                /*
                  * The documented Back ladder for a left-navigation app, and it is not
                  * a history pop:
                  *
@@ -88,8 +103,19 @@ fun TvApp() {
                     val active = document.activeElement
                     val inRail = active?.closest("[data-tv-group=\"$NAV_GROUP\"]") != null
                     when {
+                        root == null -> false
+                        /*
+                         * The player is the one screen with no rail, so it has no rail
+                         * item to jump to and the ladder's first rung does not exist
+                         * there. Back leaves it instead, which is the rung the browse
+                         * screen reaches by a different route.
+                         */
+                        router.current is Route.Watch -> {
+                            router.replace(Route.Dashboard)
+                            true
+                        }
                         // Already in the rail: let the exit protocol run.
-                        inRail || root == null -> false
+                        inRail -> false
                         // Settings is a destination, not a modal, so Back from it goes
                         // to the rail like anywhere else. The rail's active item is
                         // Settings, which is where the ring lands.

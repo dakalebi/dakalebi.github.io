@@ -364,6 +364,7 @@ verifiable while playback itself is not — that part needs a real television.
 | N39 | `Back` once | hides the chrome; the route does not change |
 | N40 | `Back` again | leaves for the browse screen. It must **not** pop the player's own input layer and strand a player nothing is listening to — that is what `TvLayer.dismissible = false` is for |
 | N40b | `Back` from any other screen's content | the **rail's active item** — not the previous URL and not the first rail item. Back on a left-navigation app is a jump out to the menu, so exiting is always two presses from anywhere |
+| N40c | `Back` **eight times** anywhere | the D-pad still moves the ring afterwards. The regression this guards is silent and total: the root `TvLayer` is the only global input handler, so popping it leaves a UI that draws and does not respond. Both it and the player are `dismissible = false`, and the check is simply that arrows still work after hammering Back past the point the stack could empty |
 | N41 | quality button | lists renditions best-first from `orderedQualityLabels`, never from map order |
 
 The seek model is where this player changed most, and all of it is scriptable. Give the
