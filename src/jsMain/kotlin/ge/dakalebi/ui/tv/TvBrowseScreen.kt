@@ -13,9 +13,12 @@ import ge.dakalebi.i18n.caps
 import ge.dakalebi.presentation.ErrorMessages
 import ge.dakalebi.presentation.Route
 import ge.dakalebi.presentation.Router
+import ge.dakalebi.ui.Thumb
 import ge.dakalebi.ui.tv.focus.FocusAxis
+import ge.dakalebi.ui.tv.focus.SpatialNav
 import ge.dakalebi.ui.tv.focus.focusGroup
 import ge.dakalebi.ui.tv.focus.focusItem
+import kotlinx.browser.document
 import org.jetbrains.compose.web.dom.A
 import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.H1
@@ -60,7 +63,7 @@ fun TvBrowseScreen() {
             TvRail(
                 key = "continue",
                 title = S.continueLabel.caps,
-                episodes = catalog.inProgress(12),
+                episodes = catalog.inProgress(TvConfig.RAIL_COUNT),
                 progress = catalog.progress,
             )
             TvSeasonRail(seasons, current) { season = it }
@@ -71,6 +74,7 @@ fun TvBrowseScreen() {
                     episodes = catalog.season(it),
                     progress = catalog.progress,
                 )
+                TvBackToTop()
             }
         }
     }
@@ -108,6 +112,16 @@ private fun TvMasthead(episode: Episode) {
     }
 
     Div({ classes("tv-masthead") }) {
+        // The episode still, full-bleed behind the text, YouTube's mainstage
+        // treatment. `Thumb` already handles the CDN's occasional 404 by falling
+        // back to a gradient, which reads as a perfectly good backdrop; `showLabel`
+        // is off because the scrim and the heading below already name the episode.
+        // `aria-hidden`, because it is pure decoration — the heading is the accessible
+        // name, and the still's own `alt` would otherwise be announced on top of it.
+        Div({ classes("tv-masthead-art"); attr("aria-hidden", "true") }) {
+            Thumb(episode, showLabel = false)
+        }
+
         Span({ classes("tv-eyebrow") }) { Text(eyebrow.caps) }
         H1({ classes("tv-h") }) {
             Text(S.seasonAndEpisode(episode.seasonNumber, episode.episodeNumber).caps)
@@ -125,5 +139,27 @@ private fun TvMasthead(episode: Episode) {
                 attr("data-from-start", "1")
             }) { Text(S.watchFromStart.caps) }
         }
+    }
+}
+
+/**
+ * The control at the foot of the grid that returns the ring to the top of the screen.
+ *
+ * A season can be six rows deep and a remote has no "Home" key on the page, so without
+ * this, climbing back to the masthead from the bottom is a long press-by-press haul. Its
+ * own `X` group, so Down from the last grid row reaches it; [SpatialNav.focusEntry] moves
+ * the ring to the masthead and, by centring it, scrolls the page up.
+ */
+@Composable
+private fun TvBackToTop() {
+    Div({ classes("tv-totop"); focusGroup("totop", FocusAxis.X) }) {
+        Div({
+            classes("tv-btn")
+            focusItem("back-to-top")
+            actsAsButton()
+            onClick {
+                document.querySelector(".tv-root")?.let { SpatialNav.focusEntry(it) }
+            }
+        }) { Text(S.backToTop.caps) }
     }
 }

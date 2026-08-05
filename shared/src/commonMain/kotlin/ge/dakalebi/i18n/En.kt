@@ -82,6 +82,7 @@ object En : Strings {
     override val statProgress = "Progress"
     override val autoplayTitle = "Autoplay the next episode"
     override val autoplayBody = "When an episode ends, the next one starts automatically."
+    override val autoplayShort = "Autoplay"
     override val nativePlayerTitle = "System player"
     override val nativePlayerBody =
         "iPhone and iPad use Apple's own player. Turn this off for the same " +
@@ -96,6 +97,7 @@ object En : Strings {
     override val waitForAdmin = "Wait for an admin to download the episodes."
     override val loadFailedEyebrow = "Could not load"
     override val resetAllProgress = "Clear all progress"
+    override val backToTop = "Back to top"
 
     override fun season(number: Int) = "Season $number"
     override fun episode(number: Int) = "Episode $number"
@@ -154,6 +156,8 @@ object En : Strings {
     override val resetSeasonTitle = "Clear the season's progress?"
     override val resetSeasonDone = "Season progress cleared"
     override val actionFailed = "That did not work"
+    override val signOutConfirmTitle = "Sign out?"
+    override val signOutConfirmBody = "You will need to sign in again to keep watching."
 
     override fun markSeasonBody(season: String) = "Mark every episode of season $season as watched?"
     override fun resetSeasonBody(season: String) = "Clear progress for every episode of season $season?"

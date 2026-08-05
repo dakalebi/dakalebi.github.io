@@ -82,6 +82,7 @@ object Ka : Strings {
     override val statProgress = "პროგრესი"
     override val autoplayTitle = "შემდეგი სერიის ავტომატურად ჩართვა"
     override val autoplayBody = "სერიის დასრულებისას შემდეგი ავტომატურად ჩაირთვება."
+    override val autoplayShort = "ავტომ. დაკვრა"
     override val nativePlayerTitle = "სისტემური ფლეიერი"
     override val nativePlayerBody =
         "iPhone-სა და iPad-ზე Apple-ის ფლეიერი გამოიყენება. გამორთე, თუ გინდა " +
@@ -96,6 +97,7 @@ object Ka : Strings {
     override val waitForAdmin = "დაელოდე, სანამ ადმინი ჩამოტვირთავს სერიებს."
     override val loadFailedEyebrow = "ჩატვირთვა ვერ მოხერხდა"
     override val resetAllProgress = "მთლიანი პროგრესის წაშლა"
+    override val backToTop = "ზემოთ დაბრუნება"
 
     override fun season(number: Int) = "სეზონი $number"
     override fun episode(number: Int) = "სერია $number"
@@ -154,6 +156,8 @@ object Ka : Strings {
     override val resetSeasonTitle = "სეზონის პროგრესის წაშლა?"
     override val resetSeasonDone = "სეზონის პროგრესი წაიშალა"
     override val actionFailed = "მოქმედება ვერ შესრულდა"
+    override val signOutConfirmTitle = "გასვლა?"
+    override val signOutConfirmBody = "ყურების გასაგრძელებლად თავიდან უნდა შეხვიდე."
 
     override fun markSeasonBody(season: String) = "მოინიშნოს სეზონი $season-ის ყველა სერია ნანახად?"
     override fun resetSeasonBody(season: String) = "წაიშალოს სეზონი $season-ის ყველა სერიის პროგრესი?"

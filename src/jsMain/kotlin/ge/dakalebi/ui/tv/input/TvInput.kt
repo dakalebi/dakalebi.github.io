@@ -1,12 +1,16 @@
 package ge.dakalebi.ui.tv.input
 
 import ge.dakalebi.core.Log
+import ge.dakalebi.ui.tv.TvConfig
 import ge.dakalebi.ui.tv.focus.Direction
+import ge.dakalebi.ui.tv.focus.ITEM_ATTR
 import ge.dakalebi.ui.tv.focus.SpatialNav
 import kotlinx.browser.document
 import kotlinx.browser.window
 import org.w3c.dom.Element
 import org.w3c.dom.HTMLElement
+import org.w3c.dom.MutationObserver
+import org.w3c.dom.MutationObserverInit
 import org.w3c.dom.events.Event
 import org.w3c.dom.events.KeyboardEvent
 
@@ -90,10 +94,98 @@ class TvInput {
         window.asDynamic().__tvShell = js("({})")
         window.asDynamic().__tvShell.onBack = { back() }
 
+        val disposeGuardian = installFocusGuardian()
+
         return {
             window.removeEventListener("keydown", handler)
             window.removeEventListener("popstate", onPop)
+            disposeGuardian()
         }
+    }
+
+    /**
+     * Keeps exactly one item focused at all times.
+     *
+     * On a television the ring *is* the cursor, so a moment with nothing focused is a
+     * moment the remote does nothing and the viewer cannot tell why. Two things take
+     * the ring away, and neither is a real navigation:
+     *
+     * 1. **A recomposition removes or re-creates the focused element.** The player's
+     *    clock ticks every second and its play glyph swaps on pause; each redraws the
+     *    focused control, and if Compose detaches it the browser drops focus to
+     *    `<body>`. This is why seeking and pausing "cleared" the ring — the act
+     *    triggered a redraw, not the loss.
+     * 2. **Content arrives after the screen mounts.** The browse screen places focus
+     *    once, but the catalog loads asynchronously, so on a real load the tiles do
+     *    not exist yet when that runs and nothing gets focused until the first press.
+     *
+     * The engine cannot prevent either — they happen inside Compose, on the frame
+     * clock — so this restores focus after the fact, imperatively, which is why it
+     * works where a `LaunchedEffect` would not. `focusout` handles (1): when the ring
+     * leaves for nothing, it goes back, onto the very element it left where possible
+     * so a seek keeps the bar. A `MutationObserver` handles (2): when the DOM changes
+     * and nothing is focused, it lands the ring where the screen wants it.
+     */
+    private fun installFocusGuardian(): () -> Unit {
+        // Focus left an element for nowhere (relatedTarget null). Settle a tick — a
+        // recomposition may re-focus something itself — then restore if still lost,
+        // preferring the element that left so an action does not move the ring.
+        val onFocusOut: (Event) -> Unit = { event ->
+            if (event.asDynamic().relatedTarget == null) {
+                val left = event.target as? HTMLElement
+                window.setTimeout({ restoreFocus(prefer = left) }, 0)
+            }
+        }
+        window.addEventListener("focusout", onFocusOut)
+
+        // The DOM changed. Coalesce a burst into one check and, if nothing is focused,
+        // land the ring. `childList` only, because element add/remove and re-creation
+        // are what strand focus; a pure text edit (were the clock to update its node in
+        // place) is a `characterData` change and would not wake this. Whether Compose
+        // edits the time text or replaces its node is up to the framework, so this may
+        // still wake often — which is fine, because the check below is a no-op when
+        // focus is intact.
+        var scheduled = false
+        val observer = MutationObserver { _, _ ->
+            if (scheduled) return@MutationObserver
+            scheduled = true
+            window.setTimeout({ scheduled = false; restoreFocus(prefer = null) }, 0)
+        }
+        observer.observe(document.body ?: document, MutationObserverInit(childList = true, subtree = true))
+
+        return {
+            window.removeEventListener("focusout", onFocusOut)
+            observer.disconnect()
+        }
+    }
+
+    /**
+     * Puts the ring back if it has been lost, [prefer]ring a specific element.
+     *
+     * A no-op in the common case: if a real item still holds focus, nothing moved and
+     * this returns at once, so even a frequently-waking observer costs one attribute
+     * read per batch.
+     */
+    private fun restoreFocus(prefer: HTMLElement?) {
+        val scope = layers.lastOrNull()?.root() ?: return
+        val active = document.activeElement
+        // Leave a focused item alone — and a focused text field too, because edit mode
+        // deliberately puts the ring's wrapper and the focus on different elements; the
+        // input holds no `data-tv-item`, and restoring off it would drop the keyboard
+        // the instant it opened.
+        if (active is HTMLElement && scope.contains(active) &&
+            (active.hasAttribute(ITEM_ATTR) || isTextEntry(active))
+        ) {
+            return
+        }
+
+        if (prefer != null && prefer.isConnected && scope.contains(prefer) &&
+            prefer.hasAttribute(ITEM_ATTR)
+        ) {
+            SpatialNav.focus(prefer, direction = null, scope = scope)
+            return
+        }
+        SpatialNav.ensureFocused(scope)
     }
 
     fun push(layer: TvLayer): TvLayerHandle {
@@ -131,7 +223,7 @@ class TvInput {
         }
         if (!pendingExit) {
             pendingExit = true
-            window.setTimeout({ pendingExit = false }, EXIT_WINDOW_MS)
+            window.setTimeout({ pendingExit = false }, TvConfig.BACK_TO_EXIT_WINDOW_MS)
             Log.d("tv", "back at the top level; press again to exit")
             return
         }
@@ -146,12 +238,19 @@ class TvInput {
         val key = keyOf(event)
         layer.onAnyKey(key)
 
-        // A text field owns its own arrows and its own space bar. Only Back is
-        // still ours, so a viewer who focused the email box can get out of it.
-        if (isTextEntry(document.activeElement)) {
+        // Edit mode: a focused text field owns its own arrows and its space bar, so
+        // typing works and the on-screen keyboard drives itself. Only Back is ours,
+        // and it *leaves edit mode* rather than the screen: it blurs the field, which
+        // drops the keyboard, and returns the ring to the `data-tv-item` wrapper the
+        // field sits in — the highlighted-but-not-editing state from which the arrows
+        // navigate again. Only a field with no such wrapper falls through to a plain
+        // Back.
+        val active = document.activeElement as? HTMLElement
+        if (isTextEntry(active)) {
             if (key is Key.Back) {
                 event.preventDefault()
-                back()
+                val wrapper = active?.closest("[$ITEM_ATTR]") as? HTMLElement
+                if (wrapper != null && wrapper != active) wrapper.focus() else back()
             }
             return
         }
@@ -188,7 +287,7 @@ class TvInput {
      */
     private fun activate(): Boolean {
         val active = document.activeElement as? HTMLElement ?: return false
-        if (!active.hasAttribute("data-tv-item")) return false
+        if (!active.hasAttribute(ITEM_ATTR)) return false
         active.click()
         return true
     }
@@ -197,10 +296,5 @@ class TvInput {
         val tag = node?.tagName?.uppercase()
         if (tag == "INPUT" || tag == "TEXTAREA" || tag == "SELECT") return true
         return runCatching { node.asDynamic().isContentEditable == true }.getOrDefault(false)
-    }
-
-    private companion object {
-        /** How long "press Back again to exit" stays armed. */
-        const val EXIT_WINDOW_MS = 2000
     }
 }

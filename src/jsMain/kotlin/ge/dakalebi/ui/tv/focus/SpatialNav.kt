@@ -52,6 +52,19 @@ internal object SpatialNav {
      */
     var onFocusChanged: ((HTMLElement) -> Unit)? = null
 
+    /**
+     * The content item the ring left when it last stepped into a side rail (the nav).
+     *
+     * A rail is an excursion, not a destination: Left opens it, and the natural thing on
+     * the way out is to land back where you were rather than on whichever band geometry
+     * picks. Geometry picks wrong here for a concrete reason — every content band shares
+     * the same left edge, so the "nearest band" distances tie and DOM order breaks the
+     * tie, which drops the ring into the topmost band while the page is still scrolled to
+     * where you actually were. Remembering the seat fixes both halves at once: the ring
+     * returns to it, and because [focus] re-centres it, so does the scroll.
+     */
+    private var railReturn: HTMLElement? = null
+
     /** Every group inside [scope], in DOM order. */
     fun groupsIn(scope: Element): List<HTMLElement> =
         scope.querySelectorAll("[$GROUP_ATTR]").asList()
@@ -133,7 +146,27 @@ internal object SpatialNav {
             bestCandidate(fromBox, itemsOf(group).map { it.box() }, direction)?.let { return it }
         }
         if (!mayLeave(axis, direction)) return null
-        return leaveGroup(fromBox, group, direction, scope)
+
+        // Leaving a side rail (a `Y` group) horizontally: go back to the seat the ring
+        // left when it stepped in, not to wherever geometry lands. See [railReturn].
+        if (direction.isHorizontal && axis == FocusAxis.Y) {
+            railReturn
+                ?.takeIf {
+                    it.isConnected && scope.contains(it) &&
+                        groupOf(it) != group && it.hasAttribute(ITEM_ATTR)
+                }
+                ?.let { railReturn = null; return it }
+        }
+
+        val target = leaveGroup(fromBox, group, direction, scope) ?: return null
+
+        // Stepping into a side rail (a `Y` group) horizontally: remember the seat, so
+        // leaving it returns here. Only horizontal — a vertical Up/Down into a `Y` list is
+        // ordinary stacking, not an excursion to come back from.
+        if (direction.isHorizontal && groupOf(target)?.let(::axisOf) == FocusAxis.Y) {
+            railReturn = from
+        }
+        return target
     }
 
     /** Every navigable item in [scope], regardless of which group owns it. */
@@ -204,6 +237,16 @@ internal object SpatialNav {
             ?: return null
 
         remembered(nearest, itemsOf(nearest))?.let { return it }
+
+        // A group may name the item to land on when the ring arrives fresh, with no
+        // memory yet — the true "next" episode at the head of the up-next rail, the
+        // episode just watched at the tail of the previous rail, the current season on
+        // the season strip. It carries [ENTRY_ATTR], and it is preferred here over the
+        // geometric guess, which otherwise lands wherever happens to sit under the
+        // cursor: mid-rail, when the press came from a centred button. Memory still wins
+        // over it, so this only steers the *first* arrival.
+        itemsOf(nearest).firstOrNull { it.hasAttribute(ENTRY_ATTR) }?.let { return it }
+
         return candidates
             .filter { it.group == nearest }
             .minByOrNull { cross(from, it.box, direction) }
@@ -226,9 +269,10 @@ internal object SpatialNav {
      * Roving `tabindex`: the arriving item is the only one at `0`, so a paired
      * keyboard's Tab leaves the page instead of walking sixty tiles.
      *
-     * A horizontal move centres the item in its own rail and leaves the page
-     * alone. A vertical move centres the whole *group*, so a rail's heading stays
-     * visible above the row that is focused rather than scrolling off.
+     * A horizontal move centres the item in its own rail and leaves the page alone.
+     * A vertical move centres the group when it fits the viewport — so a rail's
+     * heading stays visible above the focused row — and the item when the group is
+     * taller than the viewport, which a full season grid is. See [centreVertically].
      */
     fun focus(item: HTMLElement, direction: Direction?, scope: Element) {
         (document.activeElement as? HTMLElement)
@@ -254,7 +298,7 @@ internal object SpatialNav {
             direction.isHorizontal -> centre(item, setOf(Axis.X), scope)
             else -> {
                 centre(item, setOf(Axis.X), scope)
-                group?.let { centre(it, setOf(Axis.Y), scope) }
+                group?.let { centreVertically(item, it, scope) }
             }
         }
 
@@ -281,6 +325,26 @@ internal object SpatialNav {
 
         focus(restored, direction = null, scope = scope)
         return restored
+    }
+
+    /**
+     * Jumps the ring to the screen's declared entry point, ignoring memory.
+     *
+     * Unlike [entryPoint] this does not defer to a remembered item: it is for an explicit
+     * "take me back to the top" action — the browse screen's back-to-top control — where
+     * leaving where you were is the whole point. Focusing with no direction centres on
+     * both axes, and because the entry marker sits at the top of the screen, that scrolls
+     * the page up to it.
+     */
+    fun focusEntry(scope: Element): Boolean {
+        val entry = scope.querySelector("[$ENTRY_ATTR]") as? HTMLElement ?: return false
+        if (!entry.isNavigable()) return false
+        focus(entry, direction = null, scope = scope)
+        // "Back to top" means the very top, not the masthead merely centred. `focus`
+        // above centres the entry, which leaves a sliver of scroll above it; pin the
+        // vertical scroller to zero so the page is actually at its head.
+        scrollableAncestor(entry, Axis.Y, scope)?.scrollTop = 0.0
+        return true
     }
 
     /**

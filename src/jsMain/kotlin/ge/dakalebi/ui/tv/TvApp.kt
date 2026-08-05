@@ -15,6 +15,7 @@ import ge.dakalebi.presentation.Route
 import ge.dakalebi.ui.ToastHost
 import ge.dakalebi.ui.classNames
 import ge.dakalebi.ui.tv.focus.FocusMemory
+import ge.dakalebi.ui.tv.focus.ITEM_ATTR
 import ge.dakalebi.ui.tv.focus.SpatialNav
 import ge.dakalebi.ui.tv.input.TvInput
 import ge.dakalebi.ui.tv.input.TvLayer
@@ -224,7 +225,7 @@ fun TvApp() {
 private fun focusRailActiveItem(root: Element): Boolean {
     val rail = root.querySelector("[data-tv-group=\"$NAV_GROUP\"]") ?: return false
     val target = rail.querySelector(".tv-nav-item.on") as? HTMLElement
-        ?: rail.querySelector("[data-tv-item]") as? HTMLElement
+        ?: rail.querySelector("[$ITEM_ATTR]") as? HTMLElement
         ?: return false
     SpatialNav.focus(target, direction = null, scope = root)
     return true

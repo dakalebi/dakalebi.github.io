@@ -16,11 +16,13 @@ import ge.dakalebi.ui.Icon
 import ge.dakalebi.ui.Icons
 import ge.dakalebi.ui.classNames
 import ge.dakalebi.ui.player.PlayerEvents
+import ge.dakalebi.ui.tv.TvConfig
 import ge.dakalebi.ui.tv.actsAsButton
 import ge.dakalebi.ui.tv.actsAsOption
 import ge.dakalebi.ui.tv.actsAsOptionGroup
 import ge.dakalebi.ui.tv.focus.Direction
 import ge.dakalebi.ui.tv.focus.FocusAxis
+import ge.dakalebi.ui.tv.focus.ITEM_ATTR
 import ge.dakalebi.ui.tv.focus.SpatialNav
 import ge.dakalebi.ui.tv.focus.focusGroup
 import ge.dakalebi.ui.tv.focus.focusItem
@@ -48,6 +50,7 @@ private class TvPlayerRefs {
     var container: HTMLElement? = null
     var fillCur: HTMLElement? = null
     var fillBuf: HTMLElement? = null
+    var thumb: HTMLElement? = null
     var ghost: HTMLElement? = null
     var raf: Int? = null
     var hideTimer: Int? = null
@@ -114,6 +117,42 @@ fun TvVideoPlayer(
     onQualitySelected: (String) -> Unit,
     input: TvInput,
     events: PlayerEvents,
+    /**
+     * What is playing, shown top-left while the chrome is up — YouTube's placement.
+     * The player takes it as plain strings rather than an episode so it stays a
+     * player; [subtitle] is the quieter second line (the show's name).
+     */
+    title: String? = null,
+    subtitle: String? = null,
+    /**
+     * The account's "autoplay next" preference and a way to flip it, surfaced as a switch
+     * in the control row so it can be changed from the sofa without opening Settings
+     * (where it also still lives). Null hides the switch, for a player with no such
+     * setting behind it.
+     */
+    autoplayNext: Boolean? = null,
+    onToggleAutoplay: (() -> Unit)? = null,
+    /**
+     * Extra bands rendered inside the chrome, below the transport row.
+     *
+     * A slot rather than parameters, so the player stays a player and does not learn
+     * about episodes: the watch screen fills it with the next/previous rails. Whatever
+     * goes here becomes part of the chrome's `Y` group, so the spatial engine walks
+     * down into it from the buttons with no extra wiring, and it hides and shows with
+     * the rest of the chrome.
+     */
+    chromeExtra: @Composable () -> Unit = {},
+    /**
+     * The up-next card, shown as an overlay in the final
+     * [TvConfig.UP_NEXT_WINDOW_SECONDS] before the end.
+     *
+     * Deliberately **not** focusable and never focused: it is a prompt, not a control,
+     * so pressing OK still pauses rather than jumping to the next episode — the defect
+     * the request called out. The manual way to play it is the up-next rail below the
+     * chrome, which now lands on the true next episode. Null when there is nothing after
+     * this one.
+     */
+    upNext: (@Composable () -> Unit)? = null,
 ) {
     val refs = remember { TvPlayerRefs() }
     var mode by remember { mutableStateOf(Mode.Controls) }
@@ -133,6 +172,10 @@ fun TvVideoPlayer(
         val duration = if (v.duration.isFinite() && v.duration > 0) v.duration else 0.0
         val pct = if (duration > 0) (v.currentTime / duration * 100).coerceIn(0.0, 100.0) else 0.0
         refs.fillCur?.style?.width = "$pct%"
+        // The thumb marks the playhead. Positioned imperatively alongside the fill so
+        // the two never disagree, and — like the fill — with no CSS transition on
+        // `left`, because this is repainted every frame while playing.
+        refs.thumb?.style?.left = "$pct%"
 
         var bufEnd = 0.0
         val buffered = v.buffered
@@ -201,7 +244,7 @@ fun TvVideoPlayer(
         refs.hideTimer = window.setTimeout({
             val v = refs.video
             if (v != null && !v.paused && !qualityOpen) hideControls()
-        }, CONTROLS_HIDE_MS)
+        }, TvConfig.CONTROLS_HIDE_MS)
     }
 
     fun togglePlay() {
@@ -305,7 +348,21 @@ fun TvVideoPlayer(
 
     /** Whether the progress bar, rather than a button, currently holds the ring. */
     fun scrubFocused(): Boolean =
-        document.activeElement?.getAttribute("data-tv-item") == "scrub"
+        document.activeElement?.getAttribute(ITEM_ATTR) == "scrub"
+
+    /**
+     * Moves the ring to a named control in the chrome.
+     *
+     * Used by the entry rule to place focus by the direction that revealed the chrome,
+     * rather than leaving it wherever it happened to be. Absolute placement, so it does
+     * not matter where the ring was while the chrome was hidden.
+     */
+    fun focusChromeItem(itemKey: String) {
+        val container = refs.container ?: return
+        val target = container.querySelector("[$ITEM_ATTR=\"$itemKey\"]") as? HTMLElement
+            ?: return
+        SpatialNav.focus(target, direction = null, scope = container)
+    }
 
     // ---------------------------------------------------------------- input
 
@@ -328,10 +385,13 @@ fun TvVideoPlayer(
                         else -> false
                     }
                 },
-                // Any press brings the chrome back, before the press is acted on.
-                // Without this the first button you push is spent revealing the
-                // thing you were aiming at.
-                onAnyKey = { key -> if (key !is Key.Back) revealControls() },
+                // Media keys reveal the chrome before acting, so pressing Play on a
+                // hidden player shows the controls too. Direction and Select keys are
+                // deliberately *not* here: each must see the hidden state itself to act
+                // correctly (a direction places the ring by entry, an OK plays rather
+                // than firing whatever invisible control held focus), and `onAnyKey`
+                // runs first — revealing here would flip the mode out from under them.
+                onAnyKey = { key -> if (key is Key.Media) revealControls() },
                 onDirection = { direction, repeat ->
                     val sign = if (direction == Direction.Left) -1 else 1
                     when {
@@ -344,35 +404,67 @@ fun TvVideoPlayer(
                         }
 
                         /*
-                         * The speed bump. With the chrome hidden, the first press of
-                         * any direction only raises it — it does not seek.
+                         * Entry from the hidden state: reveal, then land the ring by the
+                         * direction that opened the chrome. Up lands on the buttons,
+                         * Down or a horizontal press on the bar.
                          *
-                         * Straight from YouTube's December 2025 redesign, whose stated
-                         * reason is to stop a remote sat on by accident from scrubbing
-                         * a running episode. It costs one press and it means no
-                         * unintended jump is ever a single press away. `onAnyKey` has
-                         * already done the revealing; this only has to swallow.
+                         * The horizontal case is the speed bump, kept from YouTube's
+                         * December 2025 change: a Left/Right press here only *selects*
+                         * the bar, it does not seek. The next press seeks, because the
+                         * bar then holds the ring and the rule below fires. That is what
+                         * stops a remote sat on by accident from scrubbing a running
+                         * episode with a single press.
                          */
-                        mode == Mode.Idle -> true
+                        mode == Mode.Idle -> {
+                            revealControls()
+                            focusChromeItem(if (direction == Direction.Up) "play" else "scrub")
+                            true
+                        }
 
-                        // Horizontal means seek when the bar holds the ring, and move
-                        // focus when a button does. One rule, no extra mode.
-                        direction.isHorizontal && scrubFocused() -> { seekPress(sign, repeat); true }
-                        direction.isHorizontal -> false
+                        // Up on the bar dismisses the chrome, matching Back in this
+                        // state. The bar is the topmost control, so Up has nothing to
+                        // move to, and "up and away" is the natural gesture for putting
+                        // the controls down. Checked before the keep-alive reveal below,
+                        // or the chrome would flash back the instant it was hidden.
+                        direction == Direction.Up && scrubFocused() -> { hideControls(); true }
 
-                        // Down off the bottom of the cluster dismisses it. Anywhere
-                        // else, vertical movement is the engine's: the bar and the
-                        // button row are two rows of one group.
-                        direction == Direction.Down && !scrubFocused() -> { hideControls(); true }
-                        else -> false
+                        else -> {
+                            // Chrome already shown: any press keeps it alive.
+                            revealControls()
+                            when {
+                                // Horizontal seeks on the bar and moves focus on a
+                                // button. One rule, decided by which item holds the ring.
+                                direction.isHorizontal && scrubFocused() -> {
+                                    seekPress(sign, repeat); true
+                                }
+                                // Everything else is the engine's: horizontal walks the
+                                // button row, vertical walks the bands — bar, buttons,
+                                // and the next/previous rails below them.
+                                else -> false
+                            }
+                        }
                     }
                 },
                 onSelect = { focused ->
                     when {
                         // Confirm, per the contract.
                         mode == Mode.Scrubbing -> { commitScrub(); true }
+                        // Chrome hidden: OK reveals and plays or pauses. It must NOT
+                        // fire whatever control still holds the (invisible) ring —
+                        // focus now persists while hidden, so without this branch an
+                        // OK meant to pause would skip ten seconds if Forward-10 had
+                        // been the last thing focused. Land the ring on Play too.
+                        mode == Mode.Idle -> {
+                            revealControls()
+                            focusChromeItem("play")
+                            togglePlay()
+                            true
+                        }
+                        // The bar is a slider, not a button; OK on it plays or pauses
+                        // rather than doing nothing.
+                        scrubFocused() -> { togglePlay(); true }
                         // A real control has the ring: let the click through.
-                        mode == Mode.Controls && focused?.hasAttribute("data-tv-item") == true -> false
+                        mode == Mode.Controls && focused?.hasAttribute(ITEM_ATTR) == true -> false
                         else -> { togglePlay(); true }
                     }
                 },
@@ -481,6 +573,42 @@ fun TvVideoPlayer(
 
         if (buffering) Div({ classes("tv-spinner") }) { Div() }
 
+        // What is playing, top-left, shown with the chrome. YouTube lifts the title
+        // out of the control cluster to here; the episode number is the title and the
+        // show's name is the quieter line under it.
+        if (title != null) {
+            Div({ classNames("tv-player-title", if (mode == Mode.Controls) null else "hide") }) {
+                Div({ classes("tv-player-title-main") }) { Text(title) }
+                subtitle?.let { Div({ classes("tv-player-title-sub") }) { Text(it) } }
+            }
+        }
+
+        // The up-next prompt, an overlay in the final stretch. Not part of the chrome, so
+        // it stays up whether the controls are showing or not, and — see [upNext] — not
+        // focusable, so OK still means play/pause. When autoplay is on it also carries a
+        // bar that fills as the end (and the automatic jump) approaches.
+        if (upNext != null && durationSec > 0 &&
+            (durationSec - currentSec) in 1..TvConfig.UP_NEXT_WINDOW_SECONDS
+        ) {
+            Div({ classes("tv-upnext") }) {
+                upNext()
+                if (autoplayNext == true) {
+                    val elapsed = (TvConfig.UP_NEXT_WINDOW_SECONDS - (durationSec - currentSec))
+                        .coerceIn(0, TvConfig.UP_NEXT_WINDOW_SECONDS)
+                    Div({ classes("tv-upnext-bar") }) {
+                        Div({
+                            style {
+                                property(
+                                    "width",
+                                    "${elapsed * 100.0 / TvConfig.UP_NEXT_WINDOW_SECONDS}%",
+                                )
+                            }
+                        })
+                    }
+                }
+            }
+        }
+
         // The seek readout. Big and central, because it is the only feedback that a
         // press registered before the seek actually happens.
         seekPreview?.let {
@@ -524,6 +652,13 @@ fun TvVideoPlayer(
             classNames("tv-ctl", if (mode == Mode.Controls) null else "hide")
             focusGroup("player-chrome", FocusAxis.Y)
         }) {
+            // Elapsed at the start, total at the end, flanking the bar — YouTube's
+            // placement. Not a focus stop, just a readout.
+            Div({ classes("tv-ctl-times", "mono") }) {
+                Span { Text(formatTime(currentSec.toDouble())) }
+                Span { Text(formatTime(durationSec.toDouble())) }
+            }
+
             /*
              * The bar is a focus stop, not decoration.
              *
@@ -545,6 +680,9 @@ fun TvVideoPlayer(
             }) {
                 Div({ classes("tv-scrub-buf"); ref { el -> refs.fillBuf = el; onDispose { refs.fillBuf = null } } })
                 Div({ classes("tv-scrub-cur"); ref { el -> refs.fillCur = el; onDispose { refs.fillCur = null } } })
+                // The playhead marker, at the current position. Last of the fills so it
+                // sits on top of them.
+                Div({ classes("tv-scrub-thumb"); ref { el -> refs.thumb = el; onDispose { refs.thumb = null } } })
                 // Where a scrub would land, drawn only while one is open.
                 Div({
                     classNames("tv-scrub-ghost", if (mode == Mode.Scrubbing) "on" else null)
@@ -559,10 +697,31 @@ fun TvVideoPlayer(
              * horizontal presses deliberately cannot leave an `X` group.
              */
             Div({ classes("tv-ctl-row"); focusGroup("player-buttons", FocusAxis.X) }) {
-                Span({ classes("tv-time", "mono") }) {
-                    Text(formatTime(currentSec.toDouble()))
-                    Span({ classes("tv-time-sep") }) { Text("/") }
-                    Text(formatTime(durationSec.toDouble()))
+                // The autoplay control in the left cell, mirroring the quality button on
+                // the right and keeping the transport centred. A labelled pill rather than
+                // a bare toggle, because a lone switch in a player says nothing about what
+                // it does. A focus stop in this row, so Left from the transport reaches it;
+                // never the entry item, so the ring still starts on the bar. Absent when
+                // there is no setting behind it.
+                Div({ classes("tv-ctl-start") }) {
+                    if (autoplayNext != null && onToggleAutoplay != null) {
+                        Div({
+                            classes("tv-ctl-autoplay")
+                            focusItem("autoplay")
+                            attr("role", "switch")
+                            attr("aria-checked", autoplayNext.toString())
+                            // `switch` takes its name from the author, not its contents, so
+                            // it needs an explicit one — the same word the pill shows, which
+                            // keeps the spoken and visible labels the same (WCAG 2.5.3).
+                            attr("aria-label", S.autoplayShort)
+                            onClick { onToggleAutoplay() }
+                        }) {
+                            Span({ classes("tv-ctl-autoplay-label") }) { Text(S.autoplayShort.caps) }
+                            Div({
+                                classNames("tv-switch", "tv-ctl-switch", if (autoplayNext) "on" else null)
+                            }) { Div() }
+                        }
+                    }
                 }
 
                 Div({ classes("tv-ctl-mid") }) {
@@ -606,6 +765,11 @@ fun TvVideoPlayer(
                     }
                 }
             }
+
+            // The next/previous rails, when the watch screen supplies them. Rendered
+            // here so they belong to the chrome's `Y` group — the engine walks Down
+            // into them from the buttons — and hide and show with everything else.
+            chromeExtra()
         }
 
         // Always something to read the position from, exactly when the control bar
@@ -622,6 +786,3 @@ fun TvVideoPlayer(
         }
     }
 }
-
-/** How long the chrome stays up after the last press, while playing. */
-private const val CONTROLS_HIDE_MS = 5_000
