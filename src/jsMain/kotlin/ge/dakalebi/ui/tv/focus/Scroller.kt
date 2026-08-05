@@ -1,5 +1,6 @@
 package ge.dakalebi.ui.tv.focus
 
+import kotlinx.browser.window
 import org.w3c.dom.Element
 import org.w3c.dom.HTMLElement
 
@@ -54,28 +55,71 @@ internal fun centre(item: HTMLElement, axes: Set<Axis>, within: Element) {
 }
 
 /**
- * The closest ancestor that actually overflows on [axis], stopping at [within].
+ * Vertically brings [item] into view, keeping its [group]'s heading on screen when it
+ * can.
  *
- * "Actually overflows" rather than "is styled to scroll", because a rail whose
- * items happen to fit should not be scrolled at all — nudging a fitting row by a
- * fraction of a pixel is a visible wobble for no gain.
+ * A vertical move normally centres the whole group, so a rail's heading stays visible
+ * above the focused row rather than scrolling off. That is right only while the group
+ * fits its scroller. A group taller than the viewport — a full season is six rows —
+ * has no single scroll position that shows every row, so centring it parks a fixed
+ * midpoint and the ring walks straight off the bottom. Measured: a 548px grid in a
+ * 540px viewport pinned at `scrollTop` 553 and the row below the fold never returned.
  *
- * **A scrolling container must be `overflow: auto` or `scroll`, not `hidden`.**
- * Measured: `hidden` still reports `scrollWidth > clientWidth`, so it looks
- * scrollable from here, and then silently ignores the assignment below — the ring
- * walks off the edge of a rail that never moves. Suppress the scrollbar with
- * `scrollbar-width: none` instead; see `tv.css`.
+ * So the group is centred when it fits, and the focused item when it does not. Both
+ * resolve to the same vertical scroller (the item is inside the group), so the choice
+ * is only *what* to centre, never *where*.
  */
-private fun scrollableAncestor(from: HTMLElement, axis: Axis, within: Element): HTMLElement? {
+internal fun centreVertically(item: HTMLElement, group: HTMLElement, within: Element) {
+    val scroller = scrollableAncestor(group, Axis.Y, within)
+    val groupFits = scroller == null ||
+        group.getBoundingClientRect().height <= scroller.clientHeight
+    centre(if (groupFits) group else item, setOf(Axis.Y), within)
+}
+
+/**
+ * The closest ancestor that can actually scroll [from] on [axis], stopping at
+ * [within].
+ *
+ * Two conditions, and the second one is the whole point of this function existing
+ * rather than a one-line `scrollWidth > clientWidth` at the call site:
+ *
+ * 1. **It must overflow.** A rail whose items happen to fit should not be scrolled
+ *    at all — nudging a fitting row by a fraction of a pixel is a visible wobble for
+ *    no gain.
+ * 2. **It must be styled to scroll on that axis** — `overflow` of `auto` or
+ *    `scroll`. This is not belt-and-suspenders; it is the fix for a bug that
+ *    disabled *all* vertical scrolling in the app. `scrollTop`/`scrollLeft` are only
+ *    honoured on a scroll container: assign them on an `overflow: visible` or
+ *    `hidden` box and the browser reports success and moves nothing. Yet such a box
+ *    still reports `scrollHeight > clientHeight` whenever its content spills past its
+ *    padding box — which a `.tv-band` does by design, because every rail inside it
+ *    carries a negative margin to give the focus ring room. So condition 1 alone
+ *    matched `.tv-band` (a `visible` box overflowing by nine pixels), returned it as
+ *    the scroller, and the walk stopped there — never reaching `.tv-root`, the one
+ *    element that could actually move. Measured: the ring marched down the page while
+ *    `scrollTop` stayed pinned at zero. Requiring the style as well walks straight
+ *    past the false positive to the real scroller.
+ *
+ * The scrollbar itself is suppressed with `scrollbar-width: none`, so "styled to
+ * scroll" costs nothing visually; see `tv.css`.
+ */
+internal fun scrollableAncestor(from: HTMLElement, axis: Axis, within: Element): HTMLElement? {
     var node: HTMLElement? = from.parentElement as? HTMLElement
     while (node != null) {
         val overflows = when (axis) {
             Axis.X -> node.scrollWidth > node.clientWidth + 1
             Axis.Y -> node.scrollHeight > node.clientHeight + 1
         }
-        if (overflows) return node
+        if (overflows && node.scrollsOn(axis)) return node
         if (node == within) return null
         node = node.parentElement as? HTMLElement
     }
     return null
+}
+
+/** Whether this element's computed `overflow` on [axis] actually permits scrolling. */
+private fun HTMLElement.scrollsOn(axis: Axis): Boolean {
+    val property = if (axis == Axis.X) "overflow-x" else "overflow-y"
+    val value = window.getComputedStyle(this).getPropertyValue(property)
+    return value == "auto" || value == "scroll"
 }

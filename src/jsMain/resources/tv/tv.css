@@ -9,10 +9,52 @@
    2. The type scale is different in kind, not degree. Every size in web.css is a
       hardcoded px literal tuned for arm's length.
 
-   Sizes are clamped against `vw` with **960px as the reference width**, because
-   that is what a 1080p Android TV WebView actually reports (device pixel ratio
-   2). Opening this page on a 1920px desktop scales up; a 720p set scales down.
+   **Every size here is in `rem`, and one root font-size scales the whole UI.**
+
+   This replaced a sheet of `clamp(min, vw, max)` values plus about forty hard px
+   literals, and the reason is worth recording because the failure was not subtle.
+   Each `clamp` capped out at roughly its 1280px value, and a hard px never grew at
+   all — so on a 2000px-wide screen the rail was still 56px where proportion asked
+   for 117, and a player button was still 48px where proportion asked for 100. The
+   whole interface sat at about **48% of its intended size**, which on a television
+   reads as "unusable from the sofa" rather than "slightly small".
+
+   The fix is the one YouTube's own television app uses: lay out against a fixed
+   canvas, set the root font-size to a fraction of that canvas, and express
+   everything in `rem`. Their app sets `html { font-size: 213.889% }` scaled to its
+   canvas so 1rem is exactly 24px at 1920x1080; the principle transfers, the constant
+   does not, because this sheet's reference canvas is 960x540 rather than 1280x720.
+
+   Reference: **1rem = 16px at 960x540**, so 32px at 1920x1080 and 64px at 4K. Read
+   any `rem` below as "sixteenths of the reference body size".
    ========================================================================== */
+
+html {
+  /*
+   * The scale the entire sheet hangs off.
+   *
+   * `min()` of the two axes, not `vw` alone. Scaling by width is right on a
+   * television, where the panel is always 16:9, and wrong in a desktop browser
+   * window, where a wide-but-short window would size everything to its width and
+   * then overflow vertically with no way to scroll to what fell off. Taking the
+   * smaller of the two fits the layout into a 16:9 box inside whatever shape the
+   * window happens to be — which is the same thing YouTube achieves by pillarboxing
+   * to a fixed 16:9 container.
+   *
+   *   1.667vw  = 16/960  — the width term
+   *   2.963vh  = 16/540  — the height term
+   *
+   * The `max(11px, …)` floor keeps text legible if someone opens this in a very
+   * small window. It is a floor, not a clamp: there is deliberately no ceiling,
+   * because a ceiling is exactly what broke the previous version.
+   *
+   * Absolute units only, and necessarily: this declaration *defines* what a `rem`
+   * is, so a `rem` inside it would either be circular or silently mean something
+   * else — on the root element `rem` resolves against the initial 16px rather than
+   * against this rule.
+   */
+  font-size: max(11px, min(1.667vw, 2.963vh));
+}
 
 :root {
   /* The app surface is near-black, not the black in tokens.css.
@@ -29,24 +71,25 @@
 
      Google publishes three different side margins (48 / 58dp) and three vertical
      ones (24 / 27 / 28dp) on a single page; 58/28 is the pair that actually adds up
-     against their 12-column grid, and 48/27 is the legacy overscan figure. The
-     clamp below spans both, so the safe area is never tighter than the smaller
-     claim. YouTube itself is more generous still, at roughly 8% left. */
-  --safe-x: clamp(24px, 5vw, 72px);
-  --safe-y: clamp(16px, 5vh, 40px);
+     against their 12-column grid, and 48/27 is the legacy overscan figure. These sit
+     between the two claims, so the safe area is never tighter than the smaller one.
+     YouTube itself is more generous still, at roughly 8% left. */
+  --safe-x: 3rem;   /* 48px at the reference canvas */
+  --safe-y: 1.75rem;
 
-  /* Type scale. Reference values at 960px: 14 / 16 / 20 / 28 / 40.
+  /* Type scale, in sixteenths of the reference body size:
+     14 / 16 / 20 / 28 / 40px at 960x540.
      YouTube's smallest text anywhere is 14px on a 1280 canvas, about 10.5px at this
-     reference, so the 12px floor below is already the more conservative of the two. */
-  --t-label: clamp(12px, 1.5vw, 20px);
-  --t-meta: clamp(13px, 1.7vw, 22px);
-  --t-body: clamp(16px, 2.1vw, 27px);
-  --t-title: clamp(21px, 2.9vw, 38px);
-  --t-h: clamp(30px, 4.2vw, 54px);
+     reference, so the smallest step here is already the more conservative of the two. */
+  --t-label: 0.875rem;
+  --t-meta: 1rem;
+  --t-body: 1.25rem;
+  --t-title: 1.75rem;
+  --t-h: 2.5rem;
 
   /* Spacing. A rail gap has to read as a gap from across a room. */
-  --tv-gap: clamp(12px, 1.7vw, 22px);
-  --tv-gap-lg: clamp(20px, 3vw, 40px);
+  --tv-gap: 1rem;
+  --tv-gap-lg: 1.75rem;
 
   /* ------------------------------------------------------------- focus
      The cursor. Every value here was measured off YouTube's shipped television
@@ -58,8 +101,8 @@
      The ring sits *outside* the tile and the tile does not move. See the note on
      `.tv-tile` for why that matters more than it sounds. */
   --focus: #f1f1f1;
-  --focus-w: 4px;
-  --focus-gap: 4px;
+  --focus-w: 0.25rem;
+  --focus-gap: 0.25rem;
 
   /* The plate behind a focused tile: 10% white, straight from the shipped
      `WholeTileFocusRing` variant. */
@@ -80,8 +123,8 @@
      Collapsed matches `tv-material`'s `CollapsedDrawerItemWidth` of 56dp exactly,
      which is also what YouTube ships (3.5rem on its canvas). Expanded sits between
      YouTube's 314px and `tv-material`'s 256dp. */
-  --rail-w: 56px;
-  --rail-w-open: 260px;
+  --rail-w: 3.5rem;        /* 56px at the reference canvas */
+  --rail-w-open: 16.25rem; /* 260px */
 
   /* What the content is inset by: the rail, plus its own breathing room. YouTube's
      104px left inset decomposes exactly this way — a 56px rail plus 48px of
@@ -89,12 +132,19 @@
   --content-x: calc(var(--rail-w) + var(--safe-x));
 
   /* How much clearance a scroller has to leave so a ring is not clipped. Derived,
-     not typed twice: the ring's own gap plus its stroke, plus a pixel of slack. */
-  --ring-room: calc(var(--focus-gap) + var(--focus-w) + 1px);
+     not typed twice: the ring's own gap plus its stroke, plus a little slack.
+
+     Note for anyone touching this: the slack used to be `1px`, and a scroller that
+     overflows its parent by a few pixels is exactly what broke vertical scrolling
+     across the whole app — see the `overflow` check in `Scroller.kt`. The engine no
+     longer mistakes such a parent for a scroll container, so this is safe again, but
+     the interaction is worth knowing about. */
+  --ring-room: calc(var(--focus-gap) + var(--focus-w) + 0.0625rem);
 
   /* One tile width, used by both the rail and the grid so a shelf and a season
-     cannot disagree about how big an episode is. */
-  --tile-w: clamp(150px, 18vw, 300px);
+     cannot disagree about how big an episode is. Sized so a shelf shows about five
+     and a half, which is what YouTube's geometry works out to. */
+  --tile-w: 10.625rem; /* 170px */
 }
 
 * {
@@ -109,10 +159,24 @@ body {
   background: var(--bg);
   color: var(--tx);
   font-family: var(--f-sans);
-  font-size: var(--t-body);
   /* A television has no scrollbar and nothing to scroll it with. Panning is done
      by moving focus, and the focus engine scrolls the container itself. */
   overflow: hidden;
+}
+
+/*
+ * The body's text size, and **only** the body's.
+ *
+ * `font-size` deliberately does not appear in the grouped rule above, because that
+ * rule also matches `html` — and setting `font-size: var(--t-body)` on `html` silently
+ * destroys the whole rem canvas. It is later in the sheet, so it wins over the `html`
+ * rule at the top; `--t-body` is `1.25rem`; and a `rem` on the root element resolves
+ * against the initial 16px rather than against itself. The result was a root of 20px
+ * instead of 16, so every size in the sheet came out 25% large — measured: a 3.5rem
+ * rail rendered 70px wide at a 960px viewport instead of 56.
+ */
+body {
+  font-size: var(--t-body);
 }
 
 /* The mount point Compose renders into. It needs an explicit height or the
@@ -308,7 +372,7 @@ body {
   width: var(--tile-w);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0.5rem;
   text-decoration: none;
   color: var(--tx);
   border-radius: var(--radius);
@@ -348,22 +412,22 @@ body {
 .tv-tile-seen {
   position: absolute;
   font-size: var(--t-label);
-  padding: 2px 8px;
+  padding: 0.125rem 0.5rem;
   border-radius: var(--radius-sm);
   background: rgba(0, 0, 0, 0.66);
   color: var(--tx);
 }
 
-.tv-tile-badge { top: 6px; left: 6px; }
-.tv-tile-dur { bottom: 6px; right: 6px; }
-.tv-tile-seen { top: 6px; right: 6px; color: var(--ok); }
+.tv-tile-badge { top: 0.375rem; left: 0.375rem; }
+.tv-tile-dur { bottom: 0.375rem; right: 0.375rem; }
+.tv-tile-seen { top: 0.375rem; right: 0.375rem; color: var(--ok); }
 
 .tv-tile-prog {
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
-  height: 5px;
+  height: 0.3125rem;
   background: rgba(255, 255, 255, 0.24);
 }
 
@@ -415,8 +479,8 @@ body {
   width: var(--rail-w);
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: var(--safe-y) 8px;
+  gap: 0.375rem;
+  padding: var(--safe-y) 0.5rem;
   background: var(--bg);
   transition: width var(--t-travel) var(--ease-tv),
     background-color var(--t-travel) var(--ease-tv);
@@ -434,14 +498,14 @@ body {
 .tv-rail-head {
   display: flex;
   align-items: center;
-  gap: 12px;
-  height: 40px;
-  padding: 0 6px;
+  gap: 0.75rem;
+  height: 2.5rem;
+  padding: 0 0.375rem;
   margin-bottom: var(--tv-gap);
 }
 
 .tv-mark {
-  height: clamp(22px, 3vw, 40px);
+  height: 1.75rem;
   width: auto;
   flex: none;
 }
@@ -450,9 +514,9 @@ body {
 .tv-nav-item {
   display: flex;
   align-items: center;
-  gap: 14px;
-  height: 40px;
-  padding: 0 6px;
+  gap: 0.875rem;
+  height: 2.5rem;
+  padding: 0 0.375rem;
   flex: none;
   border-radius: var(--radius-pill);
   color: var(--tx-dim);
@@ -466,12 +530,12 @@ body {
   flex: none;
   display: grid;
   place-items: center;
-  width: 28px;
+  width: 1.75rem;
 }
 
 .tv-nav-item .ic svg {
-  width: 24px;
-  height: 24px;
+  width: 1.5rem;
+  height: 1.5rem;
 }
 
 /* The active destination, which is not the same thing as the focused one. The rail
@@ -526,9 +590,9 @@ body {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 10px;
+  gap: 0.625rem;
   /* Room for the buttons' ring without the flex gap doubling it. */
-  padding-bottom: 4px;
+  padding-bottom: 0.25rem;
 }
 
 .tv-hero-sub { color: var(--tx-dim); font-size: var(--t-meta); }
@@ -550,7 +614,7 @@ body {
 .tv-btn {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 0.5rem;
   padding: 0.55em 1.5em;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-pill);
@@ -592,7 +656,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: var(--tv-gap-lg);
-  max-width: 900px;
+  max-width: 56.25rem;
 }
 
 .tv-row {
@@ -600,13 +664,13 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: var(--tv-gap);
-  padding: 4px;
+  padding: 0.25rem;
   margin: -4px;
 }
 
 .tv-row-label { font-size: var(--t-body); }
 
-.tv-seg { display: flex; gap: 8px; }
+.tv-seg { display: flex; gap: 0.5rem; }
 
 .tv-seg-item {
   padding: 0.45em 1.2em;
@@ -622,8 +686,8 @@ body {
 /* iOS proportions, scaled for the room. */
 .tv-switch {
   position: relative;
-  width: 74px;
-  height: 42px;
+  width: 4.625rem;
+  height: 2.625rem;
   flex: none;
   border-radius: var(--radius-pill);
   background: #39393d;
@@ -634,17 +698,17 @@ body {
 
 .tv-switch > div {
   position: absolute;
-  top: 4px;
-  left: 4px;
-  width: 34px;
-  height: 34px;
+  top: 0.25rem;
+  left: 0.25rem;
+  width: 2.125rem;
+  height: 2.125rem;
   border-radius: 50%;
   background: #fff;
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 0.1875rem 0.5rem rgba(0, 0, 0, 0.45);
   transition: transform 0.25s var(--ease);
 }
 
-.tv-switch.on > div { transform: translateX(32px); }
+.tv-switch.on > div { transform: translateX(2rem); }
 
 .tv-foot { font-size: var(--t-label); color: var(--mut); }
 
@@ -656,17 +720,17 @@ body {
   align-items: flex-start;
   justify-content: center;
   height: 100%;
-  max-width: 640px;
+  max-width: 40rem;
 }
 
-.tv-signin-mark { height: clamp(30px, 4vw, 56px); width: auto; }
+.tv-signin-mark { height: 2.5rem; width: auto; }
 
 .tv-signin-form {
   display: flex;
   flex-direction: column;
   gap: var(--tv-gap);
   align-self: stretch;
-  padding: 4px;
+  padding: 0.25rem;
   margin: -4px;
 }
 
@@ -696,7 +760,7 @@ body {
   transform: translateX(-50%);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0.5rem;
   z-index: 40;
 }
 
@@ -773,7 +837,7 @@ body {
    suppressed below. */
 .tv-scrub {
   position: relative;
-  height: 6px;
+  height: 0.375rem;
   border-radius: var(--radius-pill);
   background: rgba(255, 255, 255, 0.24);
   transition: height var(--t-focus) var(--ease-tv),
@@ -784,7 +848,7 @@ body {
 .tv-scrub[data-tv-focus],
 .tv-scrub:focus {
   outline: none;
-  height: 10px;
+  height: 0.625rem;
   background: rgba(255, 255, 255, 0.34);
 }
 
@@ -807,8 +871,8 @@ body {
 .tv-scrub-ghost {
   position: absolute;
   top: 50%;
-  width: 4px;
-  height: 22px;
+  width: 0.25rem;
+  height: 1.375rem;
   margin-left: -2px;
   border-radius: var(--radius-pill);
   background: var(--focus);
@@ -845,12 +909,15 @@ body {
   justify-self: end;
 }
 
+/* A transport control.
+   Square by default and grown by padding only when it holds text, because an
+   icon-only pill sized by `min-width` plus `em` padding is not actually centred —
+   see the note on `.ic` below, and `.tv-q-btn` for the text case. */
 .tv-ctl-btn {
   display: grid;
   place-items: center;
-  min-width: 48px;
-  height: 48px;
-  padding: 0 1em;
+  width: 3.25rem;
+  height: 3.25rem;
   border-radius: var(--radius-pill);
   background: rgba(255, 255, 255, 0.12);
   color: var(--tx);
@@ -860,13 +927,42 @@ body {
 
 /* Play/pause is the one button a viewer aims at without looking, so it is bigger. */
 .tv-ctl-btn-lg {
-  min-width: 64px;
-  height: 64px;
+  width: 4.25rem;
+  height: 4.25rem;
 }
 
 .tv-ctl-btn-lg .ic svg {
-  width: 34px;
-  height: 34px;
+  width: 2.25rem;
+  height: 2.25rem;
+}
+
+/*
+ * The icon box, and the reason this rule has to exist.
+ *
+ * `Icon()` renders a `<span class="ic">` wrapping an `<svg>`, and a bare `span` is an
+ * **inline** box: it sits on the text baseline and carries the line-height and
+ * descender space of whatever font is in effect. `place-items: center` on the button
+ * then dutifully centres that inline box — including its empty descender strip — so
+ * the visible glyph ends up sitting above the true centre.
+ *
+ * Worse, it moved: line-height is font-relative, so the offset changed with the font
+ * size and the icons looked differently misaligned at different resolutions, which is
+ * exactly how the bug was reported.
+ *
+ * `grid` makes `.ic` a block-level box with no baseline to sit on, `line-height: 0`
+ * removes the strut, and `display: block` on the svg stops it being treated as inline
+ * content in turn. The navigation rail (`.tv-nav-item .ic`) had the grid box all
+ * along, which is why its icons were centred and the player's were not; this brings
+ * the player in line.
+ */
+.tv-ctl-btn .ic {
+  display: grid;
+  place-items: center;
+  line-height: 0;
+}
+
+.tv-ctl-btn .ic svg {
+  display: block;
 }
 
 /* Focused chrome inverts to light-on-dark rather than taking a plate.
@@ -883,11 +979,19 @@ body {
 /* One rule rescales every glyph: `Icons.svg()` hardcodes width="20", and a
    presentation attribute has zero specificity, so CSS always wins. */
 .tv-ctl-btn .ic svg {
-  width: 28px;
-  height: 28px;
+  width: 1.75rem;
+  height: 1.75rem;
 }
 
-.tv-q-btn { font-size: var(--t-meta); }
+/* The quality button carries text ("1080p"), not an icon, so it opts out of the
+   square sizing every other transport control uses: it grows to its label with
+   horizontal padding and keeps only the shared height. */
+.tv-q-btn {
+  width: auto;
+  min-width: 3.25rem;
+  padding: 0 1em;
+  font-size: var(--t-meta);
+}
 
 .tv-time {
   font-size: var(--t-meta);
@@ -908,7 +1012,7 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  height: 4px;
+  height: 0.25rem;
   background: rgba(255, 255, 255, 0.18);
   transition: opacity 0.25s var(--ease);
 }
@@ -940,11 +1044,11 @@ body {
 .tv-q-menu {
   position: absolute;
   right: var(--safe-x);
-  bottom: calc(var(--safe-y) + 90px);
+  bottom: calc(var(--safe-y) + 5.625rem);
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 8px;
+  gap: 0.375rem;
+  padding: 0.5rem;
   border-radius: var(--radius);
   background: rgba(0, 0, 0, 0.9);
   border: 1px solid var(--line-strong);
@@ -965,17 +1069,17 @@ body {
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: 54px;
-  height: 54px;
+  width: 3.375rem;
+  height: 3.375rem;
   border-radius: 50%;
-  border: 4px solid rgba(255, 255, 255, 0.22);
+  border: 0.25rem solid rgba(255, 255, 255, 0.22);
 }
 
 .tv-spinner > div {
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  border: 4px solid transparent;
+  border: 0.25rem solid transparent;
   border-top-color: var(--tx);
   margin: -4px;
   animation: tv-spin 0.9s linear infinite;

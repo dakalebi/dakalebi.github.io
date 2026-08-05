@@ -226,9 +226,10 @@ internal object SpatialNav {
      * Roving `tabindex`: the arriving item is the only one at `0`, so a paired
      * keyboard's Tab leaves the page instead of walking sixty tiles.
      *
-     * A horizontal move centres the item in its own rail and leaves the page
-     * alone. A vertical move centres the whole *group*, so a rail's heading stays
-     * visible above the row that is focused rather than scrolling off.
+     * A horizontal move centres the item in its own rail and leaves the page alone.
+     * A vertical move centres the group when it fits the viewport — so a rail's
+     * heading stays visible above the focused row — and the item when the group is
+     * taller than the viewport, which a full season grid is. See [centreVertically].
      */
     fun focus(item: HTMLElement, direction: Direction?, scope: Element) {
         (document.activeElement as? HTMLElement)
@@ -254,7 +255,7 @@ internal object SpatialNav {
             direction.isHorizontal -> centre(item, setOf(Axis.X), scope)
             else -> {
                 centre(item, setOf(Axis.X), scope)
-                group?.let { centre(it, setOf(Axis.Y), scope) }
+                group?.let { centreVertically(item, it, scope) }
             }
         }
 
