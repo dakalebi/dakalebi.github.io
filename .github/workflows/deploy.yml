@@ -1,8 +1,14 @@
 name: Deploy to GitHub Pages
 
+# The site is assembled from two branches into one Pages artifact:
+#   /          the live app, built from `main` (Compose HTML / Kotlin-JS)
+#   /preview   the 2.0 app, built from `preview` (Compose Multiplatform / wasmJs)
+# Both are rebuilt on every deploy, because a Pages deploy replaces the whole site —
+# so building only one branch's output would wipe the other's. Pushing to either
+# branch therefore refreshes the complete, consistent site.
 on:
   push:
-    branches: [main]
+    branches: [main, preview]
   workflow_dispatch:
 
 permissions:
@@ -19,7 +25,17 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - name: Check out main (the live root app)
+        uses: actions/checkout@v5
+        with:
+          ref: main
+          path: main
+
+      - name: Check out preview (the /preview app)
+        uses: actions/checkout@v5
+        with:
+          ref: preview
+          path: preview
 
       - uses: actions/setup-java@v5
         with:
@@ -28,19 +44,28 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: Build Kotlin/JS bundle
+      - name: Build the root app (Compose HTML, Kotlin/JS)
+        working-directory: main
         run: ./gradlew jsBrowserDistribution
 
-      # GitHub Pages runs Jekyll by default, which drops files beginning with
-      # an underscore. Kotlin/JS + webpack can emit those.
-      - name: Disable Jekyll
-        run: touch build/dist/js/productionExecutable/.nojekyll
+      - name: Build the preview app (Compose Multiplatform, wasmJs)
+        working-directory: preview
+        run: ./gradlew :web:wasmJsBrowserDistribution
+
+      - name: Assemble the combined site
+        run: |
+          mkdir -p _site/preview
+          cp -R main/build/dist/js/productionExecutable/. _site/
+          cp -R preview/web/build/dist/wasmJs/productionExecutable/. _site/preview/
+          # GitHub Pages runs Jekyll by default, which drops files beginning with an
+          # underscore; Kotlin/JS + webpack can emit those.
+          touch _site/.nojekyll
 
       - uses: actions/configure-pages@v5
 
       - uses: actions/upload-pages-artifact@v4
         with:
-          path: build/dist/js/productionExecutable
+          path: _site
 
   deploy:
     needs: build
