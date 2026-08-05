@@ -1,0 +1,15 @@
+<!-- Placeholder Leanback banner (320x180): brand red with a centred white play glyph.
+     The TV launcher shows this on the home row; swap in real art with the app name
+     baked in later. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="320dp"
+    android:height="180dp"
+    android:viewportWidth="320"
+    android:viewportHeight="180">
+    <path
+        android:fillColor="#e1352f"
+        android:pathData="M0,0h320v180h-320z" />
+    <path
+        android:fillColor="#ffffff"
+        android:pathData="M138,64 L184,90 L138,116 Z" />
+</vector>

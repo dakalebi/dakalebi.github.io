@@ -110,14 +110,16 @@ html {
   --focus-plate: rgba(255, 255, 255, 0.1);
 
   /* ------------------------------------------------------------ motion
-     Two durations, both measured. Focus state changes are 150ms — YouTube's
-     stylesheet is dominated by .15s and .3s, and the fast one is what focus uses.
-     Travel (a rail sliding, a drawer widening) is 300ms.
-
-     Compose for TV ships 300ms in / 500ms out for its own focus scale, which is
-     much slower; on a surface where the ring is the cursor, slow is lag. */
-  --t-focus: 150ms;
-  --t-travel: 300ms;
+     Both zero, deliberately. These were 150ms (focus) and 300ms (travel), measured
+     off YouTube — good on capable hardware. But a low-end built-in-TV WebView repaints
+     every transitioning element per frame for the whole duration, and at D-pad-move
+     frequency those frames never finish before the next press, which is exactly the
+     shelf lag this UI was reported to have. Zeroing the durations makes focus and the
+     rail push instant, so a press is one repaint, not a stream of them. The ring itself
+     is not a transition, so the cursor was always instant regardless; nothing here slows
+     it. If this ever runs only on strong hardware, raise them back to 150/300. */
+  --t-focus: 0ms;
+  --t-travel: 0ms;
   --ease-tv: cubic-bezier(0, 0, 0.2, 1);
 
   /* ---------------------------------------------------------- nav rail
@@ -363,6 +365,19 @@ body {
   margin: calc(-1 * var(--ring-room));
 }
 
+/* A full season can be dozens of tiles, and a weak TV lays out and paints every one on
+   each reflow — a big steady-state cost. `content-visibility: auto` lets the WebView
+   skip layout, paint and image-decode for grid tiles that are off-screen, while
+   `contain-intrinsic-size` reserves each tile's real box so the grid height stays right
+   and the focus engine's `getBoundingClientRect` still resolves an off-screen tile it
+   navigates to. The `auto` keyword remembers the true rendered size once a tile has been
+   shown, so the reserved size self-corrects; the length is only the first-paint fallback.
+   Older WebViews (pre-Chromium 85) ignore the property entirely — no benefit, no harm. */
+.tv-grid > .tv-tile {
+  content-visibility: auto;
+  contain-intrinsic-size: auto var(--tile-w) auto 8rem;
+}
+
 /* ------------------------------------------------------------------- tiles
    Sized so a shelf shows about five and a half tiles, which is what YouTube's
    geometry works out to: a 288px tile on a 1920 canvas with a 324px pitch against a
@@ -388,7 +403,10 @@ body {
   overflow: hidden;
   border-radius: var(--radius);
   background: var(--elev2);
-  transition: border-radius var(--t-focus) var(--ease-tv);
+  /* No transition on the radius. Animating `border-radius` on a box that clips an
+     <img> forces the WebView to re-rasterise the rounded-corner mask every frame — the
+     single most expensive thing a focus move did on a weak TV GPU. The corners now snap
+     square instantly when the ring lands, which reads crisply at 10 feet. */
 }
 
 /* Focused artwork squares its corners and the ring supplies the rounding instead.
@@ -641,9 +659,11 @@ body {
   content: "";
   position: absolute;
   inset: 0;
-  background:
-    linear-gradient(to top, var(--bg) 6%, rgba(15, 15, 15, 0.55) 45%, rgba(15, 15, 15, 0.15) 100%),
-    linear-gradient(to right, rgba(15, 15, 15, 0.75) 0%, rgba(15, 15, 15, 0) 55%);
+  /* One gradient, not two. A vertical D-pad move scrolls the page to centre the band,
+     which re-fills this screen-wide layer every frame; two stacked gradients doubled
+     that fill for a side-scrim the text does not need. The bottom-up fade alone keeps
+     the heading legible over the still. */
+  background: linear-gradient(to top, var(--bg) 6%, rgba(15, 15, 15, 0.5) 45%, rgba(15, 15, 15, 0) 100%);
 }
 
 /* The text and buttons sit above the still. A shared stacking context, set once, so
@@ -1036,7 +1056,8 @@ body {
   height: 0.875rem;
   border-radius: 50%;
   background: var(--tx);
-  box-shadow: 0 0 0.25rem rgba(0, 0, 0, 0.6);
+  /* No drop shadow: its `left` is rewritten every frame while playing, so the shadow
+     repainted every frame too. The white fill already reads over the dim track. */
   transform: translate(-50%, -50%);
   transition: width var(--t-focus) var(--ease-tv), height var(--t-focus) var(--ease-tv);
   pointer-events: none;

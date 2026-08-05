@@ -5,6 +5,13 @@ plugins {
     kotlin("plugin.serialization") version "2.3.20"
     kotlin("plugin.compose") version "2.3.20"
     id("org.jetbrains.compose") version "1.11.1"
+    // For the Android TV shell in `:tv`. Declared here (the repo keeps plugin
+    // versions in the root) but `apply false`, so it is only resolved, never applied
+    // to this project — which means the JS-only CI, with no Android SDK, downloads the
+    // jar and does nothing with it. AGP is applied only in `:tv`, and `:tv` is excluded
+    // from the build entirely when no SDK is present (see settings.gradle.kts). AGP 9
+    // brings its own Kotlin support, so no separate Kotlin-Android plugin is declared.
+    id("com.android.application") version "9.0.0" apply false
 }
 
 group = "ge.dakalebi"

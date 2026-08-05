@@ -35,6 +35,22 @@ internal fun HTMLElement.isNavigable(): Boolean {
 internal fun HTMLElement.box(): Box = Box(this, getBoundingClientRect())
 
 /**
+ * The element's [Box] if it can be focused right now, else null — reading its
+ * rectangle exactly once.
+ *
+ * Folds [isNavigable]'s visibility test into the same measurement, so a move that
+ * needs both the "can I land here" answer and the geometry pays one
+ * `getBoundingClientRect` per item instead of two. On a large season grid that
+ * halves the rectangle reads a keypress forces.
+ */
+internal fun HTMLElement.navigableBox(): Box? {
+    if (offsetParent == null) return null
+    val rect = getBoundingClientRect()
+    if (rect.width <= 0.0 || rect.height <= 0.0) return null
+    return Box(this, rect)
+}
+
+/**
  * Distance travelled in [direction] to reach [to], or null if it is not in that
  * direction at all.
  *

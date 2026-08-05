@@ -36,44 +36,81 @@ internal fun HTMLElement.focusWithoutScrolling() {
  * container already expresses it.
  */
 internal fun centre(item: HTMLElement, axes: Set<Axis>, within: Element) {
-    if (Axis.X in axes) {
-        scrollableAncestor(item, Axis.X, within)?.let { scroller ->
-            val itemRect = item.getBoundingClientRect()
-            val viewRect = scroller.getBoundingClientRect()
-            val offset = (itemRect.left - viewRect.left) - (scroller.clientWidth - itemRect.width) / 2
-            scroller.scrollLeft = (scroller.scrollLeft + offset).coerceAtLeast(0.0)
-        }
+    val xScroller = if (Axis.X in axes) scrollableAncestor(item, Axis.X, within) else null
+    val yScroller = if (Axis.Y in axes) scrollableAncestor(item, Axis.Y, within) else null
+    if (xScroller == null && yScroller == null) return
+
+    // Read every rectangle first, then write both offsets. A scroll write dirties
+    // layout, so a `getBoundingClientRect` after it forces a reflow; batching the reads
+    // ahead of the writes turns two reflows into one — which is felt on a weak TV GPU
+    // where every D-pad press pays this.
+    val itemRect = item.getBoundingClientRect()
+    val left = xScroller?.let {
+        val viewRect = it.getBoundingClientRect()
+        (it.scrollLeft + (itemRect.left - viewRect.left) - (it.clientWidth - itemRect.width) / 2)
+            .coerceAtLeast(0.0)
     }
-    if (Axis.Y in axes) {
-        scrollableAncestor(item, Axis.Y, within)?.let { scroller ->
-            val itemRect = item.getBoundingClientRect()
-            val viewRect = scroller.getBoundingClientRect()
-            val offset = (itemRect.top - viewRect.top) - (scroller.clientHeight - itemRect.height) / 2
-            scroller.scrollTop = (scroller.scrollTop + offset).coerceAtLeast(0.0)
-        }
+    val top = yScroller?.let {
+        val viewRect = it.getBoundingClientRect()
+        (it.scrollTop + (itemRect.top - viewRect.top) - (it.clientHeight - itemRect.height) / 2)
+            .coerceAtLeast(0.0)
     }
+    if (left != null) xScroller.scrollLeft = left
+    if (top != null) yScroller.scrollTop = top
 }
 
 /**
- * Vertically brings [item] into view, keeping its [group]'s heading on screen when it
- * can.
+ * Centres [xItem] horizontally and [yItem] vertically in one read-then-write pass.
  *
- * A vertical move normally centres the whole group, so a rail's heading stays visible
- * above the focused row rather than scrolling off. That is right only while the group
- * fits its scroller. A group taller than the viewport — a full season is six rows —
- * has no single scroll position that shows every row, so centring it parks a fixed
- * midpoint and the ring walks straight off the bottom. Measured: a 548px grid in a
- * 540px viewport pinned at `scrollTop` 553 and the row below the fold never returned.
- *
- * So the group is centred when it fits, and the focused item when it does not. Both
- * resolve to the same vertical scroller (the item is inside the group), so the choice
- * is only *what* to centre, never *where*.
+ * A vertical D-pad move scrolls the rail (on X, to re-centre the item) and the page (on
+ * Y, to bring the band into view), and the two targets differ: the item on X, the whole
+ * band or the item on Y (see [verticalTarget]). Doing them as two separate [centre]
+ * calls writes `scrollLeft` and then reads the Y target's rectangle, forcing a reflow.
+ * This reads both rectangles before either write, so a vertical press costs one reflow
+ * rather than two.
  */
-internal fun centreVertically(item: HTMLElement, group: HTMLElement, within: Element) {
+internal fun centreAxes(xItem: HTMLElement, yItem: HTMLElement, within: Element) {
+    val xScroller = scrollableAncestor(xItem, Axis.X, within)
+    val yScroller = scrollableAncestor(yItem, Axis.Y, within)
+    if (xScroller == null && yScroller == null) return
+
+    val left = xScroller?.let {
+        val itemRect = xItem.getBoundingClientRect()
+        val viewRect = it.getBoundingClientRect()
+        (it.scrollLeft + (itemRect.left - viewRect.left) - (it.clientWidth - itemRect.width) / 2)
+            .coerceAtLeast(0.0)
+    }
+    val top = yScroller?.let {
+        val itemRect = yItem.getBoundingClientRect()
+        val viewRect = it.getBoundingClientRect()
+        (it.scrollTop + (itemRect.top - viewRect.top) - (it.clientHeight - itemRect.height) / 2)
+            .coerceAtLeast(0.0)
+    }
+    if (left != null) xScroller.scrollLeft = left
+    if (top != null) yScroller.scrollTop = top
+}
+
+/**
+ * Which element a vertical move should bring into view: the whole [group] when it fits
+ * its scroller, otherwise the [item] itself. Decides *what* to centre; the caller
+ * ([centreAxes]) does the scrolling.
+ *
+ * Centring the group keeps a rail's heading on screen above the focused row rather than
+ * scrolling off. That is right only while the group fits its scroller. A group taller
+ * than the viewport — a full season is six rows — has no single scroll position that
+ * shows every row, so centring it parks a fixed midpoint and the ring walks straight
+ * off the bottom. Measured: a 548px grid in a 540px viewport pinned at `scrollTop` 553
+ * and the row below the fold never returned. So the item is centred instead once the
+ * group overflows.
+ *
+ * Returning the target rather than scrolling here is what lets [centreAxes] read the X
+ * and Y rectangles together before any write, saving a reflow on every vertical press.
+ */
+internal fun verticalTarget(item: HTMLElement, group: HTMLElement, within: Element): HTMLElement {
     val scroller = scrollableAncestor(group, Axis.Y, within)
     val groupFits = scroller == null ||
         group.getBoundingClientRect().height <= scroller.clientHeight
-    centre(if (groupFits) group else item, setOf(Axis.Y), within)
+    return if (groupFits) group else item
 }
 
 /**
@@ -117,12 +154,24 @@ internal fun scrollableAncestor(from: HTMLElement, axis: Axis, within: Element):
     return null
 }
 
-/** Whether this element's computed `overflow` on [axis] actually permits scrolling. */
+/**
+ * Whether this element's computed `overflow` on [axis] actually permits scrolling.
+ *
+ * Memoised on the node itself, because `getComputedStyle` forces a style recalc and this
+ * ran ~5 times per D-pad press (the ancestor walk happens for X once and Y twice), yet
+ * the answer never changes — `tv.css` sets each container's `overflow` once by class and
+ * nothing toggles it at runtime. The cached flag is an expando on the element, so it is
+ * collected with the node and cannot leak across Compose re-creating the DOM.
+ */
 private fun HTMLElement.scrollsOn(axis: Axis): Boolean {
+    val key = if (axis == Axis.X) "__tvScrollsX" else "__tvScrollsY"
+    (asDynamic()[key] as? Boolean)?.let { return it }
     val property = if (axis == Axis.X) "overflow-x" else "overflow-y"
     // Trimmed: computed values are normally whitespace-free, but a stray space would
     // fail the exact-match below, miss a real scroller, and re-break the vertical
     // scrolling this function exists to keep working — a cheap guard against that.
     val value = window.getComputedStyle(this).getPropertyValue(property).trim()
-    return value == "auto" || value == "scroll"
+    val result = value == "auto" || value == "scroll"
+    asDynamic()[key] = result
+    return result
 }

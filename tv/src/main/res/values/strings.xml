@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">დაქალები</string>
+
+    <!-- The native offline screen, shown only when the web UI itself cannot load,
+         so it cannot borrow the web app's own localised strings. Georgian, to match
+         the audience and the app's default language. -->
+    <string name="error_title">დაკავშირება ვერ მოხერხდა</string>
+    <string name="error_body">შეამოწმე ინტერნეტი და სცადე თავიდან.</string>
+    <string name="error_retry">თავიდან ცდა</string>
+</resources>

@@ -66,6 +66,14 @@ fun TvApp() {
 
     DisposableEffect(Unit) {
         val removeListeners = input.install()
+
+        // Closing the app is the host's job: a web page cannot end an Activity.
+        // `TvInput.back` calls this at the top of its Back ladder (the
+        // press-twice-to-exit rung). The Android TV shell injects an `AndroidTvHost`
+        // object whose `exit()` finishes the Activity; in a plain browser there is no
+        // such object and this is a no-op.
+        input.onExitRequested = { window.asDynamic().AndroidTvHost?.exit(); Unit }
+
         val layer = input.push(
             TvLayer(
                 key = "tv-root",
