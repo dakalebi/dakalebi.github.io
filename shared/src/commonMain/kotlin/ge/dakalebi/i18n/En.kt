@@ -96,6 +96,7 @@ object En : Strings {
     override val waitForAdmin = "Wait for an admin to download the episodes."
     override val loadFailedEyebrow = "Could not load"
     override val resetAllProgress = "Clear all progress"
+    override val backToTop = "Back to top"
 
     override fun season(number: Int) = "Season $number"
     override fun episode(number: Int) = "Episode $number"
@@ -154,6 +155,8 @@ object En : Strings {
     override val resetSeasonTitle = "Clear the season's progress?"
     override val resetSeasonDone = "Season progress cleared"
     override val actionFailed = "That did not work"
+    override val signOutConfirmTitle = "Sign out?"
+    override val signOutConfirmBody = "You will need to sign in again to keep watching."
 
     override fun markSeasonBody(season: String) = "Mark every episode of season $season as watched?"
     override fun resetSeasonBody(season: String) = "Clear progress for every episode of season $season?"

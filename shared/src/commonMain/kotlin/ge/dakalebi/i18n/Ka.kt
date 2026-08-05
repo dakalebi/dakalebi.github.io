@@ -96,6 +96,7 @@ object Ka : Strings {
     override val waitForAdmin = "დაელოდე, სანამ ადმინი ჩამოტვირთავს სერიებს."
     override val loadFailedEyebrow = "ჩატვირთვა ვერ მოხერხდა"
     override val resetAllProgress = "მთლიანი პროგრესის წაშლა"
+    override val backToTop = "ზემოთ დაბრუნება"
 
     override fun season(number: Int) = "სეზონი $number"
     override fun episode(number: Int) = "სერია $number"
@@ -154,6 +155,8 @@ object Ka : Strings {
     override val resetSeasonTitle = "სეზონის პროგრესის წაშლა?"
     override val resetSeasonDone = "სეზონის პროგრესი წაიშალა"
     override val actionFailed = "მოქმედება ვერ შესრულდა"
+    override val signOutConfirmTitle = "გასვლა?"
+    override val signOutConfirmBody = "ყურების გასაგრძელებლად თავიდან უნდა შეხვიდე."
 
     override fun markSeasonBody(season: String) = "მოინიშნოს სეზონი $season-ის ყველა სერია ნანახად?"
     override fun resetSeasonBody(season: String) = "წაიშალოს სეზონი $season-ის ყველა სერიის პროგრესი?"

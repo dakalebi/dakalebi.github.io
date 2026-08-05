@@ -1,6 +1,7 @@
 package ge.dakalebi.ui.tv.input
 
 import ge.dakalebi.core.Log
+import ge.dakalebi.ui.tv.TvConfig
 import ge.dakalebi.ui.tv.focus.Direction
 import ge.dakalebi.ui.tv.focus.ITEM_ATTR
 import ge.dakalebi.ui.tv.focus.SpatialNav
@@ -222,7 +223,7 @@ class TvInput {
         }
         if (!pendingExit) {
             pendingExit = true
-            window.setTimeout({ pendingExit = false }, EXIT_WINDOW_MS)
+            window.setTimeout({ pendingExit = false }, TvConfig.BACK_TO_EXIT_WINDOW_MS)
             Log.d("tv", "back at the top level; press again to exit")
             return
         }
@@ -295,10 +296,5 @@ class TvInput {
         val tag = node?.tagName?.uppercase()
         if (tag == "INPUT" || tag == "TEXTAREA" || tag == "SELECT") return true
         return runCatching { node.asDynamic().isContentEditable == true }.getOrDefault(false)
-    }
-
-    private companion object {
-        /** How long "press Back again to exit" stays armed. */
-        const val EXIT_WINDOW_MS = 2000
     }
 }

@@ -133,6 +133,9 @@ interface Strings {
     val loadFailedEyebrow: String
     val resetAllProgress: String
 
+    /** The control at the foot of the season grid that jumps the ring back to the top. */
+    val backToTop: String
+
     fun season(number: Int): String
     fun episode(number: Int): String
     fun seasonAndEpisode(season: Int, episode: Int): String
@@ -190,6 +193,10 @@ interface Strings {
     val resetSeasonTitle: String
     val resetSeasonDone: String
     val actionFailed: String
+
+    /** Confirmation before signing out, since it costs a re-login to undo. */
+    val signOutConfirmTitle: String
+    val signOutConfirmBody: String
 
     fun markSeasonBody(season: String): String
     fun resetSeasonBody(season: String): String

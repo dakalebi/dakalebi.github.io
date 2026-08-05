@@ -1071,11 +1071,26 @@ body {
    group regardless; see the note in TvVideoPlayer. */
 .tv-ctl-row {
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  /* `minmax(0, 1fr)`, not `1fr`. A `1fr` track has an implicit minimum of its
+     content's min-content width, so the right cell (the quality button) would push the
+     centre cluster off-centre by about half its own width. `minmax(0, …)` lets the side
+     tracks shrink to zero so the transport stays truly centred whatever sits beside it —
+     the switch on the left, the rendition on the right. */
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   gap: var(--tv-gap);
   padding: var(--ring-room);
   margin: calc(-1 * var(--ring-room));
+}
+
+/* The left cell, holding the autoplay switch. `min-width: 0` so it can shrink with its
+   track and never bias the centred transport. */
+.tv-ctl-start {
+  display: flex;
+  align-items: center;
+  gap: var(--tv-gap);
+  justify-self: start;
+  min-width: 0;
 }
 
 .tv-ctl-mid {
@@ -1090,6 +1105,23 @@ body {
   align-items: center;
   gap: var(--tv-gap);
   justify-self: end;
+  min-width: 0;
+}
+
+/* The autoplay switch, sized down from the settings switch to sit in the control row
+   next to the transport buttons. Same look and behaviour, smaller. */
+.tv-ctl-switch {
+  width: 3.75rem;
+  height: 2.125rem;
+}
+
+.tv-ctl-switch > div {
+  width: 1.625rem;
+  height: 1.625rem;
+}
+
+.tv-ctl-switch.on > div {
+  transform: translateX(1.625rem);
 }
 
 /* A transport control.
@@ -1265,6 +1297,138 @@ body {
 
 @keyframes tv-spin {
   to { transform: rotate(360deg); }
+}
+
+/* ---------------------------------------------------------------- up next
+   The end-of-episode prompt, a card in the bottom-right corner. An overlay, not part
+   of the chrome, so it stays visible whether the controls are up or down; and — see the
+   `upNext` note in TvVideoPlayer — never focusable, so pressing OK still plays or pauses
+   rather than jumping to the next episode. The manual way to start it is the up-next
+   rail, which lands on the true next episode. */
+.tv-upnext {
+  position: absolute;
+  right: var(--safe-x);
+  bottom: calc(var(--safe-y) + 6rem);
+  z-index: 2;
+  width: 22rem;
+  max-width: calc(100% - 2 * var(--safe-x));
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.tv-upnext-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-radius: var(--radius);
+  background: rgba(0, 0, 0, 0.82);
+  border: 1px solid var(--line-strong);
+}
+
+.tv-upnext-th {
+  flex: none;
+  width: 7rem;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background: var(--elev2);
+}
+
+.tv-upnext-th img,
+.tv-upnext-th .tile-fallback {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.tv-upnext-b {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.tv-upnext-eyebrow {
+  font-size: var(--t-label);
+  letter-spacing: 0.12em;
+  color: var(--red);
+}
+
+.tv-upnext-t {
+  font-size: var(--t-meta);
+  color: var(--tx);
+}
+
+.tv-upnext-bar {
+  height: 0.25rem;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.2);
+  overflow: hidden;
+}
+
+.tv-upnext-bar > div {
+  height: 100%;
+  background: var(--red);
+}
+
+/* ------------------------------------------------------------ back to top
+   The control at the foot of the season grid. Centred, with room above it so it reads as
+   a separate action rather than another grid row, and `--ring-room` around it so its
+   focus ring is not clipped at the bottom of the page. */
+.tv-totop {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--tv-gap-lg);
+  padding: var(--ring-room);
+}
+
+/* ----------------------------------------------------------------- dialog
+   A modal question. The scrim dims the screen behind; the dialog is a real focus trap
+   (its own input layer), so there is nowhere for the ring to go but its two buttons. */
+.tv-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.tv-dialog {
+  position: fixed;
+  z-index: 21;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(40rem, calc(100% - 2 * var(--safe-x)));
+  display: flex;
+  flex-direction: column;
+  gap: var(--tv-gap);
+  padding: var(--tv-gap-lg);
+  border-radius: var(--radius);
+  background: var(--elev);
+  border: 1px solid var(--line-strong);
+}
+
+.tv-dialog-title {
+  margin: 0;
+  font-size: var(--t-title);
+  font-weight: 600;
+}
+
+.tv-dialog-body {
+  margin: 0;
+  font-size: var(--t-body);
+  color: var(--tx-dim);
+}
+
+.tv-dialog-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--tv-gap);
+  padding: var(--ring-room);
+  margin: calc(-1 * var(--ring-room));
 }
 
 /* Everything that moves, turned off in one place.

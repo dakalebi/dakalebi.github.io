@@ -16,6 +16,7 @@ import ge.dakalebi.ui.Icon
 import ge.dakalebi.ui.Icons
 import ge.dakalebi.ui.classNames
 import ge.dakalebi.ui.player.PlayerEvents
+import ge.dakalebi.ui.tv.TvConfig
 import ge.dakalebi.ui.tv.actsAsButton
 import ge.dakalebi.ui.tv.actsAsOption
 import ge.dakalebi.ui.tv.actsAsOptionGroup
@@ -124,6 +125,14 @@ fun TvVideoPlayer(
     title: String? = null,
     subtitle: String? = null,
     /**
+     * The account's "autoplay next" preference and a way to flip it, surfaced as a switch
+     * in the control row so it can be changed from the sofa without opening Settings
+     * (where it also still lives). Null hides the switch, for a player with no such
+     * setting behind it.
+     */
+    autoplayNext: Boolean? = null,
+    onToggleAutoplay: (() -> Unit)? = null,
+    /**
      * Extra bands rendered inside the chrome, below the transport row.
      *
      * A slot rather than parameters, so the player stays a player and does not learn
@@ -133,6 +142,17 @@ fun TvVideoPlayer(
      * the rest of the chrome.
      */
     chromeExtra: @Composable () -> Unit = {},
+    /**
+     * The up-next card, shown as an overlay in the final
+     * [TvConfig.UP_NEXT_WINDOW_SECONDS] before the end.
+     *
+     * Deliberately **not** focusable and never focused: it is a prompt, not a control,
+     * so pressing OK still pauses rather than jumping to the next episode — the defect
+     * the request called out. The manual way to play it is the up-next rail below the
+     * chrome, which now lands on the true next episode. Null when there is nothing after
+     * this one.
+     */
+    upNext: (@Composable () -> Unit)? = null,
 ) {
     val refs = remember { TvPlayerRefs() }
     var mode by remember { mutableStateOf(Mode.Controls) }
@@ -224,7 +244,7 @@ fun TvVideoPlayer(
         refs.hideTimer = window.setTimeout({
             val v = refs.video
             if (v != null && !v.paused && !qualityOpen) hideControls()
-        }, CONTROLS_HIDE_MS)
+        }, TvConfig.CONTROLS_HIDE_MS)
     }
 
     fun togglePlay() {
@@ -563,6 +583,32 @@ fun TvVideoPlayer(
             }
         }
 
+        // The up-next prompt, an overlay in the final stretch. Not part of the chrome, so
+        // it stays up whether the controls are showing or not, and — see [upNext] — not
+        // focusable, so OK still means play/pause. When autoplay is on it also carries a
+        // bar that fills as the end (and the automatic jump) approaches.
+        if (upNext != null && durationSec > 0 &&
+            (durationSec - currentSec) in 1..TvConfig.UP_NEXT_WINDOW_SECONDS
+        ) {
+            Div({ classes("tv-upnext") }) {
+                upNext()
+                if (autoplayNext == true) {
+                    val elapsed = (TvConfig.UP_NEXT_WINDOW_SECONDS - (durationSec - currentSec))
+                        .coerceIn(0, TvConfig.UP_NEXT_WINDOW_SECONDS)
+                    Div({ classes("tv-upnext-bar") }) {
+                        Div({
+                            style {
+                                property(
+                                    "width",
+                                    "${elapsed * 100.0 / TvConfig.UP_NEXT_WINDOW_SECONDS}%",
+                                )
+                            }
+                        })
+                    }
+                }
+            }
+        }
+
         // The seek readout. Big and central, because it is the only feedback that a
         // press registered before the seek actually happens.
         seekPreview?.let {
@@ -651,9 +697,22 @@ fun TvVideoPlayer(
              * horizontal presses deliberately cannot leave an `X` group.
              */
             Div({ classes("tv-ctl-row"); focusGroup("player-buttons", FocusAxis.X) }) {
-                // An empty left cell keeps the transport cluster centred now that the
-                // time no longer sits here, mirroring the quality group on the right.
-                Div({ classes("tv-ctl-start") })
+                // The autoplay switch in the left cell, mirroring the quality button on
+                // the right and keeping the transport centred. A focus stop in this row,
+                // so Left from the transport reaches it; never the entry item, so the ring
+                // still starts on the bar. Absent when there is no setting behind it.
+                Div({ classes("tv-ctl-start") }) {
+                    if (autoplayNext != null && onToggleAutoplay != null) {
+                        Div({
+                            classNames("tv-switch", "tv-ctl-switch", if (autoplayNext) "on" else null)
+                            focusItem("autoplay")
+                            attr("role", "switch")
+                            attr("aria-checked", autoplayNext.toString())
+                            attr("aria-label", S.autoplayTitle)
+                            onClick { onToggleAutoplay() }
+                        }) { Div() }
+                    }
+                }
 
                 Div({ classes("tv-ctl-mid") }) {
                     Div({
@@ -717,6 +776,3 @@ fun TvVideoPlayer(
         }
     }
 }
-
-/** How long the chrome stays up after the last press, while playing. */
-private const val CONTROLS_HIDE_MS = 5_000
