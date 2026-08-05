@@ -7,6 +7,8 @@ import kotlinx.browser.document
 import kotlinx.browser.window
 import org.w3c.dom.Element
 import org.w3c.dom.HTMLElement
+import org.w3c.dom.MutationObserver
+import org.w3c.dom.MutationObserverInit
 import org.w3c.dom.events.Event
 import org.w3c.dom.events.KeyboardEvent
 
@@ -90,10 +92,86 @@ class TvInput {
         window.asDynamic().__tvShell = js("({})")
         window.asDynamic().__tvShell.onBack = { back() }
 
+        val disposeGuardian = installFocusGuardian()
+
         return {
             window.removeEventListener("keydown", handler)
             window.removeEventListener("popstate", onPop)
+            disposeGuardian()
         }
+    }
+
+    /**
+     * Keeps exactly one item focused at all times.
+     *
+     * On a television the ring *is* the cursor, so a moment with nothing focused is a
+     * moment the remote does nothing and the viewer cannot tell why. Two things take
+     * the ring away, and neither is a real navigation:
+     *
+     * 1. **A recomposition removes or re-creates the focused element.** The player's
+     *    clock ticks every second and its play glyph swaps on pause; each redraws the
+     *    focused control, and if Compose detaches it the browser drops focus to
+     *    `<body>`. This is why seeking and pausing "cleared" the ring — the act
+     *    triggered a redraw, not the loss.
+     * 2. **Content arrives after the screen mounts.** The browse screen places focus
+     *    once, but the catalog loads asynchronously, so on a real load the tiles do
+     *    not exist yet when that runs and nothing gets focused until the first press.
+     *
+     * The engine cannot prevent either — they happen inside Compose, on the frame
+     * clock — so this restores focus after the fact, imperatively, which is why it
+     * works where a `LaunchedEffect` would not. `focusout` handles (1): when the ring
+     * leaves for nothing, it goes back, onto the very element it left where possible
+     * so a seek keeps the bar. A `MutationObserver` handles (2): when the DOM changes
+     * and nothing is focused, it lands the ring where the screen wants it.
+     */
+    private fun installFocusGuardian(): () -> Unit {
+        // Focus left an element for nowhere (relatedTarget null). Settle a tick — a
+        // recomposition may re-focus something itself — then restore if still lost,
+        // preferring the element that left so an action does not move the ring.
+        val onFocusOut: (Event) -> Unit = { event ->
+            if (event.asDynamic().relatedTarget == null) {
+                val left = event.target as? HTMLElement
+                window.setTimeout({ restoreFocus(prefer = left) }, 0)
+            }
+        }
+        window.addEventListener("focusout", onFocusOut)
+
+        // The DOM changed. Coalesce a burst into one check and, if nothing is focused,
+        // land the ring. `childList` only: element add/remove and re-creation are what
+        // strand focus, whereas the per-second clock is a text change and would just
+        // wake this pointlessly.
+        var scheduled = false
+        val observer = MutationObserver { _, _ ->
+            if (scheduled) return@MutationObserver
+            scheduled = true
+            window.setTimeout({ scheduled = false; restoreFocus(prefer = null) }, 0)
+        }
+        observer.observe(document.body ?: document, MutationObserverInit(childList = true, subtree = true))
+
+        return {
+            window.removeEventListener("focusout", onFocusOut)
+            observer.disconnect()
+        }
+    }
+
+    /**
+     * Puts the ring back if it has been lost, [prefer]ring a specific element.
+     *
+     * A no-op in the common case: if a real item still holds focus, nothing moved and
+     * this returns at once, so the per-second mutation storm costs one attribute read.
+     */
+    private fun restoreFocus(prefer: HTMLElement?) {
+        val scope = layers.lastOrNull()?.root() ?: return
+        val active = document.activeElement
+        if (active is HTMLElement && active.hasAttribute("data-tv-item") && scope.contains(active)) return
+
+        if (prefer != null && prefer.isConnected && scope.contains(prefer) &&
+            prefer.hasAttribute("data-tv-item")
+        ) {
+            SpatialNav.focus(prefer, direction = null, scope = scope)
+            return
+        }
+        SpatialNav.ensureFocused(scope)
     }
 
     fun push(layer: TvLayer): TvLayerHandle {
