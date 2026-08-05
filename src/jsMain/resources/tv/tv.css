@@ -975,6 +975,32 @@ body {
 .tv-scrub-buf { background: rgba(255, 255, 255, 0.34); }
 .tv-scrub-cur { background: var(--red); }
 
+/* The playhead marker at the end of the red fill. White rather than red so it reads
+   as a distinct "you are here" against the fill it sits on, and centred on the bar by
+   `top: 50%` so it stays put as the bar grows on focus. Its `left` is set in JS every
+   frame, so only the size — not the position — carries a transition, or the marker
+   would lag the fill during playback. A small shadow keeps it visible over a bright
+   frame behind the scrim. */
+.tv-scrub-thumb {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 0.875rem;
+  height: 0.875rem;
+  border-radius: 50%;
+  background: var(--tx);
+  box-shadow: 0 0 0.25rem rgba(0, 0, 0, 0.6);
+  transform: translate(-50%, -50%);
+  transition: width var(--t-focus) var(--ease-tv), height var(--t-focus) var(--ease-tv);
+  pointer-events: none;
+}
+
+.tv-scrub[data-tv-focus] .tv-scrub-thumb,
+.tv-scrub:focus .tv-scrub-thumb {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
 /* Where a scrub would land. Only drawn while a gesture is open, because the whole
    point of the preview model is that this and the red fill disagree until you
    commit. */

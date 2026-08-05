@@ -48,6 +48,7 @@ private class TvPlayerRefs {
     var container: HTMLElement? = null
     var fillCur: HTMLElement? = null
     var fillBuf: HTMLElement? = null
+    var thumb: HTMLElement? = null
     var ghost: HTMLElement? = null
     var raf: Int? = null
     var hideTimer: Int? = null
@@ -143,6 +144,10 @@ fun TvVideoPlayer(
         val duration = if (v.duration.isFinite() && v.duration > 0) v.duration else 0.0
         val pct = if (duration > 0) (v.currentTime / duration * 100).coerceIn(0.0, 100.0) else 0.0
         refs.fillCur?.style?.width = "$pct%"
+        // The thumb marks the playhead. Positioned imperatively alongside the fill so
+        // the two never disagree, and — like the fill — with no CSS transition on
+        // `left`, because this is repainted every frame while playing.
+        refs.thumb?.style?.left = "$pct%"
 
         var bufEnd = 0.0
         val buffered = v.buffered
@@ -388,6 +393,13 @@ fun TvVideoPlayer(
                             true
                         }
 
+                        // Up on the bar dismisses the chrome, matching Back in this
+                        // state. The bar is the topmost control, so Up has nothing to
+                        // move to, and "up and away" is the natural gesture for putting
+                        // the controls down. Checked before the keep-alive reveal below,
+                        // or the chrome would flash back the instant it was hidden.
+                        direction == Direction.Up && scrubFocused() -> { hideControls(); true }
+
                         else -> {
                             // Chrome already shown: any press keeps it alive.
                             revealControls()
@@ -597,6 +609,9 @@ fun TvVideoPlayer(
             }) {
                 Div({ classes("tv-scrub-buf"); ref { el -> refs.fillBuf = el; onDispose { refs.fillBuf = null } } })
                 Div({ classes("tv-scrub-cur"); ref { el -> refs.fillCur = el; onDispose { refs.fillCur = null } } })
+                // The playhead marker, at the current position. Last of the fills so it
+                // sits on top of them.
+                Div({ classes("tv-scrub-thumb"); ref { el -> refs.thumb = el; onDispose { refs.thumb = null } } })
                 // Where a scrub would land, drawn only while one is open.
                 Div({
                     classNames("tv-scrub-ghost", if (mode == Mode.Scrubbing) "on" else null)
