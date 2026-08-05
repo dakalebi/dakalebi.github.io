@@ -17,10 +17,13 @@ import ge.dakalebi.di.preferences
 import ge.dakalebi.di.router
 import ge.dakalebi.di.session
 import ge.dakalebi.di.settings
+import ge.dakalebi.di.toasts
+import ge.dakalebi.domain.model.Episode
 import ge.dakalebi.domain.service.orderedQualityLabels
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
 import ge.dakalebi.presentation.Route
+import ge.dakalebi.ui.Thumb
 import ge.dakalebi.ui.player.PlayerEvents
 import ge.dakalebi.ui.tv.input.TvInput
 import ge.dakalebi.ui.tv.player.TvVideoPlayer
@@ -73,6 +76,7 @@ fun TvWatchScreen(episodeId: String) {
     val router = router()
     val settings = settings()
     val prefs = preferences()
+    val toasts = toasts()
     val input = LocalTvInput.current
     val resolveVideo = LocalResolveEpisodeVideo.current
     val scope = rememberCoroutineScope()
@@ -100,10 +104,9 @@ fun TvWatchScreen(episodeId: String) {
     val nextEpisode = episode?.let { catalog.next(it) }
 
     // The rails below the player chrome. `upcoming` and `previous` already exist on the
-    // store, so these are lookups, not new logic. Twelve each way, the count the user
-    // asked for.
-    val upcoming = episode?.let { catalog.upcoming(it, PLAYER_RAIL_COUNT) } ?: emptyList()
-    val earlier = episode?.let { catalog.previous(it, PLAYER_RAIL_COUNT) } ?: emptyList()
+    // store, so these are lookups, not new logic. See [TvConfig.RAIL_COUNT] for the count.
+    val upcoming = episode?.let { catalog.upcoming(it, TvConfig.RAIL_COUNT) } ?: emptyList()
+    val earlier = episode?.let { catalog.previous(it, TvConfig.RAIL_COUNT) } ?: emptyList()
 
     // One map for everything downstream, so the label and the menu cannot disagree
     // about which rendition is best — the defect that shipped on the web once.
@@ -232,24 +235,39 @@ fun TvWatchScreen(episodeId: String) {
                 events = events,
                 title = S.seasonAndEpisode(episode.seasonNumber, episode.episodeNumber).caps,
                 subtitle = S.seriesTitle,
+                // The same account-synced setting the drawer shows, flipped from the
+                // control row so it is reachable mid-episode.
+                autoplayNext = settings.autoplayNext,
+                onToggleAutoplay = {
+                    settings.setAutoplayNext(scope, !settings.autoplayNext) {
+                        toasts.error(S.settingNotSynced)
+                    }
+                },
                 chromeExtra = {
                     if (upcoming.isNotEmpty() || earlier.isNotEmpty()) {
                         Div({ classes("tv-player-rails") }) {
+                            // The head of the next rail is the true next episode, so a
+                            // fresh Down lands there rather than mid-row.
                             TvRail(
                                 key = "player-next",
                                 title = S.nextEpisodes.caps,
                                 episodes = upcoming,
                                 progress = catalog.progress,
+                                entryEpisodeId = upcoming.firstOrNull()?.id,
                             )
+                            // The tail of the previous rail is the episode just before
+                            // this one, which is the one worth landing on.
                             TvRail(
                                 key = "player-prev",
                                 title = S.previousEpisodes.caps,
                                 episodes = earlier,
                                 progress = catalog.progress,
+                                entryEpisodeId = earlier.lastOrNull()?.id,
                             )
                         }
                     }
                 },
+                upNext = nextEpisode?.let { next -> @Composable { TvUpNextCard(next) } },
             )
         }
     } else {
@@ -257,5 +275,23 @@ fun TvWatchScreen(episodeId: String) {
     }
 }
 
-/** How many episodes each of the player's next/previous rails shows. */
-private const val PLAYER_RAIL_COUNT = 12
+/**
+ * The body of the up-next overlay: the next episode's still and its number.
+ *
+ * Passed to the player as a slot so the player itself never learns what an episode is.
+ * A plain card, not a link or a focus stop — the player decides when it shows and never
+ * focuses it, so OK keeps meaning play/pause. Playing it manually is the up-next rail's
+ * job.
+ */
+@Composable
+private fun TvUpNextCard(episode: Episode) {
+    Div({ classes("tv-upnext-card") }) {
+        Div({ classes("tv-upnext-th") }) { Thumb(episode, showLabel = false) }
+        Div({ classes("tv-upnext-b") }) {
+            Div({ classes("tv-upnext-eyebrow") }) { Text(S.nextEpisode.caps) }
+            Div({ classes("tv-upnext-t") }) {
+                Text(S.seasonAndEpisode(episode.seasonNumber, episode.episodeNumber).caps)
+            }
+        }
+    }
+}

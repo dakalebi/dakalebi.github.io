@@ -1,7 +1,11 @@
 package ge.dakalebi.ui.tv
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import ge.dakalebi.core.BuildInfo
 import ge.dakalebi.core.formatDateTime
 import ge.dakalebi.di.catalog
@@ -41,6 +45,8 @@ fun TvSettingsScreen() {
     val catalog = catalog()
     val toasts = toasts()
     val scope = rememberCoroutineScope()
+
+    var confirmSignOut by remember { mutableStateOf(false) }
 
     Div({ classes("tv-settings"); focusGroup("settings", FocusAxis.Y) }) {
         H1({ classes("tv-h") }) { Text(S.settings.caps) }
@@ -106,7 +112,9 @@ fun TvSettingsScreen() {
                 // The visible text is the account, not the action, so the name has to
                 // carry both — "Sign out" alone would hide which account it signs out.
                 actsAsButton(session.email?.let { "${S.signOut}: $it" } ?: S.signOut)
-                onClick { scope.launch { session.signOut() } }
+                // Asks first rather than signing out on the press: on a shared television
+                // a stray OK on this row should not drop the household back to a login.
+                onClick { confirmSignOut = true }
             }) { Text(session.email ?: S.signOut.caps) }
         }
 
@@ -120,5 +128,18 @@ fun TvSettingsScreen() {
         Div({ classes("tv-foot") }) {
             Text(S.lastRefreshed(formatDateTime(catalog.meta?.lastRefreshAtMillis)))
         }
+    }
+
+    if (confirmSignOut) {
+        TvConfirmDialog(
+            title = S.signOutConfirmTitle.caps,
+            body = S.signOutConfirmBody,
+            confirmLabel = S.signOut.caps,
+            onConfirm = {
+                confirmSignOut = false
+                scope.launch { session.signOut() }
+            },
+            onDismiss = { confirmSignOut = false },
+        )
     }
 }

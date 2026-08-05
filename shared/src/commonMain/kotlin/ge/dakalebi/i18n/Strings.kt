@@ -115,6 +115,9 @@ interface Strings {
     val autoplayTitle: String
     val autoplayBody: String
 
+    /** Compact label for the autoplay toggle in the player's control row. */
+    val autoplayShort: String
+
     /** Only offered on iPhone and iPad, which are the only devices with two. */
     val nativePlayerTitle: String
     val nativePlayerBody: String
@@ -132,6 +135,9 @@ interface Strings {
     val waitForAdmin: String
     val loadFailedEyebrow: String
     val resetAllProgress: String
+
+    /** The control at the foot of the season grid that jumps the ring back to the top. */
+    val backToTop: String
 
     fun season(number: Int): String
     fun episode(number: Int): String
@@ -190,6 +196,10 @@ interface Strings {
     val resetSeasonTitle: String
     val resetSeasonDone: String
     val actionFailed: String
+
+    /** Confirmation before signing out, since it costs a re-login to undo. */
+    val signOutConfirmTitle: String
+    val signOutConfirmBody: String
 
     fun markSeasonBody(season: String): String
     fun resetSeasonBody(season: String): String
