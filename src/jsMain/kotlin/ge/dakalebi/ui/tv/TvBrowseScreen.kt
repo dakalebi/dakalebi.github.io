@@ -13,6 +13,7 @@ import ge.dakalebi.i18n.caps
 import ge.dakalebi.presentation.ErrorMessages
 import ge.dakalebi.presentation.Route
 import ge.dakalebi.presentation.Router
+import ge.dakalebi.ui.Thumb
 import ge.dakalebi.ui.tv.focus.FocusAxis
 import ge.dakalebi.ui.tv.focus.focusGroup
 import ge.dakalebi.ui.tv.focus.focusItem
@@ -108,6 +109,12 @@ private fun TvMasthead(episode: Episode) {
     }
 
     Div({ classes("tv-masthead") }) {
+        // The episode still, full-bleed behind the text, YouTube's mainstage
+        // treatment. `Thumb` already handles the CDN's occasional 404 by falling
+        // back to a gradient, which reads as a perfectly good backdrop; `showLabel`
+        // is off because the scrim and the heading below already name the episode.
+        Div({ classes("tv-masthead-art") }) { Thumb(episode, showLabel = false) }
+
         Span({ classes("tv-eyebrow") }) { Text(eyebrow.caps) }
         H1({ classes("tv-h") }) {
             Text(S.seasonAndEpisode(episode.seasonNumber, episode.episodeNumber).caps)

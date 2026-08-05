@@ -587,12 +587,69 @@ body {
    pushed every shelf below the fold. A television home screen is shelves, and the
    masthead is the band of text above them. */
 .tv-masthead {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 0.625rem;
   /* Room for the buttons' ring without the flex gap doubling it. */
   padding-bottom: 0.25rem;
+  /* Push the text into the lower half of the backdrop, so the still reads as a
+     backdrop rather than a header the text sits on top of. */
+  padding-top: 11rem;
+}
+
+/*
+ * The full-bleed episode still behind the masthead.
+ *
+ * Escapes the root's padding to reach the screen edges — the root insets content by
+ * `--content-x` on the left (rail plus padding) and the safe area elsewhere, and a
+ * backdrop that stopped at those insets would read as a framed panel rather than a
+ * mainstage. `bottom: 0` ends it exactly at the masthead's box, so the still covers
+ * the text and nothing below it.
+ *
+ * `z-index` is not needed to sit behind: it is the first child and the text that
+ * follows is given a stacking context of its own below. It scrolls away with the
+ * page as you move down into the shelves, which is what YouTube's immersive header
+ * does too.
+ */
+.tv-masthead-art {
+  position: absolute;
+  top: calc(-1 * var(--safe-y));
+  left: calc(-1 * var(--content-x));
+  right: calc(-1 * var(--safe-x));
+  bottom: 0;
+  overflow: hidden;
+  background: var(--elev2);
+}
+
+.tv-masthead-art img,
+.tv-masthead-art .tile-fallback {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/*
+ * The scrim. Two gradients: a strong bottom-up fade to the page colour so the text
+ * is legible and the still melts into the shelves beneath, and a gentler left-edge
+ * fade so the eyebrow and title have a dark ground on the side they start from.
+ */
+.tv-masthead-art::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to top, var(--bg) 6%, rgba(15, 15, 15, 0.55) 45%, rgba(15, 15, 15, 0.15) 100%),
+    linear-gradient(to right, rgba(15, 15, 15, 0.75) 0%, rgba(15, 15, 15, 0) 55%);
+}
+
+/* The text and buttons sit above the still. A shared stacking context, set once, so
+   no individual child needs a `z-index`. */
+.tv-masthead > :not(.tv-masthead-art) {
+  position: relative;
+  z-index: 1;
 }
 
 .tv-hero-sub { color: var(--tx-dim); font-size: var(--t-meta); }
