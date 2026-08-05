@@ -16,4 +16,11 @@ internal object FirebaseWasm {
     }
 
     val auth: Auth by lazy { getAuth(app) }
+
+    val db: Firestore by lazy { getFirestore(app) }
+}
+
+/** Calls a JS unsubscribe function, which cannot cross into wasm as a Kotlin function type. */
+internal fun callUnsubscribe(unsubscribe: JsAny) {
+    js("unsubscribe()")
 }

@@ -5,8 +5,33 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>დაქალები · Preview</title>
     <style>
-        /* Black under the canvas so there is no white flash before Compose paints. */
-        html, body { margin: 0; padding: 0; height: 100%; background: #0f0f0f; }
+        /* True black: no white flash before Compose paints, and no visible seam against the player
+           on an OLED screen. */
+        html, body { margin: 0; padding: 0; height: 100%; background: #000000; overflow: hidden; }
+
+        /* The two things the app cannot draw itself: the player's <video>, and every episode still.
+
+           A canvas renderer can do neither. It cannot decode video, and it cannot read the
+           provider's images — that CDN sends no CORS headers, so those bytes may be displayed by
+           the DOM but never sampled by a renderer. Both are therefore real elements, laid over the
+           rectangle Compose measured for them.
+
+           Over, not under: pixels the canvas clears do not come out of Compose's web renderer
+           transparent, so nothing behind it is ever visible. The app's own layer is lowered to
+           `z-index: 1` from Kotlin when the first of these is created — it cannot be done here,
+           because Compose renders into a canvas inside a shadow root whose host carries no class
+           or id to match on. */
+        .dk-over {
+            position: fixed;
+            z-index: 2;
+            /* Clicks belong to the app underneath: it owns every control. */
+            pointer-events: none;
+        }
+
+        /* Stills arrive at the provider's own aspect ratio, which is not always 16:9. */
+        .dk-over { object-fit: cover; }
+
+        #player-video { object-fit: contain; background: #000000; }
     </style>
 </head>
 <body>

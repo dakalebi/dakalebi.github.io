@@ -1,5 +1,7 @@
 package ge.dakalebi.web.firebase
 
+import kotlin.js.Promise
+
 /**
  * Typed structural shapes for the Firebase JS SDK (v12, modular) on wasmJs.
  *
@@ -25,6 +27,55 @@ external interface UserCredential : JsAny {
 
 external interface Auth : JsAny {
     val currentUser: FirebaseUser?
+}
+
+// ------------------------------------------------------------------------ firestore
+
+external interface Firestore : JsAny
+
+external interface DocumentReference : JsAny
+
+external interface Query : JsAny
+
+/** A collection is itself a valid [Query], so `getDocs(collection(...))` works. */
+external interface CollectionReference : Query
+
+external interface DocumentSnapshot : JsAny {
+    val id: String
+    fun exists(): Boolean
+
+    /** Undefined for a document that does not exist, hence nullable. */
+    fun data(): JsAny?
+}
+
+external interface QueryDocumentSnapshot : JsAny {
+    val id: String
+    fun data(): JsAny
+}
+
+/**
+ * `fromCache` is the only way to tell "the server says there is nothing" from "we never
+ * reached the server". Firestore resolves an offline read instead of rejecting it, so
+ * without this an unreachable backend is indistinguishable from an empty collection.
+ */
+external interface SnapshotMetadata : JsAny {
+    val fromCache: Boolean
+    val hasPendingWrites: Boolean
+}
+
+external interface QuerySnapshot : JsAny {
+    val size: Int
+    val empty: Boolean
+
+    /** `JsArray`, not `Array`: a JS array crosses the wasm boundary as itself. */
+    val docs: JsArray<QueryDocumentSnapshot>
+    val metadata: SnapshotMetadata
+}
+
+external interface WriteBatch : JsAny {
+    fun set(ref: DocumentReference, data: JsAny, options: JsAny): WriteBatch
+    fun delete(ref: DocumentReference): WriteBatch
+    fun commit(): Promise<JsAny?>
 }
 
 /**

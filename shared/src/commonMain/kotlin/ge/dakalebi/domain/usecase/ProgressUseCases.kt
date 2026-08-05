@@ -41,7 +41,7 @@ class SaveProgress(
             isWatched != true &&
             progressSeconds < existing.progressSeconds
 
-        if (!allowReset && goingBackwards) return existing!!
+        if (!allowReset && goingBackwards) return existing
 
         val watched = when {
             allowReset -> false

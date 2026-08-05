@@ -1,20 +1,23 @@
 package ge.dakalebi.web
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -22,113 +25,170 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import ge.dakalebi.domain.model.Account
-import ge.dakalebi.domain.repository.AccountRepository
+import androidx.compose.ui.unit.sp
+import ge.dakalebi.core.Log
+import ge.dakalebi.di.session
+import ge.dakalebi.di.toasts
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
+import ge.dakalebi.presentation.ErrorMessages
+import ge.dakalebi.web.ui.AppButton
+import ge.dakalebi.web.ui.ButtonTone
+import ge.dakalebi.web.ui.Eyebrow
+import ge.dakalebi.web.ui.Tokens
 import kotlinx.coroutines.launch
 
 /**
- * The first real 2.0 screen: email + password sign-in against Firebase, plus a
- * signed-in view.
+ * Sign in, sign up, and password reset — the DOM app's login card, redrawn.
  *
- * It is deliberately first. It exercises the two things the assessment flagged as most
- * likely to bite on a canvas web app — real Firebase auth over typed wasm interop, and
- * text input / IME on a canvas (there is no DOM `<input>`). Both are cheaper to learn
- * here, on one screen, than three screens deep.
- *
- * Takes an [AccountRepository] rather than reaching for Firebase itself, so this
- * composable stays in `commonMain` and can later drive a native Android TV build.
+ * Google sign-in is deliberately absent rather than broken: it needs a popup the wasm layer does
+ * not wire yet, and an account can always be reached with the email and password it was created
+ * with. The button would otherwise be a control that fails when pressed.
  */
 @Composable
-fun LoginScreen(account: AccountRepository) {
-    var current by remember { mutableStateOf<Account?>(null) }
-    var observed by remember { mutableStateOf(false) }
+fun LoginScreen() {
+    val session = session()
+    val toasts = toasts()
+    val scope = rememberCoroutineScope()
 
-    LaunchedEffect(Unit) {
-        account.observe { user ->
-            current = user
-            observed = true
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var signUpMode by remember { mutableStateOf(false) }
+    var busy by remember { mutableStateOf(false) }
+
+    fun run(block: suspend () -> Unit, onOk: () -> Unit = {}) {
+        if (busy) return
+        busy = true
+        scope.launch {
+            try {
+                block()
+                onOk()
+            } catch (e: Throwable) {
+                // Log the raw Firebase error alongside the friendly text: the mapped message
+                // hides the code, and auth failures are the hardest thing to diagnose remotely.
+                Log.e("auth", "sign-in failed", e)
+                toasts.error(ErrorMessages.signIn(e))
+            } finally {
+                busy = false
+            }
         }
     }
 
-    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+    fun submit() {
+        if (email.isBlank() || password.isBlank()) return
+        val mode = signUpMode
+        run({
+            if (mode) session.signUp(email.trim(), password) else session.signIn(email.trim(), password)
+        }) {
+            if (mode) toasts.ok(S.accountCreated)
+        }
+    }
+
+    Box(Modifier.fillMaxSize().background(Tokens.bg), contentAlignment = Alignment.Center) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(24.dp),
+            Modifier
+                .widthIn(max = 380.dp)
+                .padding(24.dp)
+                .clip(Tokens.radius)
+                .background(Tokens.elev)
+                .border(1.dp, Tokens.line, Tokens.radius)
+                .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
         ) {
-            when {
-                !observed -> CircularProgressIndicator()
-                current != null -> SignedIn(account, current!!)
-                else -> SignInForm(account)
+            Eyebrow(S.signInEyebrow.caps)
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = S.seriesTitle.caps,
+                color = Tokens.tx,
+                fontSize = 21.sp,
+                fontWeight = FontWeight.SemiBold,
+            )
+
+            Spacer(Modifier.height(20.dp))
+
+            OutlinedTextField(
+                value = email,
+                onValueChange = { email = it },
+                label = { Text(S.emailPlaceholder) },
+                singleLine = true,
+                enabled = !busy,
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Email,
+                    imeAction = ImeAction.Next,
+                ),
+                colors = fieldColors(),
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(Modifier.height(10.dp))
+            OutlinedTextField(
+                value = password,
+                onValueChange = { password = it },
+                label = { Text(S.passwordPlaceholder) },
+                singleLine = true,
+                enabled = !busy,
+                visualTransformation = PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Password,
+                    imeAction = ImeAction.Done,
+                ),
+                keyboardActions = KeyboardActions(onDone = { submit() }),
+                colors = fieldColors(),
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            Spacer(Modifier.height(16.dp))
+            AppButton(
+                label = (if (signUpMode) S.signUp else S.signIn).caps,
+                onClick = { submit() },
+                tone = ButtonTone.Primary,
+                enabled = !busy && email.isNotBlank() && password.isNotBlank(),
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            // Stacked rather than side by side: both labels are sentences in Georgian, and two
+            // of them on one row overflow a card this narrow.
+            Spacer(Modifier.height(10.dp))
+            AppButton(
+                label = (if (signUpMode) S.promptSignIn else S.promptSignUp).caps,
+                onClick = { signUpMode = !signUpMode },
+                tone = ButtonTone.Quiet,
+            )
+            if (!signUpMode) {
+                AppButton(
+                    label = S.forgotPassword.caps,
+                    onClick = {
+                        if (email.isBlank()) {
+                            toasts.error(S.enterEmailFirst)
+                        } else {
+                            run({ session.resetPassword(email.trim()) }) {
+                                toasts.ok(S.resetLinkSent)
+                            }
+                        }
+                    },
+                    tone = ButtonTone.Quiet,
+                )
             }
         }
     }
 }
 
+/** The dark field treatment, so Material's default light-on-white outline never shows. */
 @Composable
-private fun SignedIn(account: AccountRepository, user: Account) {
-    val scope = rememberCoroutineScope()
-    Text(S.appName + " 2.0", style = MaterialTheme.typography.headlineMedium)
-    Text(user.email ?: user.uid, style = MaterialTheme.typography.bodyLarge)
-    TextButton(onClick = { scope.launch { account.signOut() } }) {
-        Text(S.signOut.caps)
-    }
-}
-
-@Composable
-private fun SignInForm(account: AccountRepository) {
-    val scope = rememberCoroutineScope()
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var busy by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
-
-    fun submit() {
-        if (busy) return
-        busy = true
-        error = null
-        scope.launch {
-            runCatching { account.signIn(email.trim(), password) }
-                .onFailure { error = S.errWrongCredentials }
-            busy = false
-        }
-    }
-
-    Text(S.appName + " 2.0", style = MaterialTheme.typography.headlineMedium)
-
-    OutlinedTextField(
-        value = email,
-        onValueChange = { email = it },
-        label = { Text(S.emailPlaceholder) },
-        singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
-        modifier = Modifier.width(320.dp).padding(top = 16.dp),
-    )
-    OutlinedTextField(
-        value = password,
-        onValueChange = { password = it },
-        label = { Text(S.passwordPlaceholder) },
-        singleLine = true,
-        visualTransformation = PasswordVisualTransformation(),
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
-        modifier = Modifier.width(320.dp).padding(top = 8.dp),
-    )
-
-    error?.let {
-        Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 8.dp))
-    }
-
-    Button(
-        onClick = { submit() },
-        enabled = !busy && email.isNotBlank() && password.isNotBlank(),
-        modifier = Modifier.width(320.dp).padding(top = 16.dp),
-    ) {
-        if (busy) CircularProgressIndicator(modifier = Modifier.width(18.dp)) else Text(S.signIn.caps)
-    }
-}
+private fun fieldColors() = OutlinedTextFieldDefaults.colors(
+    focusedTextColor = Tokens.tx,
+    unfocusedTextColor = Tokens.tx,
+    focusedContainerColor = Tokens.elev2,
+    unfocusedContainerColor = Tokens.elev2,
+    disabledContainerColor = Tokens.elev2,
+    cursorColor = Tokens.red,
+    focusedBorderColor = Tokens.lineStrong,
+    unfocusedBorderColor = Tokens.line,
+    focusedLabelColor = Tokens.txDim,
+    unfocusedLabelColor = Tokens.mut,
+)

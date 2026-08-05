@@ -36,10 +36,22 @@ kotlin {
     }
 
     sourceSets {
+        // Every line of the Firebase and device layer is typed JS interop, and the whole of
+        // it is still opt-in. Declared once here rather than as a file annotation on twelve
+        // files, so the build stays warning-free and the opt-in is visible in one place.
+        all {
+            languageSettings.optIn("kotlin.js.ExperimentalWasmJsInterop")
+        }
+
         commonMain.dependencies {
             // The shared domain, i18n, and state holders — now built for wasm too.
             implementation(project(":shared"))
             // The Compose UI toolkit (canvas), NOT Compose HTML.
+            //
+            // Through the plugin's `compose.*` accessors, which 1.11 deprecates in favour of
+            // plain coordinates. They stay until the artifacts they resolve to are pinned by
+            // hand: material3 and the resources component are versioned independently of the
+            // plugin now, so writing 1.11.1 for all five does not resolve.
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material3)

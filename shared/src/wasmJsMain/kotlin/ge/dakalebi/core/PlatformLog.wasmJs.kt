@@ -17,24 +17,52 @@ actual fun platformLog(level: LogLevel, tag: String, message: String, error: Thr
     }
 }
 
-/**
- * TODO(2.0 data phase): read the provider's `.code` field on wasmJs.
- *
- * The js(IR) actual cast the `Throwable` to `dynamic` and read `error.code` — the
- * Firebase JS SDK's error code, whose exact spellings [ge.dakalebi.presentation.ErrorMessages]
- * matches on. Kotlin/Wasm has no `dynamic`, and the Firebase data layer is not ported to
- * wasm yet, so no code is available here and error messages fall back to the generic one.
- * This becomes load-bearing only once sign-in and catalog reads run on the wasm app; it is
- * implemented with typed JS interop as part of that data-layer port.
- */
-actual fun platformErrorCode(error: Throwable?): String? = null
+/** `code`, or a wrapped cause's, on whatever JS value was thrown. */
+private fun readCode(thrown: JsAny): String? = js(
+    "(typeof thrown.code === 'string' ? thrown.code :" +
+        " (thrown.cause && typeof thrown.cause.code === 'string' ? thrown.cause.code : null))",
+)
 
 /**
- * TODO(2.0): `window.onerror` / `unhandledrejection` on wasmJs.
+ * The Firebase JS SDK's error code, dug out of the JS error the wasm runtime wrapped.
  *
- * Not load-bearing for rendering; wired when the wasm app starts running real flows that
- * can reject promises. A no-op keeps startup honest until then.
+ * A rejected promise crossing into wasm arrives as a [JsException] holding the original
+ * JS value, so the code lives one hop further away than it did under js(IR) — where the
+ * `Throwable` *was* the `FirebaseError` and `error.code` read straight off it.
+ *
+ * The spellings are the contract [ge.dakalebi.presentation.ErrorMessages] matches on. This
+ * platform's SDK is the reference implementation of them, so it passes them through
+ * untranslated; a native Firebase SDK would have to map its own.
+ */
+actual fun platformErrorCode(error: Throwable?): String? {
+    val thrown = (error as? JsException)?.thrownValue ?: return null
+    return runCatching { readCode(thrown) }.getOrNull()
+}
+
+private fun installErrorHandlers(prefix: String) {
+    js(
+        """{
+        window.addEventListener('error', function (event) {
+            var where = [event.filename, event.lineno].filter(Boolean).join(':');
+            console.error(prefix + '/uncaught', event.message || 'unknown error',
+                where ? 'at ' + where : '', event.error);
+        });
+        window.addEventListener('unhandledrejection', function (event) {
+            var reason = event.reason || {};
+            console.error(prefix + '/unhandled-rejection', reason.code || '',
+                reason.message || reason, reason);
+        });
+    }""",
+    )
+}
+
+/**
+ * `window.onerror` and `unhandledrejection`, which is all a browser offers.
+ *
+ * Written as one JS block rather than two Kotlin listeners: a wasm callback that itself
+ * throws would be caught by the very handler being installed, and the point of these is to
+ * be the last thing standing when a page has otherwise gone blank.
  */
 actual fun installPlatformHandlers(prefix: String) {
-    // Intentionally empty until the wasm app runs real async flows. See KDoc.
+    installErrorHandlers(prefix)
 }
