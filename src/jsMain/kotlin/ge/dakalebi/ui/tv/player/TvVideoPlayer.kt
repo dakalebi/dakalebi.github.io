@@ -40,6 +40,7 @@ import org.jetbrains.compose.web.dom.Video
 import org.w3c.dom.HTMLElement
 import org.w3c.dom.HTMLVideoElement
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 /** What the D-pad currently means. */
 private enum class Mode { Idle, Controls, Scrubbing }
@@ -56,6 +57,10 @@ private class TvPlayerRefs {
     var hideTimer: Int? = null
     var scrub: TvSeek? = null
     var scrubOrigin: Double = 0.0
+
+    /** Last buffered-bar width written, as a rounded percent, so the per-frame paint
+     *  loop skips the style write while the buffered range has not visibly grown. */
+    var lastBufPct: Int = -1
 
     /**
      * Whether playback was running when the scrub began.
@@ -189,7 +194,11 @@ fun TvVideoPlayer(
             if (start >= v.currentTime && end > bufEnd) bufEnd = end
         }
         val bufPct = if (duration > 0) (bufEnd / duration * 100).coerceIn(0.0, 100.0) else 0.0
-        refs.fillBuf?.style?.width = "$bufPct%"
+        val bufPctInt = bufPct.roundToInt()
+        if (bufPctInt != refs.lastBufPct) {
+            refs.lastBufPct = bufPctInt
+            refs.fillBuf?.style?.width = "$bufPct%"
+        }
     }
 
     fun syncClock() {

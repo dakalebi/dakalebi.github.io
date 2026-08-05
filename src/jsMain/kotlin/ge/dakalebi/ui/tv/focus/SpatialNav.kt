@@ -76,6 +76,19 @@ internal object SpatialNav {
             .filterIsInstance<HTMLElement>()
             .filter { it.closest("[$GROUP_ATTR]") == group && it.isNavigable() }
 
+    /**
+     * The boxes of one group's own navigable items, each rectangle read exactly once.
+     *
+     * The measuring counterpart of [itemsOf]: the in-group move path needs geometry, and
+     * folding the visibility gate into a single [navigableBox] read halves the
+     * `getBoundingClientRect` calls a keypress forces over a large grid.
+     */
+    private fun navigableBoxesOf(group: HTMLElement): List<Box> =
+        group.querySelectorAll("[$ITEM_ATTR]").asList()
+            .filterIsInstance<HTMLElement>()
+            .filter { it.closest("[$GROUP_ATTR]") == group }
+            .mapNotNull { it.navigableBox() }
+
     fun firstItem(scope: Element): HTMLElement? =
         groupsIn(scope).firstNotNullOfOrNull { itemsOf(it).firstOrNull() }
 
@@ -143,7 +156,7 @@ internal object SpatialNav {
 
         val axis = axisOf(group)
         if (staysWithin(axis, direction)) {
-            bestCandidate(fromBox, itemsOf(group).map { it.box() }, direction)?.let { return it }
+            bestCandidate(fromBox, navigableBoxesOf(group), direction)?.let { return it }
         }
         if (!mayLeave(axis, direction)) return null
 
@@ -168,12 +181,6 @@ internal object SpatialNav {
         }
         return target
     }
-
-    /** Every navigable item in [scope], regardless of which group owns it. */
-    private fun allItems(scope: Element): List<HTMLElement> =
-        scope.querySelectorAll("[$ITEM_ATTR]").asList()
-            .filterIsInstance<HTMLElement>()
-            .filter { it.isNavigable() }
 
     /**
      * Where a press goes when its own group has nothing left.
@@ -214,13 +221,16 @@ internal object SpatialNav {
         direction: Direction,
         scope: Element,
     ): HTMLElement? {
-        val candidates = allItems(scope).mapNotNull { element ->
-            if (groupOf(element) == current) return@mapNotNull null
-            val group = groupOf(element) ?: return@mapNotNull null
-            val box = element.box()
-            val distance = along(from, box, direction) ?: return@mapNotNull null
-            Candidate(box, group, distance)
-        }
+        val candidates = scope.querySelectorAll("[$ITEM_ATTR]").asList()
+            .filterIsInstance<HTMLElement>()
+            .mapNotNull { element ->
+                if (groupOf(element) == current) return@mapNotNull null
+                val group = groupOf(element) ?: return@mapNotNull null
+                // One rectangle read per item, folding in the visibility gate.
+                val box = element.navigableBox() ?: return@mapNotNull null
+                val distance = along(from, box, direction) ?: return@mapNotNull null
+                Candidate(box, group, distance)
+            }
         if (candidates.isEmpty()) return null
 
         // The nearest *band*, then the nearest item in it — not the single best
@@ -272,7 +282,7 @@ internal object SpatialNav {
      * A horizontal move centres the item in its own rail and leaves the page alone.
      * A vertical move centres the group when it fits the viewport — so a rail's
      * heading stays visible above the focused row — and the item when the group is
-     * taller than the viewport, which a full season grid is. See [centreVertically].
+     * taller than the viewport, which a full season grid is. See [verticalTarget].
      */
     fun focus(item: HTMLElement, direction: Direction?, scope: Element) {
         (document.activeElement as? HTMLElement)
@@ -296,10 +306,12 @@ internal object SpatialNav {
         when {
             direction == null -> centre(item, setOf(Axis.X, Axis.Y), scope)
             direction.isHorizontal -> centre(item, setOf(Axis.X), scope)
-            else -> {
-                centre(item, setOf(Axis.X), scope)
-                group?.let { centreVertically(item, it, scope) }
-            }
+            // A vertical move centres the item on X (in its rail) and the band-or-item on
+            // Y (in the page). `centreAxes` reads both rectangles before either scroll
+            // write, so the vertical target is measured before the X write dirties layout
+            // — one reflow instead of two. See [verticalTarget]/[centreAxes].
+            group != null -> centreAxes(item, verticalTarget(item, group, scope), scope)
+            else -> centre(item, setOf(Axis.X), scope)
         }
 
         // Last, so a subscriber reading geometry sees the settled position.
