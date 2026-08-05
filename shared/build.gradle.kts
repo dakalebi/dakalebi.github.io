@@ -24,6 +24,16 @@ kotlin {
         nodejs()
     }
 
+    // The Version 2.0 `:web` app is Compose Multiplatform on wasmJs, so it needs this
+    // module's klib compiled for wasm too. Additive: the root app still consumes the
+    // `js(IR)` klib. Only `commonMain`'s three `expect` functions need wasm `actual`s.
+    @OptIn(org.jetbrains.kotlin.gradle.ExperimentalWasmDsl::class)
+    wasmJs {
+        browser {
+            testTask { enabled = false }
+        }
+    }
+
     sourceSets {
         commonMain.dependencies {
             // `api`, not `implementation`: `CompositionLocal`, `CoroutineScope` and

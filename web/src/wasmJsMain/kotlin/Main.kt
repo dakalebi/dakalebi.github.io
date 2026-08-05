@@ -13,6 +13,8 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.ComposeViewport
+import ge.dakalebi.i18n.S
+import ge.dakalebi.i18n.caps
 import kotlinx.browser.document
 
 /**
@@ -39,8 +41,10 @@ private fun App() {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            Text("დაქალები 2.0", style = MaterialTheme.typography.headlineMedium)
-            Text("Compose Multiplatform preview", style = MaterialTheme.typography.bodyMedium)
+            // Real strings from :shared, proving the domain/i18n layer runs on wasm.
+            Text("${S.appName} 2.0", style = MaterialTheme.typography.headlineMedium)
+            Text(S.seriesTitle, style = MaterialTheme.typography.titleMedium)
+            Text(S.seasonAndEpisode(2, 4).caps, style = MaterialTheme.typography.bodyMedium)
         }
     }
 }

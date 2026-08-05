@@ -37,6 +37,8 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
+            // The shared domain, i18n, and state holders — now built for wasm too.
+            implementation(project(":shared"))
             // The Compose UI toolkit (canvas), NOT Compose HTML.
             implementation(compose.runtime)
             implementation(compose.foundation)
