@@ -25,6 +25,7 @@ import org.jetbrains.compose.web.dom.Img
 import org.jetbrains.compose.web.dom.Input
 import org.jetbrains.compose.web.dom.Span
 import org.jetbrains.compose.web.dom.Text
+import org.w3c.dom.HTMLInputElement
 
 /**
  * Email and password, once per device.
@@ -82,20 +83,21 @@ fun TvSignInScreen() {
         Span({ classes("tv-eyebrow") }) { Text(S.signInEyebrow.caps) }
 
         Div({ classes("tv-signin-form"); focusGroup("signin", FocusAxis.Y) }) {
-            Input(InputType.Email) {
-                classes("tv-field")
-                focusItem("email", entry = true)
-                placeholder(S.emailPlaceholder)
-                value(email)
-                onInput { email = it.value }
-            }
-            Input(InputType.Password) {
-                classes("tv-field")
-                focusItem("password")
-                placeholder(S.passwordPlaceholder)
-                value(password)
-                onInput { password = it.value }
-            }
+            TvTextField(
+                key = "email",
+                type = InputType.Email,
+                placeholder = S.emailPlaceholder,
+                value = email,
+                entry = true,
+                onValue = { email = it },
+            )
+            TvTextField(
+                key = "password",
+                type = InputType.Password,
+                placeholder = S.passwordPlaceholder,
+                value = password,
+                onValue = { password = it },
+            )
             Div({
                 classes("tv-btn", "tv-btn-primary")
                 focusItem("submit")
@@ -109,6 +111,61 @@ fun TvSignInScreen() {
                 actsAsButton(disabled = !canSubmit, busy = busy)
                 onClick { submit() }
             }) { Text((if (busy) S.loading else S.signIn).caps) }
+        }
+    }
+}
+
+/** Holds the raw `<input>` so OK can focus it without threading a ref through Compose. */
+private class TvFieldRef {
+    var input: HTMLInputElement? = null
+}
+
+/**
+ * One text field, in the three states a television keyboard needs.
+ *
+ * A web `<input>` collapses two things a remote must keep apart: being *highlighted*
+ * and being *edited*. The moment the D-pad engine focuses a raw input the browser is
+ * in edit mode — arrows move the text cursor instead of leaving the field, and on an
+ * Android TV the soft keyboard is already up. There is no state in which the field is
+ * merely highlighted and the arrows still navigate, so the whole screen becomes a
+ * trap: land on the email box and there is no way to reach the password or the button.
+ *
+ * So the ring goes on the **wrapper**, not the input. The engine focuses the wrapper
+ * (highlighted; arrows navigate past it, [TvInput] never treating it as text entry),
+ * OK focuses the real input inside it (edit mode; focusing an input is what raises the
+ * IME on a television), and Back blurs it again — the last handled by [TvInput], which
+ * knows a focused input inside a `data-tv-item` wrapper means "leave edit mode" rather
+ * than "leave the screen".
+ *
+ * The input is `tabindex="-1"` and carries no `focusItem`, so the D-pad and the tab
+ * ring both skip it; it is only ever reached by that OK.
+ */
+@Composable
+private fun TvTextField(
+    key: String,
+    type: InputType<String>,
+    placeholder: String,
+    value: String,
+    onValue: (String) -> Unit,
+    entry: Boolean = false,
+) {
+    val ref = remember { TvFieldRef() }
+    Div({
+        classes("tv-field-wrap")
+        focusItem(key, entry = entry)
+        // OK enters edit mode by focusing the input, which raises the keyboard.
+        onClick { ref.input?.focus() }
+    }) {
+        Input(type) {
+            classes("tv-field")
+            attr("tabindex", "-1")
+            placeholder(placeholder)
+            value(value)
+            ref { element ->
+                ref.input = element
+                onDispose { ref.input = null }
+            }
+            onInput { onValue(it.value) }
         }
     }
 }

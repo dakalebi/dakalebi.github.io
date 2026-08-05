@@ -792,9 +792,18 @@ body {
   margin: -4px;
 }
 
-/* 16px minimum is what stops a focus zoom on iOS if this page is ever opened on a
-   phone; on a television it is simply the smallest readable size. */
+/* The focusable wrapper. The D-pad ring lands here, not on the input, which is the
+   whole trick: the field can be highlighted without the browser entering edit mode.
+   It wraps the input tightly and shares its rounding, so the ring reads as being
+   around the field box. */
+.tv-field-wrap {
+  display: block;
+  border-radius: var(--radius);
+}
+
 .tv-field {
+  display: block;
+  width: 100%;
   font-size: var(--t-body);
   font-family: var(--f-sans);
   padding: 0.7em 1em;
@@ -804,9 +813,15 @@ body {
   color: var(--tx);
 }
 
-/* The web sheet sets `.field:focus { outline: none }`, which on a television is a
-   dead end with no way out. This sheet never loads that rule, and the ring above
-   applies here like anywhere else — stated so nobody re-adds it. */
+/* Edit mode: the input itself holds focus and the keyboard is up. A brighter border
+   marks it, distinct from the wrapper's ring which means only highlighted.
+   `outline: none` here is safe — the wrapper already carries the D-pad ring, unlike
+   the web sheet's `.field:focus { outline: none }`, which left no ring at all. */
+.tv-field:focus {
+  border-color: var(--tx);
+  outline: none;
+}
+
 .tv-field::placeholder { color: var(--mut); }
 
 /* ------------------------------------------------------------------ toasts

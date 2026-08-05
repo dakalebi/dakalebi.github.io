@@ -167,7 +167,15 @@ class TvInput {
     private fun restoreFocus(prefer: HTMLElement?) {
         val scope = layers.lastOrNull()?.root() ?: return
         val active = document.activeElement
-        if (active is HTMLElement && active.hasAttribute("data-tv-item") && scope.contains(active)) return
+        // Leave a focused item alone — and a focused text field too, because edit mode
+        // deliberately puts the ring's wrapper and the focus on different elements; the
+        // input holds no `data-tv-item`, and restoring off it would drop the keyboard
+        // the instant it opened.
+        if (active is HTMLElement && scope.contains(active) &&
+            (active.hasAttribute("data-tv-item") || isTextEntry(active))
+        ) {
+            return
+        }
 
         if (prefer != null && prefer.isConnected && scope.contains(prefer) &&
             prefer.hasAttribute("data-tv-item")
@@ -228,12 +236,19 @@ class TvInput {
         val key = keyOf(event)
         layer.onAnyKey(key)
 
-        // A text field owns its own arrows and its own space bar. Only Back is
-        // still ours, so a viewer who focused the email box can get out of it.
-        if (isTextEntry(document.activeElement)) {
+        // Edit mode: a focused text field owns its own arrows and its space bar, so
+        // typing works and the on-screen keyboard drives itself. Only Back is ours,
+        // and it *leaves edit mode* rather than the screen: it blurs the field, which
+        // drops the keyboard, and returns the ring to the `data-tv-item` wrapper the
+        // field sits in — the highlighted-but-not-editing state from which the arrows
+        // navigate again. Only a field with no such wrapper falls through to a plain
+        // Back.
+        val active = document.activeElement as? HTMLElement
+        if (isTextEntry(active)) {
             if (key is Key.Back) {
                 event.preventDefault()
-                back()
+                val wrapper = active?.closest("[data-tv-item]") as? HTMLElement
+                if (wrapper != null && wrapper != active) wrapper.focus() else back()
             }
             return
         }

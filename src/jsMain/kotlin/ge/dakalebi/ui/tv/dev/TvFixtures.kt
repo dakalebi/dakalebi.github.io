@@ -16,6 +16,8 @@ import ge.dakalebi.domain.repository.CatalogCache
 import ge.dakalebi.domain.repository.CatalogRepository
 import ge.dakalebi.domain.repository.ProgressRepository
 import ge.dakalebi.domain.repository.SettingsRepository
+import kotlinx.browser.window
+import org.w3c.dom.url.URLSearchParams
 
 /**
  * A whole app graph with no Firebase behind it.
@@ -39,7 +41,10 @@ internal fun tvFixtureGraph(): AppGraph {
         catalogRepository = FixtureCatalogRepository(episodes),
         progressRepository = FixtureProgressRepository(fixtureProgress(episodes)),
         settingsRepository = FixtureSettingsRepository(),
-        accountRepository = FixtureAccountRepository(),
+        // `?ui=tv-demo&signedout` starts with no account, so the sign-in screen —
+        // otherwise unreachable without a real recomposition to swap it in — renders
+        // on the first paint and can be driven like every other TV screen.
+        accountRepository = FixtureAccountRepository(startSignedOut = fixtureSignedOut()),
         adminRepository = FixtureAdminRepository,
         // The real one: per-device preferences are `localStorage`, which the
         // fixture has as much right to as the app does, and it makes the
@@ -166,9 +171,13 @@ private class FixtureSettingsRepository : SettingsRepository {
  * auth gate and the sign-in screen are both reachable in the fixture rather than
  * being the one thing it cannot show.
  */
-private class FixtureAccountRepository : AccountRepository {
+/** Whether `?ui=tv-demo&signedout` asked the fixture to start with no account. */
+private fun fixtureSignedOut(): Boolean =
+    runCatching { URLSearchParams(window.location.search).has("signedout") }.getOrDefault(false)
+
+private class FixtureAccountRepository(startSignedOut: Boolean) : AccountRepository {
     private var listener: ((Account?) -> Unit)? = null
-    private var account: Account? = DEMO
+    private var account: Account? = if (startSignedOut) null else DEMO
 
     override fun observe(onChange: (Account?) -> Unit) {
         listener = onChange
