@@ -1108,8 +1108,36 @@ body {
   min-width: 0;
 }
 
-/* The autoplay switch, sized down from the settings switch to sit in the control row
-   next to the transport buttons. Same look and behaviour, smaller. */
+/* The autoplay control: a labelled pill, so a lone switch in the player is not left to
+   explain itself. The word and the toggle share one focus stop, and the pill inverts on
+   focus like every other chrome control rather than taking an outline ring. */
+.tv-ctl-autoplay {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  height: 3.25rem;
+  padding: 0 1em;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--tx);
+  white-space: nowrap;
+  transition: background-color var(--t-focus) var(--ease-tv),
+    color var(--t-focus) var(--ease-tv);
+}
+
+.tv-ctl-autoplay[data-tv-focus],
+.tv-ctl-autoplay:focus {
+  background: var(--focus);
+  color: #0f0f0f;
+  outline: none;
+}
+
+.tv-ctl-autoplay-label {
+  font-size: var(--t-meta);
+}
+
+/* The switch itself, sized down from the settings switch to sit inside the pill next to
+   the label. Same look and behaviour, smaller. */
 .tv-ctl-switch {
   width: 3.75rem;
   height: 2.125rem;

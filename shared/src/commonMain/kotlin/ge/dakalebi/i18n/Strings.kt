@@ -115,6 +115,9 @@ interface Strings {
     val autoplayTitle: String
     val autoplayBody: String
 
+    /** Compact label for the autoplay toggle in the player's control row. */
+    val autoplayShort: String
+
     /** Only offered on iPhone and iPad, which are the only devices with two. */
     val nativePlayerTitle: String
     val nativePlayerBody: String

@@ -697,20 +697,30 @@ fun TvVideoPlayer(
              * horizontal presses deliberately cannot leave an `X` group.
              */
             Div({ classes("tv-ctl-row"); focusGroup("player-buttons", FocusAxis.X) }) {
-                // The autoplay switch in the left cell, mirroring the quality button on
-                // the right and keeping the transport centred. A focus stop in this row,
-                // so Left from the transport reaches it; never the entry item, so the ring
-                // still starts on the bar. Absent when there is no setting behind it.
+                // The autoplay control in the left cell, mirroring the quality button on
+                // the right and keeping the transport centred. A labelled pill rather than
+                // a bare toggle, because a lone switch in a player says nothing about what
+                // it does. A focus stop in this row, so Left from the transport reaches it;
+                // never the entry item, so the ring still starts on the bar. Absent when
+                // there is no setting behind it.
                 Div({ classes("tv-ctl-start") }) {
                     if (autoplayNext != null && onToggleAutoplay != null) {
                         Div({
-                            classNames("tv-switch", "tv-ctl-switch", if (autoplayNext) "on" else null)
+                            classes("tv-ctl-autoplay")
                             focusItem("autoplay")
                             attr("role", "switch")
                             attr("aria-checked", autoplayNext.toString())
-                            attr("aria-label", S.autoplayTitle)
+                            // `switch` takes its name from the author, not its contents, so
+                            // it needs an explicit one — the same word the pill shows, which
+                            // keeps the spoken and visible labels the same (WCAG 2.5.3).
+                            attr("aria-label", S.autoplayShort)
                             onClick { onToggleAutoplay() }
-                        }) { Div() }
+                        }) {
+                            Span({ classes("tv-ctl-autoplay-label") }) { Text(S.autoplayShort.caps) }
+                            Div({
+                                classNames("tv-switch", "tv-ctl-switch", if (autoplayNext) "on" else null)
+                            }) { Div() }
+                        }
                     }
                 }
 
