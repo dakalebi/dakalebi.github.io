@@ -137,9 +137,12 @@ class TvInput {
         window.addEventListener("focusout", onFocusOut)
 
         // The DOM changed. Coalesce a burst into one check and, if nothing is focused,
-        // land the ring. `childList` only: element add/remove and re-creation are what
-        // strand focus, whereas the per-second clock is a text change and would just
-        // wake this pointlessly.
+        // land the ring. `childList` only, because element add/remove and re-creation
+        // are what strand focus; a pure text edit (were the clock to update its node in
+        // place) is a `characterData` change and would not wake this. Whether Compose
+        // edits the time text or replaces its node is up to the framework, so this may
+        // still wake often — which is fine, because the check below is a no-op when
+        // focus is intact.
         var scheduled = false
         val observer = MutationObserver { _, _ ->
             if (scheduled) return@MutationObserver
@@ -158,7 +161,8 @@ class TvInput {
      * Puts the ring back if it has been lost, [prefer]ring a specific element.
      *
      * A no-op in the common case: if a real item still holds focus, nothing moved and
-     * this returns at once, so the per-second mutation storm costs one attribute read.
+     * this returns at once, so even a frequently-waking observer costs one attribute
+     * read per batch.
      */
     private fun restoreFocus(prefer: HTMLElement?) {
         val scope = layers.lastOrNull()?.root() ?: return

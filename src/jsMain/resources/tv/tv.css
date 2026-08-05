@@ -48,10 +48,11 @@ html {
    * small window. It is a floor, not a clamp: there is deliberately no ceiling,
    * because a ceiling is exactly what broke the previous version.
    *
-   * Absolute units only, and necessarily: this declaration *defines* what a `rem`
-   * is, so a `rem` inside it would either be circular or silently mean something
+   * No font-relative units here, and necessarily: this declaration *defines* what a
+   * `rem` is, so a `rem` inside it would either be circular or silently mean something
    * else — on the root element `rem` resolves against the initial 16px rather than
-   * against this rule.
+   * against this rule. The `vw`/`vh` and `px` it does use are fine, since none of them
+   * depend on this font size.
    */
   font-size: max(11px, min(1.667vw, 2.963vh));
 }
