@@ -5,8 +5,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -18,30 +18,29 @@ import kotlinx.browser.document
 /**
  * Entry point for the Compose Multiplatform web app (wasmJs / canvas).
  *
- * Phase 0 is deliberately a hello-world: its only job is to prove the toolchain builds
- * and that the app renders on the canvas at `dakalebi.github.io/preview`. Real screens
- * arrive once the two blockers (Firebase-on-wasm, video overlay) are de-risked.
+ * Still a hello-world, but now under [AppTheme] (bundled Georgian font, dark scheme) and
+ * on a real [Surface], so Georgian renders and the background is the app's dark, not the
+ * canvas's white. Real screens replace [App] as Phase 1 proceeds.
  */
 @OptIn(ExperimentalComposeUiApi::class)
 fun main() {
     ComposeViewport(document.body!!) {
-        App()
+        AppTheme {
+            App()
+        }
     }
 }
 
 @Composable
 private fun App() {
-    MaterialTheme(colorScheme = darkColorScheme()) {
+    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(
             modifier = Modifier.fillMaxSize().padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
             Text("დაქალები 2.0", style = MaterialTheme.typography.headlineMedium)
-            Text(
-                "Compose Multiplatform preview",
-                style = MaterialTheme.typography.bodyMedium,
-            )
+            Text("Compose Multiplatform preview", style = MaterialTheme.typography.bodyMedium)
         }
     }
 }

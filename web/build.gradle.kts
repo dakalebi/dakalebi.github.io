@@ -42,7 +42,15 @@ kotlin {
             implementation(compose.foundation)
             implementation(compose.material3)
             implementation(compose.ui)
+            // Bundled fonts (and later, images) fed to the canvas renderer.
+            implementation(compose.components.resources)
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
         }
     }
+}
+
+// A canvas has no system fonts, so the bundled Noto Sans Georgian is generated into a
+// typed `Res` accessor under this package. See AppTheme.
+compose.resources {
+    packageOfResClass = "ge.dakalebi.web.resources"
 }
