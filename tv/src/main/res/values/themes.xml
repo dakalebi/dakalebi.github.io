@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- No action bar, no title, black everywhere. The black windowBackground plus
+         windowDisablePreview is what removes the white launch flash before the
+         WebView paints. Fullscreen so no system bars sit over the 10-foot UI. -->
+    <style name="Theme.DakalebiTv" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@android:color/black</item>
+        <item name="android:colorBackground">@android:color/black</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowDisablePreview">true</item>
+    </style>
+</resources>
