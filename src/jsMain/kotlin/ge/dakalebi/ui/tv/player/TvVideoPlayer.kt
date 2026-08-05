@@ -352,13 +352,13 @@ fun TvVideoPlayer(
                         else -> false
                     }
                 },
-                // A non-direction press brings the chrome back before it is acted on,
-                // so the first OK or media key is not spent revealing what you aimed
-                // at. Direction keys are deliberately *not* here: `onDirection` must
-                // still see the hidden state to place the ring by entry direction, and
-                // `onAnyKey` runs first and would otherwise reveal (flipping the mode)
-                // before it looks.
-                onAnyKey = { key -> if (key !is Key.Back && key !is Key.Dir) revealControls() },
+                // Media keys reveal the chrome before acting, so pressing Play on a
+                // hidden player shows the controls too. Direction and Select keys are
+                // deliberately *not* here: each must see the hidden state itself to act
+                // correctly (a direction places the ring by entry, an OK plays rather
+                // than firing whatever invisible control held focus), and `onAnyKey`
+                // runs first — revealing here would flip the mode out from under them.
+                onAnyKey = { key -> if (key is Key.Media) revealControls() },
                 onDirection = { direction, repeat ->
                     val sign = if (direction == Direction.Left) -1 else 1
                     when {
@@ -409,6 +409,17 @@ fun TvVideoPlayer(
                     when {
                         // Confirm, per the contract.
                         mode == Mode.Scrubbing -> { commitScrub(); true }
+                        // Chrome hidden: OK reveals and plays or pauses. It must NOT
+                        // fire whatever control still holds the (invisible) ring —
+                        // focus now persists while hidden, so without this branch an
+                        // OK meant to pause would skip ten seconds if Forward-10 had
+                        // been the last thing focused. Land the ring on Play too.
+                        mode == Mode.Idle -> {
+                            revealControls()
+                            focusChromeItem("play")
+                            togglePlay()
+                            true
+                        }
                         // The bar is a slider, not a button; OK on it plays or pauses
                         // rather than doing nothing.
                         scrubFocused() -> { togglePlay(); true }

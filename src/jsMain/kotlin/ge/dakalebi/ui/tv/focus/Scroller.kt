@@ -120,6 +120,9 @@ internal fun scrollableAncestor(from: HTMLElement, axis: Axis, within: Element):
 /** Whether this element's computed `overflow` on [axis] actually permits scrolling. */
 private fun HTMLElement.scrollsOn(axis: Axis): Boolean {
     val property = if (axis == Axis.X) "overflow-x" else "overflow-y"
-    val value = window.getComputedStyle(this).getPropertyValue(property)
+    // Trimmed: computed values are normally whitespace-free, but a stray space would
+    // fail the exact-match below, miss a real scroller, and re-break the vertical
+    // scrolling this function exists to keep working — a cheap guard against that.
+    val value = window.getComputedStyle(this).getPropertyValue(property).trim()
     return value == "auto" || value == "scroll"
 }
