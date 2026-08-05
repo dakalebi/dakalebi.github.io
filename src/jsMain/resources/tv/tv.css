@@ -866,6 +866,37 @@ body {
   display: block;
 }
 
+/* What is playing, top-left over the video, shown and hidden with the chrome. YouTube
+   lifts the title out of the control cluster to here so the controls stay a control
+   cluster. A shadow rather than a scrim, since it sits over a bright frame with no
+   gradient of its own. */
+.tv-player-title {
+  position: absolute;
+  top: var(--safe-y);
+  left: var(--safe-x);
+  right: var(--safe-x);
+  z-index: 1;
+  transition: opacity 0.25s var(--ease);
+}
+
+.tv-player-title.hide {
+  opacity: 0;
+}
+
+.tv-player-title-main {
+  font-size: var(--t-title);
+  font-weight: 600;
+  color: var(--tx);
+  text-shadow: 0 0.0625rem 0.5rem rgba(0, 0, 0, 0.75);
+}
+
+.tv-player-title-sub {
+  margin-top: 0.25rem;
+  font-size: var(--t-meta);
+  color: var(--tx-dim);
+  text-shadow: 0 0.0625rem 0.5rem rgba(0, 0, 0, 0.75);
+}
+
 /* The control bar and the thin line are the only two states, and exactly one of
    them is visible at any moment — so there is never a frame with no position
    indicator at all. */
@@ -1130,18 +1161,13 @@ body {
   font-size: var(--t-meta);
 }
 
-.tv-time {
+/* Elapsed at the start, total at the end, on their own line above the bar — YouTube's
+   placement, rather than the two crammed together in the button row as before. */
+.tv-ctl-times {
+  display: flex;
+  justify-content: space-between;
   font-size: var(--t-meta);
   color: var(--tx-dim);
-  white-space: nowrap;
-}
-
-/* A separator element rather than a "/" inside the string, so the two timecodes are
-   their own text nodes. Leanback splits them the same way, into `current_time`, a
-   separator view and `total_time`. */
-.tv-time-sep {
-  margin: 0 0.5em;
-  color: var(--mut);
 }
 
 .tv-thinbar {

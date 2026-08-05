@@ -116,6 +116,13 @@ fun TvVideoPlayer(
     input: TvInput,
     events: PlayerEvents,
     /**
+     * What is playing, shown top-left while the chrome is up — YouTube's placement.
+     * The player takes it as plain strings rather than an episode so it stays a
+     * player; [subtitle] is the quieter second line (the show's name).
+     */
+    title: String? = null,
+    subtitle: String? = null,
+    /**
      * Extra bands rendered inside the chrome, below the transport row.
      *
      * A slot rather than parameters, so the player stays a player and does not learn
@@ -545,6 +552,16 @@ fun TvVideoPlayer(
 
         if (buffering) Div({ classes("tv-spinner") }) { Div() }
 
+        // What is playing, top-left, shown with the chrome. YouTube lifts the title
+        // out of the control cluster to here; the episode number is the title and the
+        // show's name is the quieter line under it.
+        if (title != null) {
+            Div({ classNames("tv-player-title", if (mode == Mode.Controls) null else "hide") }) {
+                Div({ classes("tv-player-title-main") }) { Text(title) }
+                subtitle?.let { Div({ classes("tv-player-title-sub") }) { Text(it) } }
+            }
+        }
+
         // The seek readout. Big and central, because it is the only feedback that a
         // press registered before the seek actually happens.
         seekPreview?.let {
@@ -588,6 +605,13 @@ fun TvVideoPlayer(
             classNames("tv-ctl", if (mode == Mode.Controls) null else "hide")
             focusGroup("player-chrome", FocusAxis.Y)
         }) {
+            // Elapsed at the start, total at the end, flanking the bar — YouTube's
+            // placement. Not a focus stop, just a readout.
+            Div({ classes("tv-ctl-times", "mono") }) {
+                Span { Text(formatTime(currentSec.toDouble())) }
+                Span { Text(formatTime(durationSec.toDouble())) }
+            }
+
             /*
              * The bar is a focus stop, not decoration.
              *
@@ -626,11 +650,9 @@ fun TvVideoPlayer(
              * horizontal presses deliberately cannot leave an `X` group.
              */
             Div({ classes("tv-ctl-row"); focusGroup("player-buttons", FocusAxis.X) }) {
-                Span({ classes("tv-time", "mono") }) {
-                    Text(formatTime(currentSec.toDouble()))
-                    Span({ classes("tv-time-sep") }) { Text("/") }
-                    Text(formatTime(durationSec.toDouble()))
-                }
+                // An empty left cell keeps the transport cluster centred now that the
+                // time no longer sits here, mirroring the quality group on the right.
+                Div({ classes("tv-ctl-start") })
 
                 Div({ classes("tv-ctl-mid") }) {
                     Div({

@@ -230,6 +230,8 @@ fun TvWatchScreen(episodeId: String) {
                 },
                 input = input,
                 events = events,
+                title = S.seasonAndEpisode(episode.seasonNumber, episode.episodeNumber).caps,
+                subtitle = S.seriesTitle,
                 chromeExtra = {
                     if (upcoming.isNotEmpty() || earlier.isNotEmpty()) {
                         Div({ classes("tv-player-rails") }) {
