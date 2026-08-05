@@ -2,6 +2,7 @@ package ge.dakalebi.ui.tv.input
 
 import ge.dakalebi.core.Log
 import ge.dakalebi.ui.tv.focus.Direction
+import ge.dakalebi.ui.tv.focus.ITEM_ATTR
 import ge.dakalebi.ui.tv.focus.SpatialNav
 import kotlinx.browser.document
 import kotlinx.browser.window
@@ -172,13 +173,13 @@ class TvInput {
         // input holds no `data-tv-item`, and restoring off it would drop the keyboard
         // the instant it opened.
         if (active is HTMLElement && scope.contains(active) &&
-            (active.hasAttribute("data-tv-item") || isTextEntry(active))
+            (active.hasAttribute(ITEM_ATTR) || isTextEntry(active))
         ) {
             return
         }
 
         if (prefer != null && prefer.isConnected && scope.contains(prefer) &&
-            prefer.hasAttribute("data-tv-item")
+            prefer.hasAttribute(ITEM_ATTR)
         ) {
             SpatialNav.focus(prefer, direction = null, scope = scope)
             return
@@ -247,7 +248,7 @@ class TvInput {
         if (isTextEntry(active)) {
             if (key is Key.Back) {
                 event.preventDefault()
-                val wrapper = active?.closest("[data-tv-item]") as? HTMLElement
+                val wrapper = active?.closest("[$ITEM_ATTR]") as? HTMLElement
                 if (wrapper != null && wrapper != active) wrapper.focus() else back()
             }
             return
@@ -285,7 +286,7 @@ class TvInput {
      */
     private fun activate(): Boolean {
         val active = document.activeElement as? HTMLElement ?: return false
-        if (!active.hasAttribute("data-tv-item")) return false
+        if (!active.hasAttribute(ITEM_ATTR)) return false
         active.click()
         return true
     }

@@ -21,6 +21,7 @@ import ge.dakalebi.ui.tv.actsAsOption
 import ge.dakalebi.ui.tv.actsAsOptionGroup
 import ge.dakalebi.ui.tv.focus.Direction
 import ge.dakalebi.ui.tv.focus.FocusAxis
+import ge.dakalebi.ui.tv.focus.ITEM_ATTR
 import ge.dakalebi.ui.tv.focus.SpatialNav
 import ge.dakalebi.ui.tv.focus.focusGroup
 import ge.dakalebi.ui.tv.focus.focusItem
@@ -327,7 +328,7 @@ fun TvVideoPlayer(
 
     /** Whether the progress bar, rather than a button, currently holds the ring. */
     fun scrubFocused(): Boolean =
-        document.activeElement?.getAttribute("data-tv-item") == "scrub"
+        document.activeElement?.getAttribute(ITEM_ATTR) == "scrub"
 
     /**
      * Moves the ring to a named control in the chrome.
@@ -338,7 +339,7 @@ fun TvVideoPlayer(
      */
     fun focusChromeItem(itemKey: String) {
         val container = refs.container ?: return
-        val target = container.querySelector("[data-tv-item=\"$itemKey\"]") as? HTMLElement
+        val target = container.querySelector("[$ITEM_ATTR=\"$itemKey\"]") as? HTMLElement
             ?: return
         SpatialNav.focus(target, direction = null, scope = container)
     }
@@ -443,7 +444,7 @@ fun TvVideoPlayer(
                         // rather than doing nothing.
                         scrubFocused() -> { togglePlay(); true }
                         // A real control has the ring: let the click through.
-                        mode == Mode.Controls && focused?.hasAttribute("data-tv-item") == true -> false
+                        mode == Mode.Controls && focused?.hasAttribute(ITEM_ATTR) == true -> false
                         else -> { togglePlay(); true }
                     }
                 },

@@ -113,7 +113,11 @@ private fun TvMasthead(episode: Episode) {
         // treatment. `Thumb` already handles the CDN's occasional 404 by falling
         // back to a gradient, which reads as a perfectly good backdrop; `showLabel`
         // is off because the scrim and the heading below already name the episode.
-        Div({ classes("tv-masthead-art") }) { Thumb(episode, showLabel = false) }
+        // `aria-hidden`, because it is pure decoration — the heading is the accessible
+        // name, and the still's own `alt` would otherwise be announced on top of it.
+        Div({ classes("tv-masthead-art"); attr("aria-hidden", "true") }) {
+            Thumb(episode, showLabel = false)
+        }
 
         Span({ classes("tv-eyebrow") }) { Text(eyebrow.caps) }
         H1({ classes("tv-h") }) {
