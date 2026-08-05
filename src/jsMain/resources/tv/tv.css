@@ -873,18 +873,71 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
+  /* Cap at the screen and scroll if the bar, buttons and both rails together do not
+     fit — which lets the focus engine bring a lower rail into view exactly as it does
+     on the browse screen. `scrollableAncestor` now requires this `overflow` to be a
+     real scroll value, so declaring it is what makes the chrome scrollable at all. */
+  max-height: 100%;
+  overflow-y: auto;
+  scrollbar-width: none;
   padding: var(--safe-y) var(--safe-x);
   display: flex;
   flex-direction: column;
   gap: var(--tv-gap);
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.92), rgba(0, 0, 0, 0));
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.94) 30%, rgba(0, 0, 0, 0));
   transition: opacity 0.25s var(--ease);
 }
 
+.tv-ctl::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+/*
+ * The next/previous episode rails, below the transport row.
+ *
+ * These reuse `TvRail` wholesale — the same titled, horizontally scrolling band the
+ * browse screen uses — and only shrink it to sit under the controls without crowding
+ * the video: smaller heading, tighter gaps, compact tiles, and no per-tile caption
+ * because the still already identifies the episode and vertical room is scarce here.
+ */
+.tv-player-rails {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.tv-player-rails .tv-band {
+  gap: 0.35rem;
+}
+
+.tv-player-rails .tv-sub {
+  font-size: var(--t-label);
+  color: var(--tx-dim);
+}
+
+.tv-player-rails .tv-tile {
+  width: 9rem;
+}
+
+.tv-player-rails .tv-tile-name {
+  display: none;
+}
+
+/*
+ * Hidden, but still focusable.
+ *
+ * `visibility: hidden` was here and it was wrong for the entry rule: when a direction
+ * press reveals the chrome, the player moves the ring to a specific control in the
+ * same tick, before Compose has removed this class on the next frame — and a
+ * `visibility: hidden` element cannot take focus, so the placement silently failed on
+ * the very frame it was needed. `opacity` plus `pointer-events: none` hides it just as
+ * completely while leaving it focusable, and nothing can be acted on unseen because
+ * every path reveals the chrome before acting on it.
+ */
 .tv-ctl.hide {
   opacity: 0;
-  /* Focus must not stay on a control nobody can see. */
-  visibility: hidden;
+  pointer-events: none;
 }
 
 /* The progress bar, which is a focus stop rather than decoration.

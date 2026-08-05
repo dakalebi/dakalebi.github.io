@@ -19,6 +19,7 @@ import ge.dakalebi.di.session
 import ge.dakalebi.di.settings
 import ge.dakalebi.domain.service.orderedQualityLabels
 import ge.dakalebi.i18n.S
+import ge.dakalebi.i18n.caps
 import ge.dakalebi.presentation.Route
 import ge.dakalebi.ui.player.PlayerEvents
 import ge.dakalebi.ui.tv.input.TvInput
@@ -97,6 +98,12 @@ fun TvWatchScreen(episodeId: String) {
     val savedSeconds = entry?.progressSeconds ?: 0
     val progressReady = !catalog.loading
     val nextEpisode = episode?.let { catalog.next(it) }
+
+    // The rails below the player chrome. `upcoming` and `previous` already exist on the
+    // store, so these are lookups, not new logic. Twelve each way, the count the user
+    // asked for.
+    val upcoming = episode?.let { catalog.upcoming(it, PLAYER_RAIL_COUNT) } ?: emptyList()
+    val earlier = episode?.let { catalog.previous(it, PLAYER_RAIL_COUNT) } ?: emptyList()
 
     // One map for everything downstream, so the label and the menu cannot disagree
     // about which rendition is best — the defect that shipped on the web once.
@@ -223,9 +230,30 @@ fun TvWatchScreen(episodeId: String) {
                 },
                 input = input,
                 events = events,
+                chromeExtra = {
+                    if (upcoming.isNotEmpty() || earlier.isNotEmpty()) {
+                        Div({ classes("tv-player-rails") }) {
+                            TvRail(
+                                key = "player-next",
+                                title = S.nextEpisodes.caps,
+                                episodes = upcoming,
+                                progress = catalog.progress,
+                            )
+                            TvRail(
+                                key = "player-prev",
+                                title = S.previousEpisodes.caps,
+                                episodes = earlier,
+                                progress = catalog.progress,
+                            )
+                        }
+                    }
+                },
             )
         }
     } else {
         Div({ classes("tv-note") }) { Text(error ?: S.loading) }
     }
 }
+
+/** How many episodes each of the player's next/previous rails shows. */
+private const val PLAYER_RAIL_COUNT = 12

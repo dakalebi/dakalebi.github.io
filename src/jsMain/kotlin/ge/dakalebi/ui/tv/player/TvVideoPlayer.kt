@@ -114,6 +114,16 @@ fun TvVideoPlayer(
     onQualitySelected: (String) -> Unit,
     input: TvInput,
     events: PlayerEvents,
+    /**
+     * Extra bands rendered inside the chrome, below the transport row.
+     *
+     * A slot rather than parameters, so the player stays a player and does not learn
+     * about episodes: the watch screen fills it with the next/previous rails. Whatever
+     * goes here becomes part of the chrome's `Y` group, so the spatial engine walks
+     * down into it from the buttons with no extra wiring, and it hides and shows with
+     * the rest of the chrome.
+     */
+    chromeExtra: @Composable () -> Unit = {},
 ) {
     val refs = remember { TvPlayerRefs() }
     var mode by remember { mutableStateOf(Mode.Controls) }
@@ -307,6 +317,20 @@ fun TvVideoPlayer(
     fun scrubFocused(): Boolean =
         document.activeElement?.getAttribute("data-tv-item") == "scrub"
 
+    /**
+     * Moves the ring to a named control in the chrome.
+     *
+     * Used by the entry rule to place focus by the direction that revealed the chrome,
+     * rather than leaving it wherever it happened to be. Absolute placement, so it does
+     * not matter where the ring was while the chrome was hidden.
+     */
+    fun focusChromeItem(itemKey: String) {
+        val container = refs.container ?: return
+        val target = container.querySelector("[data-tv-item=\"$itemKey\"]") as? HTMLElement
+            ?: return
+        SpatialNav.focus(target, direction = null, scope = container)
+    }
+
     // ---------------------------------------------------------------- input
 
     DisposableEffect(Unit) {
@@ -328,10 +352,13 @@ fun TvVideoPlayer(
                         else -> false
                     }
                 },
-                // Any press brings the chrome back, before the press is acted on.
-                // Without this the first button you push is spent revealing the
-                // thing you were aiming at.
-                onAnyKey = { key -> if (key !is Key.Back) revealControls() },
+                // A non-direction press brings the chrome back before it is acted on,
+                // so the first OK or media key is not spent revealing what you aimed
+                // at. Direction keys are deliberately *not* here: `onDirection` must
+                // still see the hidden state to place the ring by entry direction, and
+                // `onAnyKey` runs first and would otherwise reveal (flipping the mode)
+                // before it looks.
+                onAnyKey = { key -> if (key !is Key.Back && key !is Key.Dir) revealControls() },
                 onDirection = { direction, repeat ->
                     val sign = if (direction == Direction.Left) -1 else 1
                     when {
@@ -344,33 +371,47 @@ fun TvVideoPlayer(
                         }
 
                         /*
-                         * The speed bump. With the chrome hidden, the first press of
-                         * any direction only raises it — it does not seek.
+                         * Entry from the hidden state: reveal, then land the ring by the
+                         * direction that opened the chrome. Up lands on the buttons,
+                         * Down or a horizontal press on the bar.
                          *
-                         * Straight from YouTube's December 2025 redesign, whose stated
-                         * reason is to stop a remote sat on by accident from scrubbing
-                         * a running episode. It costs one press and it means no
-                         * unintended jump is ever a single press away. `onAnyKey` has
-                         * already done the revealing; this only has to swallow.
+                         * The horizontal case is the speed bump, kept from YouTube's
+                         * December 2025 change: a Left/Right press here only *selects*
+                         * the bar, it does not seek. The next press seeks, because the
+                         * bar then holds the ring and the rule below fires. That is what
+                         * stops a remote sat on by accident from scrubbing a running
+                         * episode with a single press.
                          */
-                        mode == Mode.Idle -> true
+                        mode == Mode.Idle -> {
+                            revealControls()
+                            focusChromeItem(if (direction == Direction.Up) "play" else "scrub")
+                            true
+                        }
 
-                        // Horizontal means seek when the bar holds the ring, and move
-                        // focus when a button does. One rule, no extra mode.
-                        direction.isHorizontal && scrubFocused() -> { seekPress(sign, repeat); true }
-                        direction.isHorizontal -> false
-
-                        // Down off the bottom of the cluster dismisses it. Anywhere
-                        // else, vertical movement is the engine's: the bar and the
-                        // button row are two rows of one group.
-                        direction == Direction.Down && !scrubFocused() -> { hideControls(); true }
-                        else -> false
+                        else -> {
+                            // Chrome already shown: any press keeps it alive.
+                            revealControls()
+                            when {
+                                // Horizontal seeks on the bar and moves focus on a
+                                // button. One rule, decided by which item holds the ring.
+                                direction.isHorizontal && scrubFocused() -> {
+                                    seekPress(sign, repeat); true
+                                }
+                                // Everything else is the engine's: horizontal walks the
+                                // button row, vertical walks the bands — bar, buttons,
+                                // and the next/previous rails below them.
+                                else -> false
+                            }
+                        }
                     }
                 },
                 onSelect = { focused ->
                     when {
                         // Confirm, per the contract.
                         mode == Mode.Scrubbing -> { commitScrub(); true }
+                        // The bar is a slider, not a button; OK on it plays or pauses
+                        // rather than doing nothing.
+                        scrubFocused() -> { togglePlay(); true }
                         // A real control has the ring: let the click through.
                         mode == Mode.Controls && focused?.hasAttribute("data-tv-item") == true -> false
                         else -> { togglePlay(); true }
@@ -606,6 +647,11 @@ fun TvVideoPlayer(
                     }
                 }
             }
+
+            // The next/previous rails, when the watch screen supplies them. Rendered
+            // here so they belong to the chrome's `Y` group — the engine walks Down
+            // into them from the buttons — and hide and show with everything else.
+            chromeExtra()
         }
 
         // Always something to read the position from, exactly when the control bar
