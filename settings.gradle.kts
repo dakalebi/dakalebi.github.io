@@ -21,6 +21,12 @@ dependencyResolutionManagement {
 // need: the domain, the string catalogue, and the state holders above them.
 include(":shared")
 
+// `:web` is the Version 2.0 Compose Multiplatform app (wasmJs / canvas). It needs no
+// Android SDK, so its include is unconditional. It exists only on the `preview` branch
+// and deploys to `dakalebi.github.io/preview`; `master` never includes it, so the live
+// root deploy is unaffected.
+include(":web")
+
 // `:tv` is an Android application module and needs the Android SDK to configure.
 // Gradle configures EVERY included project even for a JS-only task, so an
 // unconditional include would force the Android Gradle Plugin to load and fail the
