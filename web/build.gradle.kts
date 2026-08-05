@@ -48,6 +48,13 @@ kotlin {
             implementation(compose.components.resources)
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
         }
+
+        wasmJsMain.dependencies {
+            // The Firebase JS SDK, same package and version as the root app. Reachable
+            // from wasmJs through typed `@JsModule` externals (Kotlin/Wasm has no
+            // `dynamic`, so the interop is hand-typed — see ge.dakalebi.web.firebase).
+            implementation(npm("firebase", "12.17.0"))
+        }
     }
 }
 
