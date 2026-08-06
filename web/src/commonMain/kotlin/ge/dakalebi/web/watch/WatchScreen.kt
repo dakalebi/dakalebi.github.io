@@ -53,6 +53,7 @@ import ge.dakalebi.web.player.VideoCommands
 import ge.dakalebi.web.player.VideoState
 import ge.dakalebi.web.player.VideoSurface
 import ge.dakalebi.web.ui.AppButton
+import ge.dakalebi.web.ui.AppIconView
 import ge.dakalebi.web.ui.AppIcons
 import ge.dakalebi.web.ui.ButtonTone
 import ge.dakalebi.web.ui.ConfirmDialog
@@ -63,6 +64,14 @@ import ge.dakalebi.web.ui.SectionHead
 import ge.dakalebi.web.ui.Tokens
 import kotlinx.coroutines.launch
 import kotlin.math.floor
+
+/**
+ * How wide the player is allowed to get.
+ *
+ * A 16:9 frame at the full width of a desktop monitor is a 720 px-tall picture with the episode's
+ * own details pushed off the screen. The DOM app caps its player column at the same figure.
+ */
+private const val PLAYER_MAX_WIDTH = 1180
 
 /** Seconds before the end at which the next-episode card appears. */
 private const val PROMPT_WINDOW = 180.0
@@ -208,9 +217,21 @@ fun WatchScreen(episodeId: String) {
 
         // The picture, then the chrome beneath it. The `<video>` is an element laid over the canvas,
         // so the app must not draw inside its rectangle — see `PlayerChrome`.
-        Column(Modifier.fillMaxWidth().widthIn(max = 1180.dp)) {
+        //
+        // `widthIn` before `fillMaxWidth`, not after: the outermost modifier decides the width, so
+        // filling first leaves nothing for the clamp to shrink and the frame grows to the whole
+        // window — 720 px tall on a 1280 px monitor, with the title and every action below the fold.
+        Column(
+            Modifier
+                .widthIn(max = PLAYER_MAX_WIDTH.dp)
+                .fillMaxWidth()
+                .align(Alignment.CenterHorizontally),
+        ) {
             val url = videoUrl
-            if (url != null && progressReady) {
+            // A failed episode drops the element rather than keeping a dead frame with a live-looking
+            // clock under it: the frame itself is where the viewer is looking, so that is where the
+            // failure has to be said.
+            if (url != null && progressReady && error == null) {
                 key(episode.id) {
                     VideoSurface(
                         url = url,
@@ -238,8 +259,16 @@ fun WatchScreen(episodeId: String) {
                                 scope.launch {
                                     val resolved = resolveVideo(episode)
                                     catalog.putEpisode(resolved)
-                                    videoUrl = resolved.videoUrl
-                                    if (resolved.videoUrl == null) error = S.videoLoadFailed
+                                    // Only a *different* URL is worth another attempt. The same one
+                                    // back means the retry has already failed: the element is not
+                                    // reloaded, so no second error will ever arrive to say so, and
+                                    // the viewer would be left with a black frame and no reason.
+                                    val retryUrl = resolved.videoUrl
+                                    if (retryUrl == null || retryUrl == videoUrl) {
+                                        error = S.videoLoadFailed
+                                    } else {
+                                        videoUrl = retryUrl
+                                    }
                                 }
                             } else {
                                 error = S.videoLoadFailed
@@ -459,7 +488,14 @@ private fun WatchActions(
         AppButton(S.watchFromStart.caps, onFromStart)
 
         if (watched) {
-            AppButton(S.watchedTick.caps, onClearProgress)
+            // `watchedTick` is not used here: it begins with U+2713, which the bundled Georgian font
+            // has no glyph for, so on a canvas it renders as a missing-character box. The app's own
+            // tick says the same thing and is drawn from a path.
+            AppButton(
+                label = S.watchedLabel.caps,
+                onClick = onClearProgress,
+                leading = { AppIconView(AppIcons.check, tint = Tokens.ok, size = 14.dp) },
+            )
         } else {
             AppButton(S.markAsWatched.caps, onMarkWatched)
         }

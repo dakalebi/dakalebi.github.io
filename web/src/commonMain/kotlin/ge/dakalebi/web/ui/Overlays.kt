@@ -36,6 +36,10 @@ import ge.dakalebi.presentation.ToastKind
  */
 @Composable
 fun Scrim(onDismiss: () -> Unit, content: @Composable () -> Unit) {
+    // Everything modal goes through here, so this is the one place that has to tell the overlay
+    // layer to stand down. Without it the stills stay bright over the dim and overlap the panel.
+    SuppressOverlays()
+
     Box(
         Modifier
             .fillMaxSize()

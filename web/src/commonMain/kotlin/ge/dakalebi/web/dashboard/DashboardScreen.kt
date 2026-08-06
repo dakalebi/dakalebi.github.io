@@ -1,6 +1,7 @@
 package ge.dakalebi.web.dashboard
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -61,6 +62,7 @@ import ge.dakalebi.web.ui.EpisodeTile
 import ge.dakalebi.web.ui.Eyebrow
 import ge.dakalebi.web.ui.IconButton
 import ge.dakalebi.web.ui.ProgressBar
+import ge.dakalebi.web.ui.Scrim
 import ge.dakalebi.web.ui.SectionHead
 import ge.dakalebi.web.ui.TILE_WIDTH
 import ge.dakalebi.web.ui.Thumb
@@ -81,6 +83,7 @@ fun DashboardScreen() {
     val uid = session.uid
 
     var menuOpen by remember { mutableStateOf(false) }
+    var seasonSheetOpen by remember { mutableStateOf(false) }
     var confirm by remember { mutableStateOf(Confirm.None) }
     var seasonOverride by remember { mutableStateOf<Int?>(null) }
     var busy by remember { mutableStateOf(false) }
@@ -163,16 +166,27 @@ fun DashboardScreen() {
                         title = (season?.let { S.season(it) } ?: S.episodes).caps,
                         count = S.episodeCount(episodes.size, watched).caps,
                     ) {
-                        SeasonMenu(
+                        IconButton(
+                            icon = AppIcons.more,
+                            label = S.seasonActions,
+                            onClick = { seasonSheetOpen = true },
                             enabled = !busy && season != null,
-                            onMark = { confirm = Confirm.MarkSeason },
-                            onReset = { confirm = Confirm.ResetSeason },
                         )
                     }
                     EpisodeGrid(episodes, onOpen = ::open)
                 }
             }
         }
+    }
+
+    // Every modal is composed here, at the screen's root, and never inside the layout it belongs to:
+    // a full-screen scrim declared inside a row stretches that row.
+    if (seasonSheetOpen) {
+        SeasonSheet(
+            onDismiss = { seasonSheetOpen = false },
+            onMark = { seasonSheetOpen = false; confirm = Confirm.MarkSeason },
+            onReset = { seasonSheetOpen = false; confirm = Confirm.ResetSeason },
+        )
     }
 
     if (menuOpen) {
@@ -416,24 +430,34 @@ private fun Hero(episode: Episode, onWatch: () -> Unit) {
     }
 }
 
-/** Mark-season-watched and reset-season, in a small popover. */
+/**
+ * The season actions, as a sheet.
+ *
+ * Only the sheet's *contents* live here; where it is shown is the screen's business. A modal composed
+ * inside the heading row cannot work however it is drawn, and this went wrong twice before landing
+ * here: as a plain `Column` it pushed the heading down and ended up clipped at the window's edge; as
+ * a `Popup` the layout was fine but it anchored to the window on this renderer rather than to its
+ * button; and as a `Scrim` nested in the row, the scrim's own full-screen box stretched the row it
+ * was declared in. Hoisted to the screen root, all three problems go away, and it matches how every
+ * other choice in this app is put.
+ */
 @Composable
-private fun SeasonMenu(enabled: Boolean, onMark: () -> Unit, onReset: () -> Unit) {
-    var open by remember { mutableStateOf(false) }
-
-    Box {
-        IconButton(AppIcons.more, S.seasonActions, { open = !open }, enabled = enabled)
-        if (open) {
-            Column(
-                Modifier
-                    .width(230.dp)
-                    .clip(Tokens.radiusSmall)
-                    .background(Tokens.elev2)
-                    .padding(vertical = 6.dp),
-            ) {
-                MenuRow(S.markSeasonWatched.caps) { open = false; onMark() }
-                MenuRow(S.resetSeasonProgress.caps, destructive = true) { open = false; onReset() }
-            }
+private fun SeasonSheet(onDismiss: () -> Unit, onMark: () -> Unit, onReset: () -> Unit) {
+    Scrim(onDismiss = onDismiss) {
+        Column(
+            Modifier
+                .width(320.dp)
+                .clip(Tokens.radius)
+                .background(Tokens.elev)
+                .border(1.dp, Tokens.lineStrong, Tokens.radius)
+                .padding(vertical = 10.dp, horizontal = 6.dp),
+        ) {
+            Eyebrow(
+                text = S.seasonActions.caps,
+                modifier = Modifier.padding(start = 14.dp, bottom = 6.dp),
+            )
+            MenuRow(S.markSeasonWatched.caps, onClick = onMark)
+            MenuRow(S.resetSeasonProgress.caps, destructive = true, onClick = onReset)
         }
     }
 }

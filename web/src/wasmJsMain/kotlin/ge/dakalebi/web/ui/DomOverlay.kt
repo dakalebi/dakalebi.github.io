@@ -83,3 +83,15 @@ internal fun placeOverlay(
 internal fun removeOverlay(element: JsAny) {
     js("{ if (element.parentNode) element.parentNode.removeChild(element); }")
 }
+
+/**
+ * Takes [element] out of the page while a modal is up, and puts it back afterwards.
+ *
+ * `display` rather than `visibility`, so this is independent of the visibility [placeOverlay] uses
+ * for scrolling: either alone is enough to hide the element, and neither can undo the other. A
+ * `<video>` keeps playing while hidden, which is what should happen — the viewer is answering a
+ * dialog, not stopping the episode.
+ */
+internal fun setOverlaySuppressed(element: JsAny, suppressed: Boolean) {
+    js("element.style.display = suppressed ? 'none' : 'block'")
+}
