@@ -316,7 +316,10 @@ fun CustomVideoPlayer(
     val ordered = remember(sources) { orderedQualityLabels(sources) }
 
     Div({
-        classes("player")
+        // `idle` is the state the control bar is hidden in, named on the player itself so the
+        // stylesheet can also take the cursor away in fullscreen. Driven from the same value the
+        // bar reads, so the pointer and the chrome cannot disagree about whether they are up.
+        classNames("player", if (controlsHidden) "idle" else null)
         ref { element ->
             refs.container = element
             onDispose { refs.container = null }
