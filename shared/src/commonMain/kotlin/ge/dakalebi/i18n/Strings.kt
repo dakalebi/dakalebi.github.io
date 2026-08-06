@@ -68,8 +68,6 @@ interface Strings {
 
     // -------------------------------------------------------------- auth
     val signInEyebrow: String
-    val signInWithGoogle: String
-    val or: String
     val emailPlaceholder: String
     val passwordPlaceholder: String
     val signIn: String
@@ -86,8 +84,6 @@ interface Strings {
     val errEmailInUse: String
     val errWeakPassword: String
     val errTooManyRequests: String
-    val errPopupClosed: String
-    val errPopupBlocked: String
     val errUnauthorizedDomain: String
     val errNetwork: String
     val errSignInFailed: String

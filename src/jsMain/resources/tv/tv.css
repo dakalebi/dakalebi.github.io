@@ -870,22 +870,6 @@ body {
   font-weight: 700;
 }
 
-.divider {
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
-  color: var(--mut);
-  font-size: var(--t-label);
-}
-
-.divider::before,
-.divider::after {
-  content: "";
-  flex: 1;
-  height: 1px;
-  background: var(--line-strong);
-}
-
 .login-form {
   display: flex;
   flex-direction: column;
@@ -949,10 +933,6 @@ body {
   color: #0f0f0f;
 }
 
-.btn-ghost {
-  border-color: rgba(255, 255, 255, 0.3);
-}
-
 .btn-quiet {
   color: var(--mut);
   font-size: var(--t-meta);
@@ -968,8 +948,6 @@ body {
 
 /* Focused, these invert the way every other TV control does. `.btn-primary` is left
    out on purpose: it is already white, and the generic ring is enough. */
-.btn-ghost[data-tv-focus],
-.btn-ghost:focus,
 .btn-quiet[data-tv-focus],
 .btn-quiet:focus {
   background: var(--focus);

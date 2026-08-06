@@ -1,11 +1,9 @@
 package ge.dakalebi.data.firebase
 
-import ge.dakalebi.data.firebase.externals.GoogleAuthProvider
 import ge.dakalebi.data.firebase.externals.createUserWithEmailAndPassword
 import ge.dakalebi.data.firebase.externals.onAuthStateChanged
 import ge.dakalebi.data.firebase.externals.sendPasswordResetEmail
 import ge.dakalebi.data.firebase.externals.signInWithEmailAndPassword
-import ge.dakalebi.data.firebase.externals.signInWithPopup
 import ge.dakalebi.data.firebase.externals.signOut
 import ge.dakalebi.domain.model.Account
 import ge.dakalebi.domain.repository.AccountRepository
@@ -36,15 +34,6 @@ class FirebaseAccountRepository : AccountRepository {
 
     override suspend fun signUp(email: String, password: String) {
         createUserWithEmailAndPassword(Firebase.auth, email, password).await()
-    }
-
-    /**
-     * Popup rather than redirect: with the app on `*.github.io` and the auth
-     * handler on `*.firebaseapp.com`, the redirect flow depends on third-party
-     * storage access that browsers now block.
-     */
-    override suspend fun signInWithGoogle() {
-        signInWithPopup(Firebase.auth, GoogleAuthProvider()).await()
     }
 
     override suspend fun sendPasswordReset(email: String) {

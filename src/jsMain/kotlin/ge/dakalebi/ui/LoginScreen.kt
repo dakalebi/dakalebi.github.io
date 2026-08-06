@@ -84,16 +84,6 @@ fun LoginScreen() {
                 H1({ classes("login-h") }) { Text(S.seriesTitle.caps) }
             }
 
-            Button({
-                classes("btn", "btn-ghost")
-                style { property("justify-content", "center") }
-                if (busy) disabled()
-                dpadItem("google")
-                onClick { run({ session.signInWithGoogle() }) }
-            }) { Text(S.signInWithGoogle.caps) }
-
-            Div({ classes("divider") }) { Text(S.or) }
-
             Form(attrs = {
                 classes("login-form")
                 onSubmit { event ->

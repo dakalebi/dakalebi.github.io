@@ -33,8 +33,6 @@ object Ka : Strings {
 
     // -------------------------------------------------------------- auth
     override val signInEyebrow = "სანახავი დაფა"
-    override val signInWithGoogle = "Google-ით შესვლა"
-    override val or = "ან"
     override val emailPlaceholder = "ელფოსტა"
     override val passwordPlaceholder = "პაროლი"
     override val signIn = "შესვლა"
@@ -51,8 +49,6 @@ object Ka : Strings {
     override val errEmailInUse = "ეს ელფოსტა უკვე რეგისტრირებულია"
     override val errWeakPassword = "პაროლი ძალიან მოკლეა — მინიმუმ 6 სიმბოლო"
     override val errTooManyRequests = "ბევრი მცდელობა იყო — სცადე ცოტა ხანში"
-    override val errPopupClosed = "შესვლა შეწყდა"
-    override val errPopupBlocked = "ბრაუზერმა ფანჯარა დაბლოკა — დართე ნება და სცადე თავიდან"
     override val errUnauthorizedDomain =
         "ეს დომენი Firebase-ში ნებადართული არაა (Authentication → Settings → Authorized domains)"
     override val errNetwork = "ქსელთან კავშირი ვერ მოხერხდა"

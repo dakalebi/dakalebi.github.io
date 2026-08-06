@@ -34,8 +34,6 @@ object En : Strings {
 
     // -------------------------------------------------------------- auth
     override val signInEyebrow = "Watch dashboard"
-    override val signInWithGoogle = "Sign in with Google"
-    override val or = "or"
     override val emailPlaceholder = "Email"
     override val passwordPlaceholder = "Password"
     override val signIn = "Sign in"
@@ -52,8 +50,6 @@ object En : Strings {
     override val errEmailInUse = "That email is already registered"
     override val errWeakPassword = "Password is too short — at least 6 characters"
     override val errTooManyRequests = "Too many attempts — try again shortly"
-    override val errPopupClosed = "Sign-in was cancelled"
-    override val errPopupBlocked = "The browser blocked the window — allow it and try again"
     override val errUnauthorizedDomain =
         "This domain is not allowed in Firebase (Authentication → Settings → Authorized domains)"
     override val errNetwork = "Could not reach the network"

@@ -8,7 +8,6 @@ import ge.dakalebi.domain.usecase.CheckAdminRights
 import ge.dakalebi.domain.usecase.ObserveAccount
 import ge.dakalebi.domain.usecase.SendPasswordReset
 import ge.dakalebi.domain.usecase.SignInWithEmail
-import ge.dakalebi.domain.usecase.SignInWithGoogle
 import ge.dakalebi.domain.usecase.SignOut
 import ge.dakalebi.domain.usecase.SignUpWithEmail
 
@@ -18,7 +17,6 @@ class SessionStore(
     private val checkAdminRights: CheckAdminRights,
     private val signInWithEmail: SignInWithEmail,
     private val signUpWithEmail: SignUpWithEmail,
-    private val signInWithGoogleUseCase: SignInWithGoogle,
     private val sendPasswordResetUseCase: SendPasswordReset,
     private val signOutUseCase: SignOut,
 ) {
@@ -59,7 +57,6 @@ class SessionStore(
 
     suspend fun signUp(email: String, password: String) = signUpWithEmail(email, password)
 
-    suspend fun signInWithGoogle() = signInWithGoogleUseCase()
 
     suspend fun resetPassword(email: String) = sendPasswordResetUseCase(email)
 

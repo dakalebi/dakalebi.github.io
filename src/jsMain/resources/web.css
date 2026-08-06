@@ -1158,20 +1158,6 @@ h3 {
 .field::placeholder {
   color: #5f5f68;
 }
-.divider {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: var(--mut);
-  font-size: 11px;
-}
-.divider::before,
-.divider::after {
-  content: "";
-  flex: 1;
-  height: 1px;
-  background: var(--line-strong);
-}
 
 /* ----------------------------------------------------------------- panel */
 

@@ -37,7 +37,6 @@ import ge.dakalebi.domain.usecase.SaveProgress
 import ge.dakalebi.domain.usecase.SeedSettings
 import ge.dakalebi.domain.usecase.SendPasswordReset
 import ge.dakalebi.domain.usecase.SignInWithEmail
-import ge.dakalebi.domain.usecase.SignInWithGoogle
 import ge.dakalebi.domain.usecase.SignOut
 import ge.dakalebi.domain.usecase.SignUpWithEmail
 import ge.dakalebi.presentation.CatalogStore
@@ -96,7 +95,6 @@ class AppGraph(
         checkAdminRights = CheckAdminRights(adminRepository),
         signInWithEmail = SignInWithEmail(accountRepository),
         signUpWithEmail = SignUpWithEmail(accountRepository),
-        signInWithGoogleUseCase = SignInWithGoogle(accountRepository),
         sendPasswordResetUseCase = SendPasswordReset(accountRepository),
         signOutUseCase = SignOut(accountRepository),
     )

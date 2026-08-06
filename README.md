@@ -102,7 +102,8 @@ The consoles are yours; the code is already written against them.
 ### Firebase
 
 1. Create a project at <https://console.firebase.google.com>.
-2. **Authentication → Sign-in method** → enable **Email/Password** and **Google**.
+2. **Authentication → Sign-in method** → enable **Email/Password**, and leave every
+   other provider disabled. The app offers no other way in.
 3. **Authentication → Settings → Authorized domains** → add the Pages domain.
    Sign-in fails silently without this.
 4. **Firestore Database** → create in production mode.

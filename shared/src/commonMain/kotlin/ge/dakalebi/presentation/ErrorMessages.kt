@@ -68,10 +68,6 @@ object ErrorMessages {
             code.contains("email-already-in-use") -> S.errEmailInUse
             code.contains("weak-password") -> S.errWeakPassword
             code.contains("too-many-requests") -> S.errTooManyRequests
-            code.contains("popup-closed-by-user") || code.contains("cancelled-popup-request") ->
-                S.errPopupClosed
-
-            code.contains("popup-blocked") -> S.errPopupBlocked
             code.contains("unauthorized-domain") -> S.errUnauthorizedDomain
             code.contains("network-request-failed") -> S.errNetwork
             else -> S.errSignInFailed

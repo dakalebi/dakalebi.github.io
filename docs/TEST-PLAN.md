@@ -10,7 +10,7 @@ authenticated, so login, signup and password reset are out of scope.
 |---|---|
 | Build | `./gradlew jsBrowserDistribution` |
 | Served from | `http://localhost:4173` (static, `build/dist/js/productionExecutable`) |
-| Desktop | Chrome, real profile (holds the Google session) |
+| Desktop | Chrome, real profile |
 | Mobile | Safari in the iOS Simulator — iPhone and iPad |
 | Account | `bachanamosulishvili@gmail.com` — on the admin allowlist |
 | Data | Live Firestore `dakalebi-tv`: 932 episodes, 18 seasons |
@@ -343,7 +343,7 @@ Not scriptable, and still device-only:
 | N29 | settings, language | `ქართული` renders in Mtavruli and `English` is left alone, each cased by its own language |
 | N30 | settings, `Down` from the language row | escapes the nested segment to autoplay, then sign-out, then walls |
 | N31 | settings footer | build number, short commit and publish time as `dd.MM.yyyy, HH:mm`, plus the catalog's last-refresh line |
-| N32 | sign-in | email and password only. **No Google button** — Google blocks OAuth in embedded WebViews, so it could only ever fail |
+| N32 | sign-in | the web screen, unchanged: email and password, sign-up toggle, forgot-password. There is no Google button anywhere in the app |
 | N33 | `/#/settings` on the **web** | falls through to the dashboard. The route is inert there by design |
 
 ### The TV player

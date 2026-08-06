@@ -31,9 +31,6 @@ class ErrorMessagesTest {
         "auth/email-already-in-use" to S.errEmailInUse,
         "auth/weak-password" to S.errWeakPassword,
         "auth/too-many-requests" to S.errTooManyRequests,
-        "auth/popup-closed-by-user" to S.errPopupClosed,
-        "auth/cancelled-popup-request" to S.errPopupClosed,
-        "auth/popup-blocked" to S.errPopupBlocked,
         "auth/unauthorized-domain" to S.errUnauthorizedDomain,
         "auth/network-request-failed" to S.errNetwork,
     )
