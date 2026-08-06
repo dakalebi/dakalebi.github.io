@@ -645,6 +645,22 @@ h3 {
 .player:-webkit-full-screen {
   border-radius: 0;
 }
+
+/* Fullscreen, chrome faded out: take the pointer away too.
+
+   In fullscreen the picture is the whole screen, so an arrow left floating over it is the only
+   thing in the room that is not the film. Windowed is deliberately left alone — the page is
+   still around the player there, and a cursor that vanishes over part of an ordinary page reads
+   as a bug rather than as cinema.
+
+   Bound to `.idle`, which the player carries exactly while the control bar is hidden, so the
+   pointer comes back with the bar on the first mouse move and leaves with it when the reveal
+   timer runs out. The hidden bar sets `pointer-events: none`, so the element under the pointer
+   is the player itself and this applies even with the cursor over where the bar was. */
+.player.idle:fullscreen,
+.player.idle:-webkit-full-screen {
+  cursor: none;
+}
 .player video {
   position: absolute;
   inset: 0;
