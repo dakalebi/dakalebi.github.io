@@ -194,10 +194,11 @@ fun EpisodeTile(
         ) {
             MediaBadge("E${episode.episodeNumber}")
             Spacer(Modifier.width(7.dp))
-            // Always season *and* episode. The provider's own title is usually just "სერია 12",
-            // which reads identically in every season.
+            // The episode alone, not "season N · episode M". The badge already carries the number
+            // and every tile on screen belongs to one season, so spending the row's width on the
+            // season only truncated the part that identifies the tile.
             Text(
-                text = S.seasonAndEpisode(episode.seasonNumber, episode.episodeNumber).caps,
+                text = S.episode(episode.episodeNumber).caps,
                 color = Tokens.tx,
                 fontSize = 12.5.sp,
                 fontWeight = FontWeight.Medium,

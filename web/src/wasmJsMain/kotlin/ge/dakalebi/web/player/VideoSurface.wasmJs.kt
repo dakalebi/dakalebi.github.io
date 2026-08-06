@@ -13,9 +13,11 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
 import ge.dakalebi.core.Log
+import ge.dakalebi.web.ui.OverlayGate
 import ge.dakalebi.web.ui.mountOverlay
 import ge.dakalebi.web.ui.placeOverlay
 import ge.dakalebi.web.ui.removeOverlay
+import ge.dakalebi.web.ui.setOverlaySuppressed
 
 /**
  * The `<video>` element, positioned over the rectangle the player screen reserved for it.
@@ -79,6 +81,11 @@ actual fun VideoSurface(
     LaunchedEffect(url, autoPlay) {
         setSource(element, url, autoPlay)
     }
+
+    // A dialog is drawn *below* this element, so the picture has to leave rather than cover it.
+    // Playback carries on: the viewer is answering a dialog, not stopping the episode.
+    val suppressed = OverlayGate.suppressed
+    LaunchedEffect(suppressed) { setOverlaySuppressed(element, suppressed) }
 
     Box(
         modifier.onGloballyPositioned { coordinates ->

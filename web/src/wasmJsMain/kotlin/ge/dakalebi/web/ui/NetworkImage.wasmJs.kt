@@ -53,6 +53,10 @@ actual fun NetworkImage(
         )
     }
 
+    // A modal is drawn *below* this element, so the element has to leave rather than be covered.
+    val suppressed = OverlayGate.suppressed
+    LaunchedEffect(suppressed) { setOverlaySuppressed(element, suppressed) }
+
     Box(
         modifier.onGloballyPositioned { coordinates ->
             // The layout's own rectangle, plus what an ancestor's clip has left of it. Compose
