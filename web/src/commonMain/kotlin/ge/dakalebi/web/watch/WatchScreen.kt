@@ -1,15 +1,10 @@
 package ge.dakalebi.web.watch
 
 import androidx.compose.foundation.background
-import androidx.compose.ui.input.pointer.pointerHoverIcon
-import androidx.compose.ui.input.pointer.PointerIcon
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.clickable
-import ge.dakalebi.web.ui.clickableSurface
-import ge.dakalebi.web.ui.Thumb
-import ge.dakalebi.web.ui.ProgressBar
-import ge.dakalebi.core.formatDuration
-import ge.dakalebi.domain.model.WatchProgress
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -39,10 +34,21 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ge.dakalebi.core.Log
+import ge.dakalebi.core.formatDuration
 import ge.dakalebi.di.LocalResolveEpisodeVideo
 import ge.dakalebi.di.catalog
 import ge.dakalebi.di.preferences
@@ -51,6 +57,7 @@ import ge.dakalebi.di.session
 import ge.dakalebi.di.settings
 import ge.dakalebi.di.toasts
 import ge.dakalebi.domain.model.Episode
+import ge.dakalebi.domain.model.WatchProgress
 import ge.dakalebi.domain.service.orderedQualityLabels
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
@@ -69,10 +76,16 @@ import ge.dakalebi.web.ui.ConfirmDialog
 import ge.dakalebi.web.ui.EpisodeTile
 import ge.dakalebi.web.ui.Eyebrow
 import ge.dakalebi.web.ui.IconButton
+import ge.dakalebi.web.ui.ProgressBar
 import ge.dakalebi.web.ui.SectionHead
+import ge.dakalebi.web.ui.Thumb
 import ge.dakalebi.web.ui.Tokens
-import kotlinx.coroutines.launch
+import ge.dakalebi.web.ui.clickableSurface
 import kotlin.math.floor
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.TimeMark
+import kotlin.time.TimeSource
+import kotlinx.coroutines.launch
 
 /**
  * How wide the player is allowed to get.
@@ -109,6 +122,8 @@ fun WatchScreen(episodeId: String) {
     val scope = rememberCoroutineScope()
     val uid = session.uid
 
+    val keys = remember { FocusRequester() }
+    val taps = remember(episodeId) { PictureTaps() }
     val state = remember(episodeId) { VideoState() }
     var commands by remember(episodeId) { mutableStateOf<VideoCommands?>(null) }
     val saved = remember(episodeId) { SaveTracker() }
@@ -216,18 +231,51 @@ fun WatchScreen(episodeId: String) {
     val upNext = nextEpisode?.takeIf { inWindow && !ended && !promptDismissed }
     val countdown = remaining?.let { (PROMPT_WINDOW - it) / PROMPT_WINDOW } ?: 0.0
 
+    // The keys are only ours while this screen holds the focus.
+    LaunchedEffect(Unit) { keys.requestFocus() }
+
     // Re-arm the prompt if the viewer seeks back out of the window.
     LaunchedEffect(inWindow) {
         if (!inWindow) promptDismissed = false
     }
 
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        WatchNav(episode)
+    // Fullscreen is a display mode, not a bigger frame: the page goes fullscreen and this screen lays
+    // itself out edge to edge, with nothing on it but the picture and the app's own chrome.
+    //
+    // One tree serves both. Only the modifiers and what is hidden change, because moving the player
+    // between two branches would dispose its element and restart playback from the beginning.
+    val cinema = state.fullscreen
+
+    Column(
+        Modifier
+            .fillMaxSize()
+            .focusRequester(keys)
+            .focusable()
+            // Space and Enter belong to playback, wherever the focus happens to be. Without taking
+            // them first they activate whichever control was last clicked, so the keys would mute,
+            // seek or step quality depending on what the viewer had touched.
+            .onPreviewKeyEvent { event ->
+                val playbackKey = event.key == Key.Spacebar || event.key == Key.Enter
+                if (event.type == KeyEventType.KeyDown && playbackKey) {
+                    commands?.togglePlay(state.paused)
+                    true
+                } else {
+                    false
+                }
+            }
+            .then(if (cinema) Modifier else Modifier.verticalScroll(rememberScrollState())),
+    ) {
+        if (!cinema) WatchNav(episode)
 
         // Two columns, as version 1.0 had it: the player and everything about this episode on the
         // left with what came before underneath it, and what to watch next down the right. A
         // full-bleed player with both strips stacked below pushed the next episode off the screen.
-        Row(Modifier.fillMaxWidth().padding(horizontal = Tokens.pad)) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .then(if (cinema) Modifier.weight(1f) else Modifier)
+                .padding(horizontal = if (cinema) 0.dp else Tokens.pad),
+        ) {
         Column(Modifier.weight(1f)) {
 
         // The picture, then the chrome beneath it. The `<video>` is an element laid over the canvas,
@@ -236,7 +284,13 @@ fun WatchScreen(episodeId: String) {
         // `widthIn` before `fillMaxWidth`, not after: the outermost modifier decides the width, so
         // filling first leaves nothing for the clamp to shrink and the frame grows to the whole
         // window — 720 px tall on a 1280 px monitor, with the title and every action below the fold.
-        Column(Modifier.widthIn(max = PLAYER_MAX_WIDTH.dp).fillMaxWidth()) {
+        Column(
+            if (cinema) {
+                Modifier.fillMaxSize()
+            } else {
+                Modifier.widthIn(max = PLAYER_MAX_WIDTH.dp).fillMaxWidth()
+            },
+        ) {
             val url = videoUrl
             // A failed episode drops the element rather than keeping a dead frame with a live-looking
             // clock under it: the frame itself is where the viewer is looking, so that is where the
@@ -246,7 +300,13 @@ fun WatchScreen(episodeId: String) {
                 // listeners for it. Reusing one across episodes keeps the resume point the listeners
                 // were installed with, so the next episode would start where the last one stopped.
                 key(episode.id) {
-                Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f)) {
+                Box(
+                    if (cinema) {
+                        Modifier.fillMaxWidth().weight(1f)
+                    } else {
+                        Modifier.fillMaxWidth().aspectRatio(16f / 9f)
+                    },
+                ) {
                     VideoSurface(
                         url = url,
                         autoPlay = shouldAutoplay,
@@ -288,11 +348,18 @@ fun WatchScreen(episodeId: String) {
                                 error = S.videoLoadFailed
                             }
                         },
-                        modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f),
+                        modifier = Modifier.matchParentSize(),
                     )
 
-                    // The picture itself is a control. The element ignores pointer events, so the
-                    // canvas underneath gets the click and this is where it lands.
+                    // The picture itself is a control: a click plays or pauses, a double click goes
+                    // fullscreen and back. The element ignores pointer events, so the canvas
+                    // underneath gets both and this is where they land.
+                    //
+                    // The two are told apart by timing rather than by `detectTapGestures`, which
+                    // wants a stricter pointer stream than a plain click and dropped single taps
+                    // outright. A click also acts at once instead of waiting out a double-tap
+                    // window: a player that hesitates before pausing feels broken. The second click
+                    // of a pair therefore undoes what the first one did before going fullscreen.
                     Box(
                         Modifier
                             .matchParentSize()
@@ -300,7 +367,7 @@ fun WatchScreen(episodeId: String) {
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null,
-                            ) { commands?.togglePlay(state.paused) },
+                            ) { taps.onPictureClick(state, commands) },
                     )
                 }
                 }
@@ -314,7 +381,7 @@ fun WatchScreen(episodeId: String) {
 
                 PlayerChrome(state, commands)
 
-                if (upNext != null) {
+                if (upNext != null && !cinema) {
                     NextEpisodeCard(
                         title = S.seasonAndEpisode(
                             upNext.seasonNumber,
@@ -335,7 +402,7 @@ fun WatchScreen(episodeId: String) {
             }
         }
 
-        Column(Modifier.padding(top = 18.dp, bottom = 18.dp)) {
+        if (!cinema) Column(Modifier.padding(top = 18.dp, bottom = 18.dp)) {
             Text(
                 text = S.seasonAndEpisode(episode.seasonNumber, episode.episodeNumber).caps,
                 color = Tokens.tx,
@@ -423,11 +490,11 @@ fun WatchScreen(episodeId: String) {
         }
         }
 
-            Spacer(Modifier.width(24.dp))
+            if (!cinema) Spacer(Modifier.width(24.dp))
 
             // What to watch next, as a column of wide rows rather than tiles: beside a player there
             // is only one axis with room on it.
-            UpNextColumn(
+            if (!cinema) UpNextColumn(
                 title = S.nextEpisodes.caps,
                 episodes = catalog.upcoming(episode, 10),
                 modifier = Modifier.width(UP_NEXT_WIDTH.dp).padding(top = 18.dp),
@@ -470,6 +537,40 @@ fun WatchScreen(episodeId: String) {
  * would recompose the page on every `timeupdate`; one remembered object keyed on the episode gives
  * the callbacks somewhere to write that costs nothing and resets itself when the episode changes.
  */
+/**
+ * Tells a click on the picture from a double click, by when they arrive.
+ *
+ * Not Compose state: nothing on screen depends on it, and it changes on every tap. What it has to
+ * remember is which way the first click of a pair moved playback, so the second can put it back
+ * before going fullscreen. Reading `paused` again would be wrong, because the element reports the
+ * change asynchronously and may not have caught up within the window.
+ */
+private class PictureTaps {
+    private var lastTap: TimeMark? = null
+    private var startedPlaying = false
+
+    fun onPictureClick(state: VideoState, commands: VideoCommands?) {
+        val previous = lastTap
+        val isDouble = previous != null && previous.elapsedNow() < DOUBLE_WINDOW
+
+        if (isDouble) {
+            lastTap = null
+            if (startedPlaying) commands?.pause() else commands?.play()
+            commands?.toggleFullscreen()
+            return
+        }
+
+        lastTap = TimeSource.Monotonic.markNow()
+        startedPlaying = state.paused
+        if (startedPlaying) commands?.play() else commands?.pause()
+    }
+
+    private companion object {
+        /** Long enough for a deliberate double click, short enough not to delay anything. */
+        val DOUBLE_WINDOW = 300.milliseconds
+    }
+}
+
 private class SaveTracker {
     var lastSaved: Double = 0.0
     var retried: Boolean = false

@@ -127,7 +127,7 @@ private class HtmlVideoCommands(private val element: JsAny) : VideoCommands {
     }
 
     override fun toggleFullscreen() {
-        toggleVideoFullscreen(element)
+        togglePageFullscreen()
     }
 }
 
@@ -216,25 +216,33 @@ private fun setVideoVolume(element: JsAny, value: Double) {
 }
 
 /**
- * Real fullscreen, on the element that holds the picture.
+ * Real fullscreen, on the page rather than on the video element.
  *
- * Taking the *page* fullscreen instead only grows the canvas: the video stays the size the layout
- * gave it, which is not what anyone means by the button. So the element goes fullscreen itself.
+ * Taking the *element* fullscreen is the obvious reading of the button and the wrong one here: a
+ * fullscreen element is composited above everything, the canvas included, so the app's own controls
+ * become unreachable and the browser's native ones have to stand in. Nothing the app draws can be
+ * put back on top of it.
  *
- * The consequence is handled in [attachListeners]: a fullscreen element is above everything,
- * including the canvas, so the app's own chrome cannot be drawn over it and the browser's native
- * controls are switched on for as long as it lasts. `webkitEnterFullscreen` is the iPhone spelling,
- * where the system player takes over entirely.
+ * The page going fullscreen keeps the canvas on screen at the size of the display, so the player
+ * screen simply lays itself out edge to edge (see the watch screen's cinema layout) and the chrome
+ * stays the app's own. This is the same fullscreen the browser gives F11: a real display mode, not
+ * a bigger frame.
  */
-private fun toggleVideoFullscreen(element: JsAny) {
+private fun togglePageFullscreen() {
     js(
         """{
         if (document.fullscreenElement) {
             document.exitFullscreen();
-        } else if (element.requestFullscreen) {
-            element.requestFullscreen();
-        } else if (element.webkitEnterFullscreen) {
-            element.webkitEnterFullscreen();
+        } else if (document.documentElement.requestFullscreen) {
+            var entering = document.documentElement.requestFullscreen();
+            // A refusal is worth a line. The request can be denied for reasons that have nothing to
+            // do with the app — an iframe without `allow="fullscreen"`, or a gesture the browser did
+            // not credit — and silence there looks exactly like a button that does nothing.
+            if (entering && entering.catch) {
+                entering.catch(function (error) {
+                    console.warn('dakalebi/player', 'fullscreen refused', error && error.message);
+                });
+            }
         }
     }""",
     )
@@ -308,13 +316,10 @@ private fun attachListeners(
         element.addEventListener('error', function () {
             onError(element.error ? element.error.code : 0);
         });
+        // The page is what goes fullscreen, so this is simply "is anything fullscreen". The
+        // element's own controls stay off throughout: the app draws its own.
         document.addEventListener('fullscreenchange', function () {
-            var full = document.fullscreenElement === element;
-            // A fullscreen element is above every other layer, the canvas included, so the app's
-            // own chrome is unreachable for as long as this lasts. The browser's controls take over
-            // rather than leaving the viewer with a picture and no way to pause it.
-            element.controls = full;
-            onFullscreen(full);
+            onFullscreen(!!document.fullscreenElement);
         });
     }""",
     )

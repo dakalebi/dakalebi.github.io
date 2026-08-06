@@ -68,9 +68,9 @@ import ge.dakalebi.web.ui.TILE_WIDTH
 import ge.dakalebi.web.ui.Thumb
 import ge.dakalebi.web.ui.Tokens
 import ge.dakalebi.web.ui.clickableSurface
+import kotlin.math.roundToInt
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
 
 private enum class Confirm { None, ResetAll, MarkSeason, ResetSeason, SignOut }
 

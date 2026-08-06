@@ -41,8 +41,8 @@ import ge.dakalebi.web.openExternal
 import ge.dakalebi.web.ui.Eyebrow
 import ge.dakalebi.web.ui.ProgressBar
 import ge.dakalebi.web.ui.Scrim
-import ge.dakalebi.web.ui.clickableSurface
 import ge.dakalebi.web.ui.Tokens
+import ge.dakalebi.web.ui.clickableSurface
 
 /**
  * The account panel: what you have watched, the destructive actions, and the settings.
