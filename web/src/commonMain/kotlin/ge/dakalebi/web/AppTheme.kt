@@ -4,7 +4,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.unit.Density
 import ge.dakalebi.web.resources.Res
 import ge.dakalebi.web.resources.noto_sans_georgian
 import org.jetbrains.compose.resources.Font
@@ -18,14 +21,32 @@ import org.jetbrains.compose.resources.Font
  * scale; it also covers Latin and digits, so one family serves the whole app. It includes
  * the Mtavruli range (U+1C90 and up) that the chrome's uppercase treatment relies on.
  */
+/**
+ * How much bigger than the browser's own scale the app is laid out.
+ *
+ * A canvas app sets its own physical size for everything, and matching the DOM app's CSS pixel
+ * figures one for one came out noticeably smaller than the page it replaces — no browser default
+ * font size underneath it, and no user zoom to lean on.
+ *
+ * Applied as a density override rather than by editing every size, so one figure moves the whole
+ * design together: type, spacing, icons, tiles and the player's controls all keep their proportions.
+ */
+private const val UI_SCALE = 1.3f
+
 @Composable
 fun AppTheme(content: @Composable () -> Unit) {
     val georgian = FontFamily(Font(Res.font.noto_sans_georgian))
-    MaterialTheme(
-        colorScheme = darkColorScheme(),
-        typography = Typography().withFontFamily(georgian),
-        content = content,
-    )
+    val browser = LocalDensity.current
+
+    CompositionLocalProvider(
+        LocalDensity provides Density(browser.density * UI_SCALE, browser.fontScale),
+    ) {
+        MaterialTheme(
+            colorScheme = darkColorScheme(),
+            typography = Typography().withFontFamily(georgian),
+            content = content,
+        )
+    }
 }
 
 /** Every Material type-scale style, re-based onto [family]. */

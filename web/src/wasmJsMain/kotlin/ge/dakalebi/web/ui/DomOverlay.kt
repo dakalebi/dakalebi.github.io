@@ -85,6 +85,17 @@ internal fun removeOverlay(element: JsAny) {
 }
 
 /**
+ * How many canvas pixels go to one CSS pixel.
+ *
+ * Deliberately not `LocalDensity.current.density`. The theme inflates that to lay the whole design
+ * out larger (see `UI_SCALE`), which is exactly what these elements must *not* follow: Compose's
+ * coordinates are canvas pixels either way, and turning them into the CSS pixels an element is
+ * positioned in only ever involves the browser's own ratio. Dividing by the inflated figure put
+ * every still and the player a fraction of the way up and to the left of where it belonged.
+ */
+internal fun cssPixelRatio(): Double = js("(window.devicePixelRatio || 1)")
+
+/**
  * Takes [element] out of the page while a modal is up, and puts it back afterwards.
  *
  * `display` rather than `visibility`, so this is independent of the visibility [placeOverlay] uses

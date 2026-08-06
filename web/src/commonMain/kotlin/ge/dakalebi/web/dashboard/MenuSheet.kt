@@ -23,6 +23,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -39,6 +41,7 @@ import ge.dakalebi.web.openExternal
 import ge.dakalebi.web.ui.Eyebrow
 import ge.dakalebi.web.ui.ProgressBar
 import ge.dakalebi.web.ui.Scrim
+import ge.dakalebi.web.ui.clickableSurface
 import ge.dakalebi.web.ui.Tokens
 
 /**
@@ -185,9 +188,12 @@ private fun LanguagePicker() {
                     fontSize = 11.5.sp,
                     fontWeight = FontWeight.Medium,
                     modifier = Modifier
-                        .clip(Tokens.pill)
-                        .background(if (selected) Tokens.tx else Color.Transparent)
-                        .clickable(enabled = !selected) {
+                        .clickableSurface(
+                            shape = Tokens.pill,
+                            idle = if (selected) Tokens.tx else Color.Transparent,
+                            hover = if (selected) Tokens.tx else Tokens.elev2Hover,
+                            enabled = !selected,
+                        ) {
                             settings.setLanguage(scope, language.tag) {
                                 toasts.error(S.settingNotSynced)
                             }
@@ -204,9 +210,12 @@ private fun ToggleRow(title: String, body: String, on: Boolean, onToggle: () -> 
     Row(
         Modifier
             .fillMaxWidth()
-            .clip(Tokens.radiusSmall)
-            .background(Tokens.elev2)
-            .clickable(onClick = onToggle)
+            .clickableSurface(
+                shape = Tokens.radiusSmall,
+                idle = Tokens.elev2,
+                hover = Tokens.elev2Hover,
+                onClick = onToggle,
+            )
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -254,9 +263,13 @@ private fun SheetItem(
         modifier = Modifier
             .fillMaxWidth()
             .padding(bottom = 8.dp)
-            .clip(Tokens.radiusSmall)
-            .background(Tokens.elev2)
-            .clickable(enabled = enabled, onClick = onClick)
+            .clickableSurface(
+                shape = Tokens.radiusSmall,
+                idle = Tokens.elev2,
+                hover = Tokens.elev2Hover,
+                enabled = enabled,
+                onClick = onClick,
+            )
             .padding(horizontal = 14.dp, vertical = 13.dp),
     )
 }
@@ -295,7 +308,13 @@ private fun BuildStamp() {
             text = label,
             color = Tokens.mut,
             fontSize = 11.sp,
-            modifier = if (url == null) Modifier else Modifier.clickable { openExternal(url) },
+            modifier = if (url == null) {
+                Modifier
+            } else {
+                Modifier
+                    .pointerHoverIcon(PointerIcon.Hand)
+                    .clickable { openExternal(url) }
+            },
         )
         Spacer(Modifier.width(8.dp))
         Text(BuildInfo.COMMIT, color = Tokens.lineStrong, fontSize = 11.sp)

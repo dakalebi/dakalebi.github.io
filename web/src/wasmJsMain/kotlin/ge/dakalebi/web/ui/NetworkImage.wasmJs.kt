@@ -11,7 +11,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 
 /**
@@ -36,7 +35,8 @@ actual fun NetworkImage(
     onFailed: () -> Unit,
 ) {
     val element = remember { createImageElement() }
-    val density = LocalDensity.current.density
+    // The browser's own ratio, never the theme's inflated density. See `cssPixelRatio`.
+    val ratio = cssPixelRatio()
     val failed by rememberUpdatedState(onFailed)
 
     DisposableEffect(element) {
@@ -66,12 +66,12 @@ actual fun NetworkImage(
             val visible = coordinates.boundsInWindow()
             placeOverlay(
                 element = element,
-                left = (position.x / density).toDouble(),
-                top = (position.y / density).toDouble(),
-                width = (coordinates.size.width / density).toDouble(),
-                height = (coordinates.size.height / density).toDouble(),
-                visibleTop = (visible.top / density).toDouble(),
-                visibleBottom = (visible.bottom / density).toDouble(),
+                left = (position.x / ratio),
+                top = (position.y / ratio),
+                width = (coordinates.size.width / ratio),
+                height = (coordinates.size.height / ratio),
+                visibleTop = (visible.top / ratio),
+                visibleBottom = (visible.bottom / ratio),
             )
         },
     )

@@ -11,9 +11,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
-import androidx.compose.ui.platform.LocalDensity
 import ge.dakalebi.core.Log
 import ge.dakalebi.web.ui.OverlayGate
+import ge.dakalebi.web.ui.cssPixelRatio
 import ge.dakalebi.web.ui.mountOverlay
 import ge.dakalebi.web.ui.placeOverlay
 import ge.dakalebi.web.ui.removeOverlay
@@ -45,7 +45,8 @@ actual fun VideoSurface(
     modifier: Modifier,
 ) {
     val element = remember { createVideoElement() }
-    val density = LocalDensity.current.density
+    // The browser's own ratio, never the theme's inflated density. See `cssPixelRatio`.
+    val ratio = cssPixelRatio()
 
     // Kept current so the listeners installed once below always call this composition's callbacks.
     val timeUpdate by rememberUpdatedState(onTimeUpdate)
@@ -93,12 +94,12 @@ actual fun VideoSurface(
             val visible = coordinates.boundsInWindow()
             placeOverlay(
                 element = element,
-                left = (position.x / density).toDouble(),
-                top = (position.y / density).toDouble(),
-                width = (coordinates.size.width / density).toDouble(),
-                height = (coordinates.size.height / density).toDouble(),
-                visibleTop = (visible.top / density).toDouble(),
-                visibleBottom = (visible.bottom / density).toDouble(),
+                left = (position.x / ratio),
+                top = (position.y / ratio),
+                width = (coordinates.size.width / ratio),
+                height = (coordinates.size.height / ratio),
+                visibleTop = (visible.top / ratio),
+                visibleBottom = (visible.bottom / ratio),
             )
         },
     )
@@ -126,7 +127,7 @@ private class HtmlVideoCommands(private val element: JsAny) : VideoCommands {
     }
 
     override fun toggleFullscreen() {
-        togglePageFullscreen()
+        toggleVideoFullscreen(element)
     }
 }
 
@@ -214,13 +215,26 @@ private fun setVideoVolume(element: JsAny, value: Double) {
     js("{ element.volume = value; element.muted = value <= 0; }")
 }
 
-private fun togglePageFullscreen() {
+/**
+ * Real fullscreen, on the element that holds the picture.
+ *
+ * Taking the *page* fullscreen instead only grows the canvas: the video stays the size the layout
+ * gave it, which is not what anyone means by the button. So the element goes fullscreen itself.
+ *
+ * The consequence is handled in [attachListeners]: a fullscreen element is above everything,
+ * including the canvas, so the app's own chrome cannot be drawn over it and the browser's native
+ * controls are switched on for as long as it lasts. `webkitEnterFullscreen` is the iPhone spelling,
+ * where the system player takes over entirely.
+ */
+private fun toggleVideoFullscreen(element: JsAny) {
     js(
         """{
         if (document.fullscreenElement) {
             document.exitFullscreen();
-        } else if (document.documentElement.requestFullscreen) {
-            document.documentElement.requestFullscreen();
+        } else if (element.requestFullscreen) {
+            element.requestFullscreen();
+        } else if (element.webkitEnterFullscreen) {
+            element.webkitEnterFullscreen();
         }
     }""",
     )
@@ -295,7 +309,12 @@ private fun attachListeners(
             onError(element.error ? element.error.code : 0);
         });
         document.addEventListener('fullscreenchange', function () {
-            onFullscreen(!!document.fullscreenElement);
+            var full = document.fullscreenElement === element;
+            // A fullscreen element is above every other layer, the canvas included, so the app's
+            // own chrome is unreachable for as long as this lasts. The browser's controls take over
+            // rather than leaving the viewer with a picture and no way to pause it.
+            element.controls = full;
+            onFullscreen(full);
         });
     }""",
     )

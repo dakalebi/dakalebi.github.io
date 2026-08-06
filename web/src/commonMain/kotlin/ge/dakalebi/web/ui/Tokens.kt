@@ -37,6 +37,18 @@ object Tokens {
     val redDim = Color(0xFF7A1C19)
     val ok = Color(0xFF3ECF8E)
 
+    /**
+     * What a surface becomes under the pointer.
+     *
+     * A canvas has no `:hover`, so every one of these is a state the app has to hold and paint
+     * itself. They are a clear step up rather than a nudge — on a dark surface a two-percent change
+     * is invisible, which is exactly how this design first shipped.
+     */
+    val elevHover = Color(0xFF1C1C21)
+    val elev2Hover = Color(0xFF26262D)
+    val redHover = Color(0xFFF04A44)
+    val lineHover = Color(0xFF3C3C46)
+
     /** Cards, panels and the player. */
     val radius = RoundedCornerShape(14.dp)
 
