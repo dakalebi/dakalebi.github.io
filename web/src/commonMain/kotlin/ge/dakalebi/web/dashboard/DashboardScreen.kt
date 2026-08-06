@@ -67,6 +67,7 @@ import ge.dakalebi.web.ui.SectionHead
 import ge.dakalebi.web.ui.TILE_WIDTH
 import ge.dakalebi.web.ui.Thumb
 import ge.dakalebi.web.ui.Tokens
+import ge.dakalebi.web.ui.clickableSurface
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -352,15 +353,28 @@ private fun Hero(episode: Episode, onWatch: () -> Unit) {
     val percent = entry?.percent ?: 0.0
     val resuming = !watched && position > 5
 
-    // Side by side rather than a full-bleed still with the copy over it. A real still is a DOM
-    // element laid over the canvas, so anything written across it would be covered; the picture
-    // therefore takes the right of the band and the copy sits beside it, over the app's own surface.
-    Row(Modifier.fillMaxWidth().heightIn(min = 240.dp)) {
-        Column(
-            Modifier
-                .weight(1.3f)
-                .padding(start = Tokens.pad, end = 20.dp, top = 22.dp, bottom = 22.dp),
-        ) {
+    // The card first, then everything about the episode immediately beside it. Spread across the
+    // full width the copy ended up in the far corner with the picture in the other one, reading as
+    // two unrelated things rather than one.
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = Tokens.pad, vertical = 24.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Thumb(
+            episode = episode,
+            showLabel = false,
+            topCornerRadius = 14.dp,
+            modifier = Modifier
+                .width(HERO_CARD_WIDTH.dp)
+                .aspectRatio(16f / 9f)
+                .clip(Tokens.radius),
+        )
+
+        Spacer(Modifier.width(28.dp))
+
+        Column(Modifier.weight(1f)) {
             Eyebrow(
                 text = when {
                     resuming -> S.continueLabel
@@ -369,24 +383,24 @@ private fun Hero(episode: Episode, onWatch: () -> Unit) {
                 }.caps,
                 color = Tokens.red,
             )
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(8.dp))
             Text(
                 text = S.season(episode.seasonNumber).caps,
                 color = Tokens.tx,
-                fontSize = 26.sp,
+                fontSize = 30.sp,
                 fontWeight = FontWeight.Bold,
             )
             Text(
                 text = S.episode(episode.episodeNumber).caps,
                 color = Tokens.tx,
-                fontSize = 26.sp,
+                fontSize = 30.sp,
                 fontWeight = FontWeight.Bold,
             )
             if (percent > 0) {
-                Spacer(Modifier.height(10.dp))
-                ProgressBar(percent, watched, Modifier.width(240.dp), height = 4)
+                Spacer(Modifier.height(12.dp))
+                ProgressBar(percent, watched, Modifier.width(260.dp), height = 5)
             }
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(10.dp))
             Text(
                 text = when {
                     watched -> S.watchedLabel
@@ -399,36 +413,27 @@ private fun Hero(episode: Episode, onWatch: () -> Unit) {
                     else -> episode.title ?: S.episode(episode.episodeNumber)
                 },
                 color = Tokens.txDim,
-                fontSize = 12.5.sp,
+                fontSize = 14.sp,
             )
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(18.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 AppButton(
                     label = (if (resuming) S.resume else S.watch).caps,
                     onClick = onWatch,
                     tone = ButtonTone.Primary,
-                    leading = { ge.dakalebi.web.ui.AppIconView(AppIcons.play, size = 13.dp) },
+                    leading = { ge.dakalebi.web.ui.AppIconView(AppIcons.play, size = 14.dp) },
                 )
                 if (!episode.hasVideo) {
                     Spacer(Modifier.width(12.dp))
-                    Text(S.videoUnavailableForEpisode, color = Tokens.mut, fontSize = 11.5.sp)
+                    Text(S.videoUnavailableForEpisode, color = Tokens.mut, fontSize = 12.sp)
                 }
             }
         }
-
-        // Proportional, so a narrow window shrinks the picture rather than the sentence next to it.
-        Thumb(
-            episode = episode,
-            showLabel = false,
-            topCornerRadius = 14.dp,
-            modifier = Modifier
-                .weight(1f)
-                .padding(end = Tokens.pad, top = 22.dp, bottom = 22.dp)
-                .aspectRatio(16f / 9f)
-                .clip(Tokens.radius),
-        )
     }
 }
+
+/** The hero card. Wide enough to read as the poster it is, without crowding the copy beside it. */
+private const val HERO_CARD_WIDTH = 380
 
 /**
  * The season actions, as a sheet.
@@ -470,7 +475,12 @@ private fun MenuRow(label: String, destructive: Boolean = false, onClick: () -> 
         fontSize = 12.5.sp,
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .clickableSurface(
+                shape = Tokens.radiusSmall,
+                idle = Color.Transparent,
+                hover = Tokens.elev2Hover,
+                onClick = onClick,
+            )
             .padding(horizontal = 14.dp, vertical = 11.dp),
     )
 }

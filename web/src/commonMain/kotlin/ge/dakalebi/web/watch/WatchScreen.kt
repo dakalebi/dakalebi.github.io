@@ -1,6 +1,15 @@
 package ge.dakalebi.web.watch
 
 import androidx.compose.foundation.background
+import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.clickable
+import ge.dakalebi.web.ui.clickableSurface
+import ge.dakalebi.web.ui.Thumb
+import ge.dakalebi.web.ui.ProgressBar
+import ge.dakalebi.core.formatDuration
+import ge.dakalebi.domain.model.WatchProgress
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -215,24 +224,29 @@ fun WatchScreen(episodeId: String) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         WatchNav(episode)
 
+        // Two columns, as version 1.0 had it: the player and everything about this episode on the
+        // left with what came before underneath it, and what to watch next down the right. A
+        // full-bleed player with both strips stacked below pushed the next episode off the screen.
+        Row(Modifier.fillMaxWidth().padding(horizontal = Tokens.pad)) {
+        Column(Modifier.weight(1f)) {
+
         // The picture, then the chrome beneath it. The `<video>` is an element laid over the canvas,
         // so the app must not draw inside its rectangle — see `PlayerChrome`.
         //
         // `widthIn` before `fillMaxWidth`, not after: the outermost modifier decides the width, so
         // filling first leaves nothing for the clamp to shrink and the frame grows to the whole
         // window — 720 px tall on a 1280 px monitor, with the title and every action below the fold.
-        Column(
-            Modifier
-                .widthIn(max = PLAYER_MAX_WIDTH.dp)
-                .fillMaxWidth()
-                .align(Alignment.CenterHorizontally),
-        ) {
+        Column(Modifier.widthIn(max = PLAYER_MAX_WIDTH.dp).fillMaxWidth()) {
             val url = videoUrl
             // A failed episode drops the element rather than keeping a dead frame with a live-looking
             // clock under it: the frame itself is where the viewer is looking, so that is where the
             // failure has to be said.
             if (url != null && progressReady && error == null) {
+                // Keyed on the episode, which is what forces a fresh element and a fresh set of
+                // listeners for it. Reusing one across episodes keeps the resume point the listeners
+                // were installed with, so the next episode would start where the last one stopped.
                 key(episode.id) {
+                Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f)) {
                     VideoSurface(
                         url = url,
                         autoPlay = shouldAutoplay,
@@ -276,6 +290,19 @@ fun WatchScreen(episodeId: String) {
                         },
                         modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f),
                     )
+
+                    // The picture itself is a control. The element ignores pointer events, so the
+                    // canvas underneath gets the click and this is where it lands.
+                    Box(
+                        Modifier
+                            .matchParentSize()
+                            .pointerHoverIcon(PointerIcon.Hand)
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                            ) { commands?.togglePlay(state.paused) },
+                    )
+                }
                 }
 
                 // Remembering whether this episode was left playing is what stops next/previous
@@ -308,9 +335,7 @@ fun WatchScreen(episodeId: String) {
             }
         }
 
-        Column(
-            Modifier.background(Tokens.bg).padding(horizontal = Tokens.pad, vertical = 18.dp),
-        ) {
+        Column(Modifier.padding(top = 18.dp, bottom = 18.dp)) {
             Text(
                 text = S.seasonAndEpisode(episode.seasonNumber, episode.episodeNumber).caps,
                 color = Tokens.tx,
@@ -394,9 +419,19 @@ fun WatchScreen(episodeId: String) {
             )
 
             Spacer(Modifier.height(26.dp))
-            EpisodeStrip(S.nextEpisodes.caps, catalog.upcoming(episode, 8))
-            Spacer(Modifier.height(22.dp))
             EpisodeStrip(S.previousEpisodes.caps, catalog.previous(episode, 4))
+        }
+        }
+
+            Spacer(Modifier.width(24.dp))
+
+            // What to watch next, as a column of wide rows rather than tiles: beside a player there
+            // is only one axis with room on it.
+            UpNextColumn(
+                title = S.nextEpisodes.caps,
+                episodes = catalog.upcoming(episode, 10),
+                modifier = Modifier.width(UP_NEXT_WIDTH.dp).padding(top = 18.dp),
+            )
         }
     }
 
@@ -525,6 +560,88 @@ private fun QualityPicker(current: String?, labels: List<String>, onPick: (Strin
         }
     }
 }
+
+/**
+ * What to watch next, down the side of the player.
+ *
+ * Wide rows rather than tiles: beside a player the only axis with room on it is vertical, and a tile
+ * grid squeezed into a side column reads as an afterthought. This is the shape version 1.0 used.
+ */
+@Composable
+private fun UpNextColumn(title: String, episodes: List<Episode>, modifier: Modifier = Modifier) {
+    if (episodes.isEmpty()) return
+    val catalog = catalog()
+    val router = router()
+
+    Column(modifier) {
+        SectionHead(title)
+        episodes.forEach { episode ->
+            UpNextRow(
+                episode = episode,
+                progress = catalog.progress[episode.id],
+                onOpen = { router.go(Route.Watch(episode.id)) },
+            )
+            Spacer(Modifier.height(10.dp))
+        }
+    }
+}
+
+@Composable
+private fun UpNextRow(episode: Episode, progress: WatchProgress?, onOpen: () -> Unit) {
+    val watched = progress?.isWatched == true
+    val percent = progress?.percent ?: 0.0
+
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickableSurface(
+                shape = Tokens.radiusSmall,
+                idle = Tokens.elev,
+                hover = Tokens.elevHover,
+                border = Tokens.line,
+                borderHover = Tokens.lineHover,
+                onClick = onOpen,
+            )
+            .padding(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column {
+            Thumb(
+                episode = episode,
+                showLabel = false,
+                modifier = Modifier.width(UP_NEXT_THUMB.dp).aspectRatio(16f / 9f).clip(Tokens.radiusSmall),
+            )
+            if (percent > 0) {
+                Spacer(Modifier.height(3.dp))
+                ProgressBar(percent, watched, Modifier.width(UP_NEXT_THUMB.dp))
+            }
+        }
+
+        Spacer(Modifier.width(10.dp))
+
+        Column(Modifier.weight(1f)) {
+            Text(
+                text = S.seasonAndEpisode(episode.seasonNumber, episode.episodeNumber).caps,
+                color = Tokens.tx,
+                fontSize = 12.5.sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = 2,
+            )
+            formatDuration(episode.durationSeconds)?.let {
+                Spacer(Modifier.height(3.dp))
+                Text(it, color = Tokens.mut, fontSize = 11.sp)
+            }
+        }
+
+        if (watched) {
+            AppIconView(AppIcons.check, tint = Tokens.ok, size = 14.dp)
+        }
+    }
+}
+
+/** The side column, and the still inside each of its rows. */
+private const val UP_NEXT_WIDTH = 330
+private const val UP_NEXT_THUMB = 132
 
 /** A row of episodes that wraps rather than scrolls: there is nothing here to scroll *to*. */
 @OptIn(ExperimentalLayoutApi::class)

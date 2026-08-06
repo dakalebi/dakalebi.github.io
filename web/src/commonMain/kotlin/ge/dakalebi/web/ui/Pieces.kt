@@ -3,6 +3,9 @@ package ge.dakalebi.web.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,6 +30,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -49,6 +55,46 @@ import ge.dakalebi.i18n.caps
  * addressable and becomes part of the component, which is also why there is exactly one of
  * each rather than a class per variant.
  */
+
+/**
+ * A clickable surface that answers the pointer.
+ *
+ * Two things a canvas app has to state that a page gets for nothing: the cursor, which stays an
+ * arrow over anything the app has not claimed, and hover, for which there is no `:hover` to lean on
+ * — the app holds the state and paints the change itself.
+ *
+ * Every control in the app goes through here so neither can be forgotten in one place and not
+ * another.
+ */
+@Composable
+fun Modifier.clickableSurface(
+    shape: Shape,
+    idle: Color,
+    hover: Color,
+    border: Color = Color.Transparent,
+    borderHover: Color = border,
+    enabled: Boolean = true,
+    onClick: () -> Unit,
+): Modifier {
+    val interaction = remember { MutableInteractionSource() }
+    val hovered by interaction.collectIsHoveredAsState()
+    val active = enabled && hovered
+
+    return this
+        .clip(shape)
+        .background(if (active) hover else idle)
+        .border(1.dp, if (active) borderHover else border, shape)
+        .hoverable(interaction, enabled)
+        .clickable(
+            interactionSource = interaction,
+            // No ripple: this design answers with colour, and a Material ripple over a dark
+            // surface reads as a smudge.
+            indication = null,
+            enabled = enabled,
+            onClick = onClick,
+        )
+        .then(if (enabled) Modifier.pointerHoverIcon(PointerIcon.Hand) else Modifier)
+}
 
 /** Small, letter-spaced, dim: the label above a heading. */
 @Composable
@@ -173,10 +219,14 @@ fun EpisodeTile(
     Column(
         modifier
             .width(TILE_WIDTH.dp)
-            .clip(Tokens.radius)
-            .background(Tokens.elev)
-            .border(1.dp, Tokens.line, Tokens.radius)
-            .clickable(onClick = onOpen),
+            .clickableSurface(
+                shape = Tokens.radius,
+                idle = Tokens.elev,
+                hover = Tokens.elevHover,
+                border = Tokens.line,
+                borderHover = Tokens.lineHover,
+                onClick = onOpen,
+            ),
     ) {
         // The still's own top corners have to be rounded: it is a layer above the canvas, so the
         // tile's `clip` cannot reach it.
@@ -283,12 +333,24 @@ fun AppButton(
         else -> Tokens.tx
     }
 
+    val hover = when (tone) {
+        ButtonTone.Primary -> Tokens.redHover
+        ButtonTone.Ghost -> Tokens.elev2Hover
+        ButtonTone.Danger -> Tokens.red
+        ButtonTone.Quiet -> Tokens.elev2
+    }
+
     Row(
         modifier
-            .clip(Tokens.pill)
-            .background(if (enabled) background else Tokens.elev)
-            .border(1.dp, border, Tokens.pill)
-            .clickable(enabled = enabled, onClick = onClick)
+            .clickableSurface(
+                shape = Tokens.pill,
+                idle = if (enabled) background else Tokens.elev,
+                hover = hover,
+                border = border,
+                borderHover = if (tone == ButtonTone.Ghost) Tokens.lineHover else border,
+                enabled = enabled,
+                onClick = onClick,
+            )
             .padding(horizontal = 16.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
@@ -313,8 +375,13 @@ fun IconButton(
 ) {
     Box(
         modifier
-            .clip(Tokens.pill)
-            .clickable(enabled = enabled, onClick = onClick)
+            .clickableSurface(
+                shape = Tokens.pill,
+                idle = Color.Transparent,
+                hover = Tokens.elev2Hover,
+                enabled = enabled,
+                onClick = onClick,
+            )
             .padding(8.dp)
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
@@ -328,10 +395,14 @@ fun IconButton(
 fun Chip(label: String, selected: Boolean, done: Boolean, onClick: () -> Unit) {
     Row(
         Modifier
-            .clip(Tokens.pill)
-            .background(if (selected) Tokens.tx else Tokens.elev2)
-            .border(1.dp, if (selected) Tokens.tx else Tokens.line, Tokens.pill)
-            .clickable(onClick = onClick)
+            .clickableSurface(
+                shape = Tokens.pill,
+                idle = if (selected) Tokens.tx else Tokens.elev2,
+                hover = if (selected) Tokens.tx else Tokens.elev2Hover,
+                border = if (selected) Tokens.tx else Tokens.line,
+                borderHover = if (selected) Tokens.tx else Tokens.lineHover,
+                onClick = onClick,
+            )
             .padding(horizontal = 13.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
