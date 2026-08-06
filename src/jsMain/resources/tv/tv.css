@@ -790,38 +790,120 @@ body {
 
 .tv-foot { font-size: var(--t-label); color: var(--mut); }
 
-/* ---------------------------------------------------------------- sign in */
-.tv-signin {
-  display: flex;
-  flex-direction: column;
-  gap: var(--tv-gap);
-  align-items: flex-start;
-  justify-content: center;
+/* ---------------------------------------------------------------- sign in
+   The sign-in screen is the web one — `ui/LoginScreen.kt`, the single auth screen both
+   front ends use — so these rules style *its* classes rather than TV-only ones. The
+   markup is shared; the sizes are not, which is the same division the toast host below
+   already uses.
+
+   Everything the screen needs is defined here, because `web.css` is deliberately not
+   linked on this page: it carries nineteen `:hover` rules, a `@media (hover: none)`
+   block that force-shows controls a remote cannot reach, and a phone type scale. */
+
+/* Signed out there is no rail, so the panel must not be inset for one. */
+.tv-root-signin {
+  padding-left: var(--safe-x);
+}
+
+.login-wrap {
+  position: relative;
   height: 100%;
-  max-width: 40rem;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
 }
 
-.tv-signin-mark { height: 2.5rem; width: auto; }
+.login-bg {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(70% 55% at 50% 0%, rgba(225, 53, 47, 0.16), transparent 70%),
+    var(--bg);
+}
 
-.tv-signin-form {
+.login-card {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 26rem;
+  border-radius: calc(var(--radius) + 0.25rem);
+  border: 1px solid var(--line-strong);
+  background: rgba(13, 13, 15, 0.9);
+  /* Tighter than the web card, and measured rather than guessed: at the 960x540 reference
+     the web rhythm makes this 560 tall, so the sign-in button falls off the bottom of the
+     television. The focus engine would scroll it into view on the first Down, but a screen
+     whose primary action is off-screen until you press something is a broken screen. */
+  padding: var(--tv-gap) var(--tv-gap-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.login-head {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.login-mark {
+  height: 2.25rem;
+  width: auto;
+  align-self: flex-start;
+  display: block;
+}
+
+/* `--t-title`, not the `--t-h` the web card uses at this position: at 26rem wide the
+   larger step wraps the title onto two lines, which is most of the overflow. */
+.login-h {
+  margin: 0;
+  font-size: var(--t-title);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}
+
+.eyebrow {
+  font-size: var(--t-label);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--red);
+  font-weight: 700;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  color: var(--mut);
+  font-size: var(--t-label);
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line-strong);
+}
+
+.login-form {
   display: flex;
   flex-direction: column;
   gap: var(--tv-gap);
-  align-self: stretch;
-  padding: 0.25rem;
-  margin: -4px;
 }
 
-/* The focusable wrapper. The D-pad ring lands here, not on the input, which is the
-   whole trick: the field can be highlighted without the browser entering edit mode.
-   It wraps the input tightly and shares its rounding, so the ring reads as being
-   around the field box. */
-.tv-field-wrap {
+/* The focusable wrapper around each field. The D-pad ring lands here, not on the
+   input, which is the whole trick: the field can be highlighted without the browser
+   entering edit mode. It wraps the input tightly and shares its rounding, so the ring
+   reads as being around the field box. See `dpadField` in `LoginScreen.kt`.
+
+   On the web page this same element is `display: contents` and holds nothing. */
+.auth-field {
   display: block;
   border-radius: var(--radius);
 }
 
-.tv-field {
+.field {
   display: block;
   width: 100%;
   font-size: var(--t-body);
@@ -835,14 +917,65 @@ body {
 
 /* Edit mode: the input itself holds focus and the keyboard is up. A brighter border
    marks it, distinct from the wrapper's ring which means only highlighted.
-   `outline: none` here is safe — the wrapper already carries the D-pad ring, unlike
-   the web sheet's `.field:focus { outline: none }`, which left no ring at all. */
-.tv-field:focus {
+   `outline: none` here is safe — the wrapper already carries the D-pad ring. */
+.field:focus {
   border-color: var(--tx);
   outline: none;
 }
 
-.tv-field::placeholder { color: var(--mut); }
+.field::placeholder {
+  color: var(--mut);
+}
+
+/* The screen's buttons. `.btn` is the web sheet's name and this screen is the only
+   thing on a television that uses it; every TV-native control is `.tv-btn`. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.7em 1.4em;
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  font-family: var(--f-sans);
+  font-size: var(--t-body);
+  font-weight: 600;
+  white-space: nowrap;
+  background: transparent;
+  color: var(--tx);
+}
+
+.btn-primary {
+  background: #fff;
+  color: #0f0f0f;
+}
+
+.btn-ghost {
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.btn-quiet {
+  color: var(--mut);
+  font-size: var(--t-meta);
+}
+
+/* ARIA-disabled rather than the attribute would be the TV convention, but this screen
+   is shared and the web version uses the real attribute, so both are honoured. The
+   control keeps its pointer events on a television: the ring must never sit on
+   something that cannot be pressed without saying so. */
+.btn[disabled] {
+  opacity: 0.45;
+}
+
+/* Focused, these invert the way every other TV control does. `.btn-primary` is left
+   out on purpose: it is already white, and the generic ring is enough. */
+.btn-ghost[data-tv-focus],
+.btn-ghost:focus,
+.btn-quiet[data-tv-focus],
+.btn-quiet:focus {
+  background: var(--focus);
+  border-color: var(--focus);
+  color: #0f0f0f;
+}
 
 /* ------------------------------------------------------------------ toasts
    The host is reused from the web UI unchanged; only the placement is new. */
