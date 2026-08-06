@@ -226,9 +226,17 @@ signed-in paths expressible in a test.
 `App` waits for it before deciding anything — without that, a page load would
 flash the login screen at an already-signed-in user.
 
-Sign-in uses a **popup, not a redirect**: with the app on `*.github.io` and the
-auth handler on `*.firebaseapp.com`, the redirect flow depends on third-party
-storage access that browsers now block.
+**Email and password only.** Google sign-in was offered once and is gone: it was
+never used after the account moved to the console (see the admin-rights note
+above), it cannot work at all inside an Android TV WebView — Google has blocked
+OAuth in embedded WebViews since 2023, and `signInWithRedirect` is no help there
+because it is the same WebView — and keeping a second provider meant keeping the
+whole popup flow for a button nobody pressed. `AccountRepository` therefore has
+no provider method, and the sign-in error mapping has no popup branches.
+
+Note that removing it from the app does not disable it in the project: the Google
+provider has to be switched off in **Authentication → Sign-in method** as well,
+or an account can still be created against it by other means.
 
 `ErrorMessages.signIn` maps Firebase codes to readable text. Firebase puts the
 only actionable identifier in `code` and prose in `message`; `Log.codeOf` digs

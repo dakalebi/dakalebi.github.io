@@ -55,7 +55,6 @@ external interface Auth {
     val currentUser: FirebaseUser?
 }
 
-external interface AuthProvider
 
 external interface AuthError {
     val code: String

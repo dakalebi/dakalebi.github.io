@@ -1124,6 +1124,15 @@ h3 {
   flex-direction: column;
   gap: 10px;
 }
+
+/* The D-pad's grip on a text field, and nothing here. The sign-in screen is shared with
+   the TV UI, where each field sits in a focusable wrapper so a remote can highlight it
+   without the browser entering edit mode (see `dpadField` in `LoginScreen.kt`). On this
+   page the wrapper has no job, so it is removed from the box tree and the field stays a
+   direct flex child of the form — same layout, same gaps, one screen. */
+.auth-field {
+  display: contents;
+}
 .field {
   width: 100%;
   padding: 11px 13px;
@@ -1148,20 +1157,6 @@ h3 {
 }
 .field::placeholder {
   color: #5f5f68;
-}
-.divider {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: var(--mut);
-  font-size: 11px;
-}
-.divider::before,
-.divider::after {
-  content: "";
-  flex: 1;
-  height: 1px;
-  background: var(--line-strong);
 }
 
 /* ----------------------------------------------------------------- panel */

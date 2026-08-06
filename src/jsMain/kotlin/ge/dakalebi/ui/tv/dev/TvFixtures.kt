@@ -190,7 +190,6 @@ private class FixtureAccountRepository(startSignedOut: Boolean) : AccountReposit
     }
 
     override suspend fun signUp(email: String, password: String) = signIn(email, password)
-    override suspend fun signInWithGoogle() = signIn("", "")
     override suspend fun sendPasswordReset(email: String) = Unit
 
     override suspend fun signOut() {

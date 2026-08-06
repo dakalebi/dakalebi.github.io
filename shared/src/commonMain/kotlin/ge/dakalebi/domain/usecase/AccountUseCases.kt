@@ -18,10 +18,6 @@ class SignUpWithEmail(private val accounts: AccountRepository) {
         accounts.signUp(email.trim(), password)
 }
 
-class SignInWithGoogle(private val accounts: AccountRepository) {
-    suspend operator fun invoke() = accounts.signInWithGoogle()
-}
-
 class SendPasswordReset(private val accounts: AccountRepository) {
     suspend operator fun invoke(email: String) = accounts.sendPasswordReset(email.trim())
 }

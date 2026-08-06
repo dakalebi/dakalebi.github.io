@@ -98,8 +98,6 @@ interface AccountRepository {
 
     suspend fun signUp(email: String, password: String)
 
-    suspend fun signInWithGoogle()
-
     suspend fun sendPasswordReset(email: String)
 
     suspend fun signOut()

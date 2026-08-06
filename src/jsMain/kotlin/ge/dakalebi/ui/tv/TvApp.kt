@@ -12,6 +12,7 @@ import ge.dakalebi.di.session
 import ge.dakalebi.di.settings
 import ge.dakalebi.i18n.S
 import ge.dakalebi.presentation.Route
+import ge.dakalebi.ui.LoginScreen
 import ge.dakalebi.ui.ToastHost
 import ge.dakalebi.ui.classNames
 import ge.dakalebi.ui.tv.focus.FocusMemory
@@ -201,6 +202,9 @@ fun TvApp() {
                 "tv-root",
                 // The watch screen fills the panel; every other screen is padded.
                 if (route is Route.Watch && account != null) "tv-root-bare" else null,
+                // Signed out there is no rail, so the left inset that makes room for one
+                // would push the sign-in card off centre.
+                if (account == null) "tv-root-signin" else null,
             )
             ref { element ->
                 refs.root = element
@@ -213,7 +217,7 @@ fun TvApp() {
 
             when {
                 session.loading -> Div({ classes("tv-note") }) { Text(S.loading) }
-                account == null -> TvSignInScreen()
+                account == null -> LoginScreen()
                 route is Route.Settings -> TvSettingsScreen()
                 route is Route.Watch -> TvWatchScreen(route.episodeId)
                 else -> TvBrowseScreen()
