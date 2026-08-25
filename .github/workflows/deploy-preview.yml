@@ -1,0 +1,93 @@
+name: Deploy preview alongside production
+
+# Publishes this branch's build to /preview on the SAME Pages site that
+# deploy.yml serves at the root, without touching root at all.
+#
+# GitHub Pages has exactly one live deployment per site: whichever
+# `actions/deploy-pages` call ran last REPLACES everything, in full. Two
+# workflows each deploying their own partial content would not merge - the
+# second one to finish would erase the first. So this workflow builds BOTH
+# halves itself, in one job, and uploads them together as one artifact:
+# `main`'s current commit rebuilt fresh for the root (byte-identical in every
+# way that matters - the same source produces the same page, modulo the CI
+# build-stamp footer, which is supposed to show when a build actually ran),
+# and this branch's commit built into `preview/`.
+#
+# Safe to run from a feature branch on purpose: nothing here reads or writes
+# anything on `main` itself, and `deploy.yml` - the actual production
+# pipeline - is untouched by this file entirely.
+
+on:
+  push:
+    branches: [task/NO_TICKET/keel-migration]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Shares deploy.yml's group on purpose: a production deploy and a preview
+# deploy must never race, because whichever finishes last wins the whole site.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out this branch (preview)
+        uses: actions/checkout@v5
+        with:
+          path: preview-src
+          submodules: true
+
+      - name: Check out main (production, rebuilt fresh)
+        uses: actions/checkout@v5
+        with:
+          ref: main
+          path: main-src
+          # main has no submodule yet; harmless either way.
+          submodules: true
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build production (main) for root
+        working-directory: main-src
+        run: ./gradlew jsBrowserDistribution
+
+      - name: Build preview (this branch) for /preview
+        working-directory: preview-src
+        run: ./gradlew jsBrowserDistribution
+
+      - name: Assemble the combined site
+        run: |
+          set -eu
+          mkdir -p combined
+          cp -R main-src/build/dist/js/productionExecutable/. combined/
+          mkdir -p combined/preview
+          cp -R preview-src/build/dist/js/productionExecutable/. combined/preview/
+          # Both builds already write their own .nojekyll; belt and braces.
+          touch combined/.nojekyll
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: combined
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

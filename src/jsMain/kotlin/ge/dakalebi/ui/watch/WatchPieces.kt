@@ -6,9 +6,9 @@ import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
 import ge.dakalebi.presentation.Route
 import ge.dakalebi.presentation.Router
-import ge.dakalebi.ui.Icon
-import ge.dakalebi.ui.Icons
 import ge.dakalebi.ui.Thumb
+import io.github.bchmsl.keel.icons.Icon
+import io.github.bchmsl.keel.icons.LucideIcon
 import org.jetbrains.compose.web.dom.A
 import org.jetbrains.compose.web.dom.Button
 import org.jetbrains.compose.web.dom.Div
@@ -19,7 +19,8 @@ import org.jetbrains.compose.web.dom.Text
 fun WatchNav(episode: Episode?) {
     Div({ classes("nav", "nav-solid") }) {
         A(href = Router.href(Route.Dashboard), attrs = { classes("btn", "btn-quiet") }) {
-            Icon(Icons.back)
+            // Matches `.btn .ic svg` in web.css.
+            Icon(LucideIcon.ChevronLeft, size = 16)
             Text(S.back.caps)
         }
         episode?.let {

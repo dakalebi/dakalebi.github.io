@@ -10,9 +10,15 @@ import ge.dakalebi.core.Log
 import ge.dakalebi.core.formatTime
 import ge.dakalebi.domain.service.orderedQualityLabels
 import ge.dakalebi.i18n.S
-import ge.dakalebi.ui.Icon
-import ge.dakalebi.ui.Icons
-import ge.dakalebi.ui.classNames
+import ge.dakalebi.ui.Icon as PlayerIcon
+import ge.dakalebi.ui.Icons as PlayerIcons
+import io.github.bchmsl.keel.dom.classNames
+import io.github.bchmsl.keel.icons.Icon
+import io.github.bchmsl.keel.icons.LucideIcon
+import kotlin.math.floor
+import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.roundToInt
 import kotlinx.browser.document
 import kotlinx.browser.window
 import org.jetbrains.compose.web.attributes.InputType
@@ -30,10 +36,6 @@ import org.w3c.dom.HTMLInputElement
 import org.w3c.dom.HTMLVideoElement
 import org.w3c.dom.events.Event
 import org.w3c.dom.events.KeyboardEvent
-import kotlin.math.floor
-import kotlin.math.max
-import kotlin.math.min
-import kotlin.math.roundToInt
 
 /** Mutable holders that must not trigger recomposition when they change. */
 private class PlayerRefs {
@@ -474,7 +476,12 @@ fun CustomVideoPlayer(
 
         if (!started || (!playing && !buffering)) {
             Div({ classes("player-center"); onClick { togglePlay() } }) {
-                Div({ classes("big") }) { Icon(Icons.play) }
+                // The `-1` in the CSS class name is web.css's own optical nudge for
+                // a triangle glyph, which sits visually off-centre inside a circle -
+                // matching `.player-center .big .ic svg { margin-left: 3px }`.
+                Div({ classes("big") }) {
+                    Icon(LucideIcon.Play, size = ICON_PLAYER_BIG, className = "player-glyph-nudge")
+                }
             }
         }
 
@@ -547,13 +554,13 @@ fun CustomVideoPlayer(
                     classes("icon-btn")
                     attr("aria-label", if (playing) S.pause else S.play)
                     onClick { togglePlay() }
-                }) { Icon(if (playing) Icons.pause else Icons.play) }
+                }) { Icon(if (playing) LucideIcon.Pause else LucideIcon.Play, size = ICON_PLAYER_CTL) }
 
                 Button({
                     classes("icon-btn")
                     attr("aria-label", S.back10)
                     onClick { seekBy(-10.0) }
-                }) { Icon(Icons.back10) }
+                }) { PlayerIcon(PlayerIcons.back10) }
 
                 Div({ classes("vol-wrap") }) {
                     Button({
@@ -564,7 +571,12 @@ fun CustomVideoPlayer(
                             v.muted = !v.muted
                             muted = v.muted
                         }
-                    }) { Icon(if (muted || volume == 0.0) Icons.volumeOff else Icons.volumeOn) }
+                    }) {
+                        Icon(
+                            if (muted || volume == 0.0) LucideIcon.VolumeX else LucideIcon.Volume2,
+                            size = ICON_PLAYER_CTL,
+                        )
+                    }
 
                     Div({ classes("vol") }) {
                         Div({ style { property("width", "${if (muted) 0.0 else volume * 100}%") } })
@@ -597,14 +609,19 @@ fun CustomVideoPlayer(
                         attr("aria-label", "Cast")
                         if (casting) style { property("color", "var(--red)") }
                         onClick { startCast() }
-                    }) { Icon(Icons.cast) }
+                    }) { Icon(LucideIcon.Cast, size = ICON_PLAYER_CTL) }
                 }
 
                 Button({
                     classes("icon-btn")
                     attr("aria-label", S.fullscreen)
                     onClick { toggleFullscreen() }
-                }) { Icon(if (fullscreen) Icons.exitFullscreen else Icons.fullscreen) }
+                }) {
+                    Icon(
+                        if (fullscreen) LucideIcon.Minimize else LucideIcon.Maximize,
+                        size = ICON_PLAYER_CTL,
+                    )
+                }
             }
         }
 
@@ -615,3 +632,9 @@ fun CustomVideoPlayer(
         }
     }
 }
+
+/** Matches `.player-center .big .ic svg` in web.css. */
+private const val ICON_PLAYER_BIG = 30
+
+/** Matches `.ctl .ic svg` in web.css. */
+private const val ICON_PLAYER_CTL = 24

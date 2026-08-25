@@ -14,7 +14,6 @@ import ge.dakalebi.i18n.caps
 import ge.dakalebi.presentation.TvSeek
 import ge.dakalebi.ui.Icon
 import ge.dakalebi.ui.Icons
-import ge.dakalebi.ui.classNames
 import ge.dakalebi.ui.player.PlayerEvents
 import ge.dakalebi.ui.tv.TvConfig
 import ge.dakalebi.ui.tv.actsAsButton
@@ -31,6 +30,9 @@ import ge.dakalebi.ui.tv.input.MediaAction
 import ge.dakalebi.ui.tv.input.TvInput
 import ge.dakalebi.ui.tv.input.TvLayer
 import ge.dakalebi.ui.tv.ownsPopup
+import io.github.bchmsl.keel.dom.classNames
+import kotlin.math.abs
+import kotlin.math.roundToInt
 import kotlinx.browser.document
 import kotlinx.browser.window
 import org.jetbrains.compose.web.dom.Div
@@ -39,8 +41,6 @@ import org.jetbrains.compose.web.dom.Text
 import org.jetbrains.compose.web.dom.Video
 import org.w3c.dom.HTMLElement
 import org.w3c.dom.HTMLVideoElement
-import kotlin.math.abs
-import kotlin.math.roundToInt
 
 /** What the D-pad currently means. */
 private enum class Mode { Idle, Controls, Scrubbing }

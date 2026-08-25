@@ -12,9 +12,9 @@ import ge.dakalebi.di.toasts
 import ge.dakalebi.i18n.I18n
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
-import ge.dakalebi.ui.DismissOnEscape
-import ge.dakalebi.ui.classNames
 import ge.dakalebi.ui.player.isAppleMobile
+import io.github.bchmsl.keel.components.DismissOnEscape
+import io.github.bchmsl.keel.dom.classNames
 import org.jetbrains.compose.web.attributes.ATarget
 import org.jetbrains.compose.web.attributes.target
 import org.jetbrains.compose.web.dom.A

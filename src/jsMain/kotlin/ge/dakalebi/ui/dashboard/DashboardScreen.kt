@@ -22,12 +22,13 @@ import ge.dakalebi.presentation.Router
 import ge.dakalebi.presentation.ToastStore
 import ge.dakalebi.ui.ConfirmDialog
 import ge.dakalebi.ui.EpisodeTile
-import ge.dakalebi.ui.Icon
-import ge.dakalebi.ui.Icons
 import ge.dakalebi.ui.Rail
 import ge.dakalebi.ui.Thumb
 import ge.dakalebi.ui.assetBase
-import ge.dakalebi.ui.classNames
+import io.github.bchmsl.keel.dom.classNames
+import io.github.bchmsl.keel.icons.Icon
+import io.github.bchmsl.keel.icons.LucideIcon
+import kotlin.math.roundToInt
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.web.dom.A
@@ -38,7 +39,6 @@ import org.jetbrains.compose.web.dom.H2
 import org.jetbrains.compose.web.dom.Img
 import org.jetbrains.compose.web.dom.Span
 import org.jetbrains.compose.web.dom.Text
-import kotlin.math.roundToInt
 
 private enum class Confirm { None, ResetAll, MarkSeason, ResetSeason }
 
@@ -234,7 +234,7 @@ private fun DashboardNav(onMenu: () -> Unit) {
             classes("icon-btn")
             attr("aria-label", S.menu)
             onClick { onMenu() }
-        }) { Icon(Icons.menu, S.menu) }
+        }) { Icon(LucideIcon.Menu, size = ICON_NAV) }
         // The mark is lettering, so it *is* the wordmark — the name lives in
         // `alt` rather than being repeated beside it.
         Img(src = "${assetBase}logo.png", alt = S.appName) { classes("nav-mark") }
@@ -327,7 +327,7 @@ private fun SeasonMenu(disabled: Boolean, onMark: () -> Unit, onReset: () -> Uni
             attr("aria-label", S.seasonActions)
             if (disabled) attr("disabled", "")
             onClick { open = !open }
-        }) { Icon(Icons.more, S.seasonActions) }
+        }) { Icon(LucideIcon.EllipsisVertical, size = ICON_NAV) }
 
         if (open) {
             Div({ classes("popover-catch"); onClick { open = false } })
@@ -342,3 +342,6 @@ private fun SeasonMenu(disabled: Boolean, onMark: () -> Unit, onReset: () -> Uni
         }
     }
 }
+
+/** The global default in web.css's `.ic svg`; neither icon-btn here overrides it. */
+private const val ICON_NAV = 20

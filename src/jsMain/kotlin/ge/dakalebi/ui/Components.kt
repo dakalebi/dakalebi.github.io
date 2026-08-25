@@ -1,11 +1,9 @@
 package ge.dakalebi.ui
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import ge.dakalebi.core.Log
 import ge.dakalebi.core.formatDuration
@@ -13,10 +11,14 @@ import ge.dakalebi.di.router
 import ge.dakalebi.di.toasts
 import ge.dakalebi.domain.model.Episode
 import ge.dakalebi.domain.model.WatchProgress
-import ge.dakalebi.presentation.Route
-import ge.dakalebi.presentation.Router
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
+import ge.dakalebi.presentation.Route
+import ge.dakalebi.presentation.Router
+import io.github.bchmsl.keel.components.DismissOnEscape
+import io.github.bchmsl.keel.dom.classNames
+import io.github.bchmsl.keel.icons.Icon
+import io.github.bchmsl.keel.icons.LucideIcon
 import kotlinx.browser.document
 import kotlinx.browser.window
 import org.jetbrains.compose.web.attributes.ATarget
@@ -30,8 +32,6 @@ import org.jetbrains.compose.web.dom.Img
 import org.jetbrains.compose.web.dom.P
 import org.jetbrains.compose.web.dom.Span
 import org.jetbrains.compose.web.dom.Text
-import org.w3c.dom.events.Event
-import org.w3c.dom.events.KeyboardEvent
 
 /** Episode still, or a deterministic gradient stand-in when there is none. */
 @Composable
@@ -78,7 +78,7 @@ fun EpisodeTile(episode: Episode, progress: WatchProgress?) {
                 Thumb(episode)
                 Span({ classes("tile-badge", "mono") }) { Text("E${episode.episodeNumber}") }
                 if (watched) {
-                    Span({ classes("tile-seen") }) { Icon(Icons.check) }
+                    Span({ classes("tile-seen") }) { Icon(LucideIcon.Check, size = ICON_TILE_ACTION) }
                 }
                 formatDuration(episode.durationSeconds)?.let {
                     Span({ classes("tile-dur", "mono") }) { Text(it) }
@@ -121,7 +121,7 @@ fun EpisodeTile(episode: Episode, progress: WatchProgress?) {
                         else toasts.error(S.copyFailed)
                     }
                 }
-            }) { Icon(Icons.link) }
+            }) { Icon(LucideIcon.Link, size = ICON_TILE_ACTION) }
 
             episode.videoUrl?.let { videoUrl ->
                 Button({
@@ -136,7 +136,7 @@ fun EpisodeTile(episode: Episode, progress: WatchProgress?) {
                             else toasts.error(S.copyFailed)
                         }
                     }
-                }) { Icon(Icons.download) }
+                }) { Icon(LucideIcon.Download, size = ICON_TILE_ACTION) }
             }
         }
     }
@@ -155,30 +155,6 @@ fun Rail(title: String, subtitle: String? = null, episodes: List<Episode>, progr
                 EpisodeTile(episode, progress[episode.id])
             }
         }
-    }
-}
-
-/**
- * Closes an overlay on Escape.
- *
- * Every modal here could already be dismissed by clicking the scrim, but
- * nothing listened for Escape — which is the first thing a keyboard user
- * reaches for, and the only thing available to them once focus is inside a
- * dialog.
- */
-@Composable
-fun DismissOnEscape(onDismiss: () -> Unit) {
-    val latest by rememberUpdatedState(onDismiss)
-    DisposableEffect(Unit) {
-        val handler: (Event) -> Unit = { raw ->
-            val event = raw as? KeyboardEvent
-            if (event != null && event.key == "Escape") {
-                event.preventDefault()
-                latest()
-            }
-        }
-        window.addEventListener("keydown", handler)
-        onDispose { window.removeEventListener("keydown", handler) }
     }
 }
 
@@ -227,7 +203,7 @@ private fun UpNextRow(episode: Episode, progress: WatchProgress?) {
     A(href = Router.href(Route.Watch(episode.id)), attrs = { classes("uprow") }) {
         Div({ classes("uprow-th") }) {
             Thumb(episode, showLabel = false)
-            if (watched) Span({ classes("tile-seen") }) { Icon(Icons.check) }
+            if (watched) Span({ classes("tile-seen") }) { Icon(LucideIcon.Check, size = ICON_TILE_ACTION) }
             if (percent > 0) {
                 Div({ classNames("tile-prog", if (watched) "done" else null) }) {
                     Div({ style { property("width", "$percent%") } })
@@ -308,3 +284,6 @@ private fun legacyCopy(text: String): Boolean = runCatching {
     document.body?.removeChild(area as org.w3c.dom.Node)
     ok
 }.onFailure { Log.w("clipboard", "execCommand fallback failed", it) }.getOrDefault(false)
+
+/** Matches `.tile-act .ic svg, .tile-seen .ic svg` in web.css. */
+private const val ICON_TILE_ACTION = 14

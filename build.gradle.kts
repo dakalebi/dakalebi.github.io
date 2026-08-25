@@ -123,6 +123,10 @@ kotlin {
             kotlin.srcDir(generateBuildInfo)
             dependencies {
                 implementation(project(":shared"))
+                // The icon catalogue and `classNames`/`DismissOnEscape`. See the
+                // note on `includeBuild("keel")` in settings.gradle.kts for what
+                // is deliberately NOT adopted from it.
+                implementation("io.github.bchmsl:keel")
                 implementation("org.jetbrains.compose.runtime:runtime:1.11.1")
                 // Compose HTML is Kotlin/JS only and has no multiplatform
                 // variant, so it cannot move into `:shared`. Neither can the
