@@ -15,7 +15,9 @@ import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
 import ge.dakalebi.presentation.Route
 import ge.dakalebi.presentation.Router
-import io.github.bchmsl.keel.components.DismissOnEscape
+import io.github.bchmsl.keel.components.Button as KeelButton
+import io.github.bchmsl.keel.components.ButtonVariant
+import io.github.bchmsl.keel.components.Dialog as KeelDialog
 import io.github.bchmsl.keel.dom.classNames
 import io.github.bchmsl.keel.icons.Icon
 import io.github.bchmsl.keel.icons.LucideIcon
@@ -230,25 +232,27 @@ fun ConfirmDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    DismissOnEscape(onDismiss)
-    Div({ classes("scrim"); onClick { onDismiss() } })
-    Div({ classes("dialog") }) {
+    KeelDialog(title = title, description = body, onDismiss = onDismiss) {
         H3 { Text(title) }
         P { Text(body) }
         Div({ classes("dialog-row") }) {
-            Button({ classes("btn", "btn-ghost"); onClick { onDismiss() } }) { Text(S.cancel.caps) }
-            Button({
-                classes("btn", if (destructive) "btn-danger" else "btn-primary")
-                onClick { onConfirm() }
-            }) { Text(confirmLabel) }
+            KeelButton(label = S.cancel.caps, onClick = onDismiss, variant = ButtonVariant.Outline)
+            KeelButton(
+                label = confirmLabel,
+                onClick = onConfirm,
+                variant = if (destructive) ButtonVariant.Destructive else ButtonVariant.Default,
+            )
         }
     }
 }
 
 @Composable
 fun ExternalLink(href: String, label: String) {
+    // `ButtonVariant`/`ButtonSize`'s own `className` is internal to keel, so an
+    // `<a>` styled as a button - which keel has no composable for - names the
+    // literal class directly. Matches `ButtonVariant.Outline`/`ButtonSize.Default`.
     A(href = href, attrs = {
-        classes("btn", "btn-ghost")
+        classNames("btn", "btn--outline", "btn--size-default")
         target(ATarget.Blank)
         attr("rel", "noreferrer")
     }) { Text(label) }

@@ -3,6 +3,7 @@ package ge.dakalebi.ui.dashboard
 import androidx.compose.runtime.Composable
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
+import io.github.bchmsl.keel.dom.classNames
 import org.jetbrains.compose.web.dom.Button
 import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.H2
@@ -39,7 +40,7 @@ fun LoadFailed(message: String, onRetry: () -> Unit) {
         Div({ classes("empty") }) {
             Div({ classes("eyebrow-mut") }) { Text(S.loadFailedEyebrow.caps) }
             Div { Text(message) }
-            Button({ classes("btn", "btn-primary"); onClick { onRetry() } }) {
+            Button({ classNames("btn", "btn--default", "btn--size-default"); onClick { onRetry() } }) {
                 Text(S.retry.caps)
             }
         }
@@ -59,7 +60,7 @@ fun EmptyCatalog(
             Div { Text(S.emptyBody) }
             if (canRefresh) {
                 Button({
-                    classes("btn", "btn-primary")
+                    classNames("btn", "btn--default", "btn--size-default")
                     if (refreshing) attr("disabled", "")
                     onClick { onRefresh() }
                 }) { Text(if (refreshing) note ?: S.refreshing else S.downloadEpisodes.caps) }

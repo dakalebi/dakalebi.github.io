@@ -25,6 +25,7 @@ import ge.dakalebi.ui.EpisodeTile
 import ge.dakalebi.ui.Rail
 import ge.dakalebi.ui.Thumb
 import ge.dakalebi.ui.assetBase
+import io.github.bchmsl.keel.components.IconButton
 import io.github.bchmsl.keel.dom.classNames
 import io.github.bchmsl.keel.icons.Icon
 import io.github.bchmsl.keel.icons.LucideIcon
@@ -230,11 +231,7 @@ private fun DashboardNav(onMenu: () -> Unit) {
     val catalog = catalog()
 
     Div({ classes("nav") }) {
-        Button({
-            classes("icon-btn")
-            attr("aria-label", S.menu)
-            onClick { onMenu() }
-        }) { Icon(LucideIcon.Menu, size = ICON_NAV) }
+        IconButton(ariaLabel = S.menu, onClick = onMenu) { Icon(LucideIcon.Menu, size = ICON_NAV) }
         // The mark is lettering, so it *is* the wordmark — the name lives in
         // `alt` rather than being repeated beside it.
         Img(src = "${assetBase}logo.png", alt = S.appName) { classes("nav-mark") }
@@ -306,7 +303,7 @@ private fun Hero(episode: Episode) {
             Div({ classes("hero-cta") }) {
                 A(
                     href = Router.href(Route.Watch(episode.id)),
-                    attrs = { classes("btn", "btn-primary") },
+                    attrs = { classNames("btn", "btn--default", "btn--size-default") },
                 ) {
                     Text("▶  " + (if (resuming) S.resume else S.watch).caps)
                 }
@@ -322,12 +319,11 @@ private fun Hero(episode: Episode) {
 private fun SeasonMenu(disabled: Boolean, onMark: () -> Unit, onReset: () -> Unit) {
     var open by remember { mutableStateOf(false) }
     Div({ classes("rel") }) {
-        Button({
-            classes("icon-btn")
-            attr("aria-label", S.seasonActions)
-            if (disabled) attr("disabled", "")
-            onClick { open = !open }
-        }) { Icon(LucideIcon.EllipsisVertical, size = ICON_NAV) }
+        IconButton(
+            ariaLabel = S.seasonActions,
+            onClick = { open = !open },
+            enabled = !disabled,
+        ) { Icon(LucideIcon.EllipsisVertical, size = ICON_NAV) }
 
         if (open) {
             Div({ classes("popover-catch"); onClick { open = false } })

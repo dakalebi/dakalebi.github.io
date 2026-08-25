@@ -21,18 +21,21 @@ dependencyResolutionManagement {
 // need: the domain, the string catalogue, and the state holders above them.
 include(":shared")
 
-// The icon catalogue and two small utilities (`classNames`, `DismissOnEscape`)
-// that used to be duplicated here and in Dayboard now live in one place. A
-// submodule, included as a composite build so `implementation("io.github.bchmsl:keel")`
-// resolves to it - never `project(":keel")`, which would resolve to this build's
-// own (nonexistent) project of that name instead of being substituted for the
+// The icon catalogue, the shared components (`Button`, `Switch`, `Dialog`, ...)
+// and two small utilities (`classNames`, `DismissOnEscape`) that used to be
+// duplicated here and in Dayboard now live in one place. A submodule, included
+// as a composite build so `implementation("io.github.bchmsl:keel")` resolves to
+// it - never `project(":keel")`, which would resolve to this build's own
+// (nonexistent) project of that name instead of being substituted for the
 // included one.
 //
-// This is deliberately a small adoption. `.btn`, `.switch` and `.spinner` collide
-// by name with keel's own classes but differ in actual design (colour, size, DOM
-// shape) in ways that would be a real visual redesign to unify, not a safe move -
-// so this app keeps its own CSS for all three, and keel's stylesheets are not
-// linked here at all. See keel/MIGRATION.md if that ever changes.
+// keel/tokens.css, keel/base.css and keel/components.css are linked in
+// index.html, painted with this app's own single dark palette from
+// keel-theme.css rather than one of keel/palettes.css's switchable ones - this
+// app has exactly one theme and no `ThemeController` to switch it with. The
+// season chips and the video tiles/rails stay this app's own CSS: keel has no
+// tag-filter or media-card component that either one is actually an instance
+// of, so there is nothing there to adopt.
 includeBuild("keel")
 
 // `:tv` is an Android application module and needs the Android SDK to configure.

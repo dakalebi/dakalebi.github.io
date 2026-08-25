@@ -15,6 +15,7 @@ import ge.dakalebi.i18n.caps
 import ge.dakalebi.ui.tv.focus.FocusAxis
 import ge.dakalebi.ui.tv.focus.focusGroup
 import ge.dakalebi.ui.tv.focus.focusItem
+import io.github.bchmsl.keel.dom.classNames
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.web.attributes.AttrsScope
 import org.jetbrains.compose.web.attributes.InputType
@@ -99,7 +100,7 @@ fun LoginScreen() {
             }) {
                 Div({ classes("auth-field"); dpadField("email", emailField, entry = true) }) {
                     Input(InputType.Email) {
-                        classes("field")
+                        classNames("input")
                         name("email")
                         placeholder(S.emailPlaceholder)
                         required()
@@ -110,7 +111,7 @@ fun LoginScreen() {
                 }
                 Div({ classes("auth-field"); dpadField("password", passwordField) }) {
                     Input(InputType.Password) {
-                        classes("field")
+                        classNames("input")
                         name("password")
                         placeholder(S.passwordPlaceholder)
                         required()
@@ -121,7 +122,7 @@ fun LoginScreen() {
                     }
                 }
                 Button({
-                    classes("btn", "btn-primary")
+                    classNames("btn", "btn--default", "btn--size-default")
                     style { property("justify-content", "center") }
                     if (busy) disabled()
                     dpadItem("submit")
@@ -139,7 +140,7 @@ fun LoginScreen() {
                 }
             }) {
                 Button({
-                    classes("btn", "btn-quiet")
+                    classNames("btn", "btn--link", "btn--size-default")
                     style { property("padding", "0") }
                     dpadItem("mode")
                     onClick { signUpMode = !signUpMode }
@@ -151,7 +152,7 @@ fun LoginScreen() {
 
                 if (!signUpMode) {
                     Button({
-                        classes("btn", "btn-quiet")
+                        classNames("btn", "btn--link", "btn--size-default")
                         style { property("padding", "0") }
                         dpadItem("reset")
                         onClick {

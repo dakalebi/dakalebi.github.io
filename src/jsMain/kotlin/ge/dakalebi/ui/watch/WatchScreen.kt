@@ -29,6 +29,7 @@ import ge.dakalebi.ui.player.CustomVideoPlayer
 import ge.dakalebi.ui.player.NativeVideoPlayer
 import ge.dakalebi.ui.player.PlayerEvents
 import ge.dakalebi.ui.player.isAppleMobile
+import io.github.bchmsl.keel.dom.classNames
 import kotlinx.browser.document
 import kotlinx.browser.window
 import kotlinx.coroutines.launch
@@ -437,7 +438,7 @@ fun WatchScreen(episodeId: String) {
                             Text(S.nextUp(nextEpisode.seasonNumber, nextEpisode.episodeNumber).caps)
                         }
                     }
-                    Button({ classes("btn", "btn-primary"); onClick { goToNext() } }) {
+                    Button({ classNames("btn", "btn--default", "btn--size-default"); onClick { goToNext() } }) {
                         Text(S.nextEpisodeAction.caps)
                     }
                 }
@@ -445,7 +446,7 @@ fun WatchScreen(episodeId: String) {
 
             Div({ classes("watch-acts") }) {
                 Button({
-                    classes("btn", "btn-ghost")
+                    classNames("btn", "btn--outline", "btn--size-default")
                     onClick {
                         val video = refs.video
                         if (video != null) {
@@ -460,19 +461,19 @@ fun WatchScreen(episodeId: String) {
 
                 if (watched) {
                     Button({
-                        classes("btn", "btn-ghost")
+                        classNames("btn", "btn--outline", "btn--size-default")
                         style { property("color", "var(--ok)"); property("border-color", "rgba(62,207,142,.45)") }
                         onClick { confirmReset = true }
                     }) { Text(S.watchedTick.caps) }
                 } else {
                     Button({
-                        classes("btn", "btn-ghost")
+                        classNames("btn", "btn--outline", "btn--size-default")
                         onClick { persist(isWatched = true); toasts.ok(S.episodeMarkedWatched) }
                     }) { Text(S.markAsWatched.caps) }
                 }
 
                 if (nextEpisode != null) {
-                    Button({ classes("btn", "btn-primary"); onClick { goToNext() } }) {
+                    Button({ classNames("btn", "btn--default", "btn--size-default"); onClick { goToNext() } }) {
                         Text(S.nextEpisodeAction.caps)
                     }
                 }

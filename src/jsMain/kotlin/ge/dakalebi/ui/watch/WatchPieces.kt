@@ -7,6 +7,7 @@ import ge.dakalebi.i18n.caps
 import ge.dakalebi.presentation.Route
 import ge.dakalebi.presentation.Router
 import ge.dakalebi.ui.Thumb
+import io.github.bchmsl.keel.dom.classNames
 import io.github.bchmsl.keel.icons.Icon
 import io.github.bchmsl.keel.icons.LucideIcon
 import org.jetbrains.compose.web.dom.A
@@ -18,7 +19,7 @@ import org.jetbrains.compose.web.dom.Text
 @Composable
 fun WatchNav(episode: Episode?) {
     Div({ classes("nav", "nav-solid") }) {
-        A(href = Router.href(Route.Dashboard), attrs = { classes("btn", "btn-quiet") }) {
+        A(href = Router.href(Route.Dashboard), attrs = { classNames("btn", "btn--link", "btn--size-default") }) {
             // Matches `.btn .ic svg` in web.css.
             Icon(LucideIcon.ChevronLeft, size = 16)
             Text(S.back.caps)
@@ -52,10 +53,10 @@ fun NextEpisodeCard(
                 }
             }
             Div({ classes("nextcard-row") }) {
-                Button({ classes("btn", "btn-primary"); style { property("padding", "7px 13px") }; onClick { onPlayNext() } }) {
+                Button({ classNames("btn", "btn--default", "btn--size-sm"); onClick { onPlayNext() } }) {
                     Text(S.watch.caps)
                 }
-                Button({ classes("btn", "btn-quiet"); onClick { onDismiss() } }) { Text(S.dismiss.caps) }
+                Button({ classNames("btn", "btn--link", "btn--size-sm"); onClick { onDismiss() } }) { Text(S.dismiss.caps) }
             }
         }
     }

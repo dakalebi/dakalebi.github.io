@@ -55,8 +55,16 @@
     />
     <!--
       Two links rather than an `@import` chain, which would cost a serialised
-      round trip before first paint. Order matters: tokens first.
+      round trip before first paint. Order matters throughout: tokens first,
+      then this app's own palette for them, then keel's page-level rules and
+      component styles, then this app's own tokens and stylesheet last - so a
+      selector of equal specificity anywhere above (`body`, `.spinner`, ...) is
+      always the one this app wrote, not keel's.
     -->
+    <link rel="stylesheet" href="keel/tokens.css" />
+    <link rel="stylesheet" href="keel-theme.css" />
+    <link rel="stylesheet" href="keel/base.css" />
+    <link rel="stylesheet" href="keel/components.css" />
     <link rel="stylesheet" href="tokens.css" />
     <link rel="stylesheet" href="web.css" />
   </head>

@@ -12,6 +12,7 @@ import ge.dakalebi.domain.service.orderedQualityLabels
 import ge.dakalebi.i18n.S
 import ge.dakalebi.ui.Icon as PlayerIcon
 import ge.dakalebi.ui.Icons as PlayerIcons
+import io.github.bchmsl.keel.components.IconButton
 import io.github.bchmsl.keel.dom.classNames
 import io.github.bchmsl.keel.icons.Icon
 import io.github.bchmsl.keel.icons.LucideIcon
@@ -486,7 +487,7 @@ fun CustomVideoPlayer(
         }
 
         if (buffering) {
-            Div({ classes("spinner") }) { Div() }
+            Div({ classes("loading-ring") }) { Div() }
         }
 
         overlay()
@@ -550,28 +551,20 @@ fun CustomVideoPlayer(
             }
 
             Div({ classes("ctl-row") }) {
-                Button({
-                    classes("icon-btn")
-                    attr("aria-label", if (playing) S.pause else S.play)
-                    onClick { togglePlay() }
-                }) { Icon(if (playing) LucideIcon.Pause else LucideIcon.Play, size = ICON_PLAYER_CTL) }
+                IconButton(
+                    ariaLabel = if (playing) S.pause else S.play,
+                    onClick = { togglePlay() },
+                ) { Icon(if (playing) LucideIcon.Pause else LucideIcon.Play, size = ICON_PLAYER_CTL) }
 
-                Button({
-                    classes("icon-btn")
-                    attr("aria-label", S.back10)
-                    onClick { seekBy(-10.0) }
-                }) { PlayerIcon(PlayerIcons.back10) }
+                IconButton(ariaLabel = S.back10, onClick = { seekBy(-10.0) }) { PlayerIcon(PlayerIcons.back10) }
 
                 Div({ classes("vol-wrap") }) {
-                    Button({
-                        classes("icon-btn")
-                        attr("aria-label", if (muted) S.unmute else S.mute)
-                        onClick {
-                            val v = refs.video ?: return@onClick
-                            v.muted = !v.muted
-                            muted = v.muted
-                        }
-                    }) {
+                    IconButton(
+                        ariaLabel = if (muted) S.unmute else S.mute,
+                        onClick = {
+                            refs.video?.let { v -> v.muted = !v.muted; muted = v.muted }
+                        },
+                    ) {
                         Icon(
                             if (muted || volume == 0.0) LucideIcon.VolumeX else LucideIcon.Volume2,
                             size = ICON_PLAYER_CTL,
@@ -605,18 +598,14 @@ fun CustomVideoPlayer(
 
                 if (castSupported || castAvailable) {
                     Button({
-                        classes("icon-btn")
+                        classNames("btn", "btn--ghost", "btn--size-icon")
                         attr("aria-label", "Cast")
                         if (casting) style { property("color", "var(--red)") }
                         onClick { startCast() }
                     }) { Icon(LucideIcon.Cast, size = ICON_PLAYER_CTL) }
                 }
 
-                Button({
-                    classes("icon-btn")
-                    attr("aria-label", S.fullscreen)
-                    onClick { toggleFullscreen() }
-                }) {
+                IconButton(ariaLabel = S.fullscreen, onClick = { toggleFullscreen() }) {
                     Icon(
                         if (fullscreen) LucideIcon.Minimize else LucideIcon.Maximize,
                         size = ICON_PLAYER_CTL,

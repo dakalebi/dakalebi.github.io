@@ -1,0 +1,36 @@
+/* ============================================================================
+   Dakalebi's own colours for keel's component tokens.
+
+   Not one of keel/palettes.css's switchable palettes - this app has exactly
+   one, permanent, and there is no `data-theme` attribute or `ThemeController`
+   anywhere in this codebase to select one. So this sets the bare `:root`
+   variables keel/components.css and keel/base.css actually read, converted
+   straight from the hex values already in tokens.css (`--bg`, `--tx`, `--red`,
+   `--mut`, `--elev`, `--elev2`, `--line-strong`).
+
+   Link this AFTER keel/tokens.css (so these values are the ones that win) and
+   BEFORE keel/base.css and keel/components.css (order does not matter there -
+   see the note in keel/base.css - but this keeps the whole chain read top to
+   bottom in the order the cascade actually applies it).
+   ========================================================================== */
+
+:root {
+  --background: 0 0% 0%;
+  --foreground: 0 0% 100%;
+  --card: 240 7% 5%;
+  --primary: 2 75% 53%;
+  --secondary: 240 7% 8%;
+  --muted: 240 7% 5%;
+  --muted-foreground: 240 4% 56%;
+  --accent: 240 7% 8%;
+  --border: 240 7% 18%;
+
+  /* This app's buttons are capsules and its icon buttons are circles - not
+     keel's default rounded-rect. `--radius-md` is the one token `.btn` and
+     `.btn--size-icon` both read, so overriding just that (rather than the
+     base `--radius`, which would also flatten the dialog and the switch)
+     keeps every other keel surface at its own shape. */
+  --radius-md: var(--radius-pill);
+
+  color-scheme: dark;
+}

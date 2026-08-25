@@ -99,38 +99,61 @@ private fun SettingsSection() {
         Div({ classes("settings-list") }) {
             // Autoplay follows the account, not the device: it describes how
             // someone watches, not which screen they are holding.
-            Button({
-                classes("toggle-row")
-                onClick {
+            ToggleRow(
+                title = S.autoplayTitle.caps,
+                body = S.autoplayBody,
+                checked = settings.autoplayNext,
+                onToggle = {
                     settings.setAutoplayNext(scope, !settings.autoplayNext) {
                         toasts.error(S.settingNotSynced)
                     }
-                }
-            }) {
-                Div({ classes("lab") }) {
-                    Div { Text(S.autoplayTitle.caps) }
-                    Span { Text(S.autoplayBody) }
-                }
-                Div({ classNames("switch", if (settings.autoplayNext) "on" else null) }) { Div() }
-            }
+                },
+            )
 
             // Offered only where there are two players to choose between.
             // Everywhere else the custom one is the only one there is, so the
             // switch would be a control that does nothing.
             if (isAppleMobile) {
-                Button({
-                    classes("toggle-row")
-                    onClick { prefs.setUseNativePlayer(!prefs.useNativePlayer) }
-                }) {
-                    Div({ classes("lab") }) {
-                        Div { Text(S.nativePlayerTitle.caps) }
-                        Span { Text(S.nativePlayerBody) }
-                    }
-                    Div({ classNames("switch", if (prefs.useNativePlayer) "on" else null) }) { Div() }
-                }
+                ToggleRow(
+                    title = S.nativePlayerTitle.caps,
+                    body = S.nativePlayerBody,
+                    checked = prefs.useNativePlayer,
+                    onToggle = { prefs.setUseNativePlayer(!prefs.useNativePlayer) },
+                )
             }
 
             LanguagePicker()
+        }
+    }
+}
+
+/**
+ * A setting whose row toggles a [io.github.bchmsl.keel.components.Switch]-styled
+ * control.
+ *
+ * Not keel's actual `Switch` composable: that renders its own `<button
+ * role="switch">`, and nesting one inside the row's own button - kept for its
+ * bigger, easier tap target - would be a button inside a button. So the real
+ * `role="switch"`/`aria-checked` pair lives on the row, which is what is
+ * actually operable, and the same `aria-checked` is duplicated onto the inner
+ * span purely so keel's `.switch[aria-checked='true']` rule paints it - that
+ * copy carries no semantics of its own, since assistive technology only reads
+ * `aria-checked` off an element that itself has a widget role.
+ */
+@Composable
+private fun ToggleRow(title: String, body: String, checked: Boolean, onToggle: () -> Unit) {
+    Button({
+        classes("toggle-row")
+        attr("role", "switch")
+        attr("aria-checked", checked.toString())
+        onClick { onToggle() }
+    }) {
+        Div({ classes("lab") }) {
+            Div { Text(title) }
+            Span { Text(body) }
+        }
+        Span({ classNames("switch"); attr("aria-checked", checked.toString()) }) {
+            Span({ classNames("switch__knob") })
         }
     }
 }
