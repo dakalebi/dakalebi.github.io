@@ -1473,25 +1473,12 @@ h3 {
   margin-left: 3px;
 }
 
-/*
- * The wrapper keel's `Icon` composable renders, for the icons drawn through it
- * rather than through `Icon`/`Icons` above. Kept minimal and separate rather than
- * merged into `.ic`: the two wrappers size their SVG differently (this one via
- * the wrapper's own width, `.ic` via a fixed 20x20 on the svg itself with CSS
- * overrides per context), and each icon call site passes whatever size keeps its
- * on-screen appearance exactly what it already was - see the size constants next
- * to each `Icon(LucideIcon...)` call.
- */
-.icon {
-  display: inline-flex;
-  flex: none;
-  line-height: 0;
-}
-.icon > svg {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
+/* `.icon` is keel's own wrapper rule (keel/components.css), and it was restated
+   here byte for byte. That is how a consumer sheet becomes a fork: keel's fallback
+   for an unsized icon - `width: 1em; height: 1em` - lives in a *second* `.icon`
+   rule, so a copy that carries the first half and not the second would drift apart
+   from it at the next edit to either. `.ic` above is a different wrapper with a
+   different sizing model and stays local. */
 
 /* The play triangle's optical-centring nudge, matching what `.player-center .big
    .ic svg` gave the old glyph - a triangle sits visually off-centre in a circle
