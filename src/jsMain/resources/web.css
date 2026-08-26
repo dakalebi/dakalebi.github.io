@@ -339,45 +339,13 @@ h3 {
 }
 
 /* Season picker — a rail of chips rather than a <select>, so the whole run of
-   18 seasons is scannable and thumb-scrollable on a phone. */
+   18 seasons is scannable and thumb-scrollable on a phone. That rail is keel's
+   `.segmented--rail`, including the chips, the selected fill, the finished-season
+   check and the hidden scrollbar. What is left is where the rail sits on the page:
+   the gutter, which the component cannot know, and the 2px below it so a chip's
+   focus ring is not clipped by the scroll box. */
 .chips {
-  display: flex;
-  gap: 6px;
-  overflow-x: auto;
   padding: 0 var(--pad) 2px;
-  scrollbar-width: none;
-}
-.chips::-webkit-scrollbar {
-  display: none;
-}
-.chip {
-  flex: none;
-  padding: 9px 17px;
-  font-size: 13.5px;
-  font-weight: 600;
-  color: var(--tx-dim);
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid transparent;
-  border-radius: var(--radius-pill);
-  white-space: nowrap;
-  transition: background 0.2s var(--ease), color 0.2s var(--ease);
-}
-.chip:hover {
-  color: var(--tx);
-  background: rgba(255, 255, 255, 0.12);
-}
-.chip.sel {
-  color: #000;
-  background: #fff;
-  border-color: #fff;
-}
-.chip .done {
-  color: var(--ok);
-  margin-left: 5px;
-  font-size: 10px;
-}
-.chip.sel .done {
-  color: #12794f;
 }
 
 /* ----------------------------------------------------------------- tiles */

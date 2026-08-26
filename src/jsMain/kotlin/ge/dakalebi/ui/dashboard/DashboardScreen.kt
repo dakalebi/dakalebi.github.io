@@ -28,6 +28,9 @@ import ge.dakalebi.ui.assetBase
 import io.github.bchmsl.keel.components.IconButton
 import io.github.bchmsl.keel.components.ProgressBar
 import io.github.bchmsl.keel.components.ProgressBarSize
+import io.github.bchmsl.keel.components.Segment
+import io.github.bchmsl.keel.components.SegmentedControl
+import io.github.bchmsl.keel.components.SegmentedStyle
 import io.github.bchmsl.keel.dom.classNames
 import io.github.bchmsl.keel.icons.Icon
 import io.github.bchmsl.keel.icons.LucideIcon
@@ -117,21 +120,29 @@ fun DashboardScreen() {
                             H2 { Text(S.seasons.caps) }
                             Span({ classes("count") }) { Text("${catalog.seasons.size}") }
                         }
-                        Div({ classes("chips") }) {
-                            catalog.seasons.forEach { number ->
+                        // A radio group now, not a row of buttons. That is the part
+                        // worth noticing: eighteen buttons were eighteen tab stops
+                        // with no arrow-key movement between them, and nothing said
+                        // which of how many was chosen. Native radios sharing a name
+                        // give all of that away for free.
+                        SegmentedControl(
+                            segments = catalog.seasons.map { number ->
                                 val all = catalog.season(number)
-                                val done = all.count { catalog.progress[it.id]?.isWatched == true }
-                                Button({
-                                    classNames("chip", if (number == season) "sel" else null)
-                                    onClick { seasonOverride = number }
-                                }) {
-                                    Text(S.season(number).caps)
-                                    if (all.isNotEmpty() && done == all.size) {
-                                        Span({ classes("done") }) { Text("✓") }
-                                    }
-                                }
-                            }
-                        }
+                                Segment(
+                                    value = number,
+                                    label = S.season(number).caps,
+                                    complete = all.isNotEmpty() &&
+                                        all.all { catalog.progress[it.id]?.isWatched == true },
+                                )
+                            },
+                            selected = season,
+                            onSelect = { seasonOverride = it },
+                            ariaLabel = S.seasons,
+                            style = SegmentedStyle.Rail,
+                            // Only the page gutter is left: the rail's own scrolling,
+                            // gap and hidden scrollbar are keel's.
+                            attrs = { classes("chips") },
+                        )
                     }
 
                     Div {
