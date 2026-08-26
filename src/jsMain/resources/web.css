@@ -641,48 +641,11 @@ h3 {
   pointer-events: none;
 }
 
-.scrub {
-  position: relative;
-  height: 16px;
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-}
-.scrub-track {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: rgba(255, 255, 255, 0.24);
-}
-.scrub-buf {
-  position: absolute;
-  inset: 0 auto 0 0;
-  background: rgba(255, 255, 255, 0.4);
-}
-.scrub-cur {
-  position: absolute;
-  inset: 0 auto 0 0;
-  background: var(--red);
-}
-.scrub-knob {
-  position: absolute;
-  top: 50%;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: var(--red);
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-}
-.scrub input {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  opacity: 0;
-  cursor: pointer;
-  margin: 0;
-}
+/* The scrub bar is keel's `.scrub`, and nothing of it is left here. Unlike every
+   other adoption in this file there is no layout half to keep: the whole rule was
+   the component - hit area, rail, buffered layer, position, knob and the invisible
+   range input on top. `.scrub` is also a name keel now owns, so leaving even a
+   trimmed copy behind would be a same-name rule loading after the design system. */
 
 .ctl-row {
   display: flex;
