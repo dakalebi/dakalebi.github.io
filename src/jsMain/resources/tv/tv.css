@@ -78,6 +78,18 @@ html {
   --safe-x: 3rem;   /* 48px at the reference canvas */
   --safe-y: 1.75rem;
 
+  /* keel's toast strip measures its edge inset from the viewport, which on a
+     television is the wrong edge: `--toast-inset`'s 1rem would put a notice inside
+     the band the panel crops. The overscan margin is the only honest value for it
+     here, and setting the token is all it takes - the strip itself is keel's. */
+  --toast-inset: var(--safe-y);
+
+  /* And its text is this sheet's smallest-but-one step rather than keel's 0.8125rem,
+     which at the reference canvas is 13px - below `--t-label`, the smallest size
+     anything on this surface is allowed to be. A notice nobody can read from a sofa
+     is not a notice. */
+  --toast-font-size: var(--t-meta);
+
   /* Type scale, in sixteenths of the reference body size:
      14 / 16 / 20 / 28 / 40px at 960x540.
      YouTube's smallest text anywhere is 14px on a 1280 canvas, about 10.5px at this
@@ -926,27 +938,10 @@ body {
 
 /* ------------------------------------------------------------------ toasts
    The host is reused from the web UI unchanged; only the placement is new. */
-.toasts {
-  position: fixed;
-  left: 50%;
-  bottom: var(--safe-y);
-  transform: translateX(-50%);
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  z-index: 40;
-}
-
-.toast {
-  padding: 0.6em 1.4em;
-  border-radius: var(--radius-pill);
-  background: var(--elev2);
-  border: 1px solid var(--line-strong);
-  font-size: var(--t-meta);
-}
-
-.toast.err { border-color: var(--red); }
-.toast.ok { border-color: var(--ok); }
+/* The toast strip is keel's, and both shells render the same Kotlin for it. What is
+   TV's here is one token, set in the `:root` block above: the strip's edge inset is
+   the overscan margin rather than keel's 1rem, because on a television 1rem of the
+   scaled root is inside the part the panel crops. */
 
 /* The masthead's heading names an episode, it is not the page title. `balance` because
    it would otherwise break mid-label and orphan the episode number on a line of its

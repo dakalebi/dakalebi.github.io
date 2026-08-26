@@ -1154,34 +1154,9 @@ h3 {
 
 /* ---------------------------------------------------------------- toasts */
 
-.toasts {
-  position: fixed;
-  top: 16px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 90;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  width: min(400px, calc(100vw - 24px));
-  pointer-events: none;
-}
-.toast {
-  background: rgba(22, 22, 26, 0.94);
-  backdrop-filter: blur(18px);
-  border: 1px solid var(--line-strong);
-  border-left: 3px solid var(--tx);
-  border-radius: var(--radius);
-  padding: 12px 16px;
-  font-size: 13.5px;
-  animation: rise 0.22s ease both;
-}
-.toast.ok {
-  border-left-color: var(--ok);
-}
-.toast.err {
-  border-left-color: var(--red);
-}
+/* The strip and the notices are keel's `.toast-host` and `.toast`, both of which are
+   names keel owns - so this file defines neither. The tone lives on the left edge
+   there too, which is where this app had already put it. */
 
 /* ------------------------------------------------------------- skeletons */
 
