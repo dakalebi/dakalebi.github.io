@@ -978,16 +978,6 @@ h3 {
 .auth-field {
   display: contents;
 }
-/* The two fields on this form are keel's `.input` (keel/components.css) now,
-   at its default 14px. iOS Safari zooms the viewport whenever a focused field
-   is under 16px, and never zooms back out - you finish signing in on a page
-   scrolled sideways. Raising it only on touch pointers keeps the desktop form
-   at keel's own size. */
-@media (pointer: coarse) {
-  .input {
-    font-size: 16px;
-  }
-}
 
 /* ----------------------------------------------------------------- panel */
 
