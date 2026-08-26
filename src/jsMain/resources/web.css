@@ -670,34 +670,15 @@ h3 {
   background: rgba(255, 255, 255, 0.3);
 }
 
-.q-menu {
-  position: absolute;
-  right: 14px;
-  bottom: 64px;
-  border-radius: var(--radius);
-  z-index: 8;
-  background: rgba(10, 10, 12, 0.96);
-  border: 1px solid var(--line-strong);
-  min-width: 118px;
-  padding: 4px;
-}
-.q-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 9px 12px;
-  font-size: 13px;
-  border-radius: var(--radius-sm);
-  text-align: left;
-}
-.q-item:hover {
-  background: rgba(255, 255, 255, 0.1);
-}
-.q-item.sel {
-  color: var(--red);
-  font-weight: 650;
-}
+/* The quality menu is keel's `DropdownMenu`: `.dropdown`, `.dropdown--above`,
+   `.dropdown__item` and the selected item's check, none of them restated here. The
+   `right`/`bottom`/`z-index` trio went with them - the menu used to be positioned
+   against `.player` with its `bottom` hand-measured against the control bar's height,
+   and it now hangs off the trigger inside `.dropdown-anchor` instead.
+
+   `.q-btn` above stays local. It is an on-media button - a translucent white fill over
+   picture - and keel has no such treatment yet, so `.btn` would be the wrong box
+   rather than an unstyled one. That is a real gap in keel and not a decision. */
 
 /* Always-visible position line — stays when the control bar fades out, in
    windowed and fullscreen alike. */

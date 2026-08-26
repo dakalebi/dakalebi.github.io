@@ -12,6 +12,9 @@ import ge.dakalebi.domain.service.orderedQualityLabels
 import ge.dakalebi.i18n.S
 import ge.dakalebi.ui.Icon as PlayerIcon
 import ge.dakalebi.ui.Icons as PlayerIcons
+import io.github.bchmsl.keel.components.DropdownMenu
+import io.github.bchmsl.keel.components.DropdownMenuItem
+import io.github.bchmsl.keel.components.DropdownSide
 import io.github.bchmsl.keel.components.IconButton
 import io.github.bchmsl.keel.components.ProgressBar
 import io.github.bchmsl.keel.components.ProgressHandle
@@ -20,6 +23,7 @@ import io.github.bchmsl.keel.components.ScrubHandle
 import io.github.bchmsl.keel.components.Spinner
 import io.github.bchmsl.keel.components.SpinnerSize
 import io.github.bchmsl.keel.dom.classNames
+import io.github.bchmsl.keel.dom.dropdownAnchorClasses
 import io.github.bchmsl.keel.icons.Icon
 import io.github.bchmsl.keel.icons.LucideIcon
 import kotlin.math.floor
@@ -504,26 +508,6 @@ fun CustomVideoPlayer(
             Div({ classes("feedback") }) { Text(it) }
         }
 
-        if (qualityOpen && ordered.size > 1) {
-            Div({ classes("q-menu") }) {
-                ordered.forEach { label ->
-                    Button({
-                        classNames("q-item", if (label == quality) "sel" else null)
-                        onClick {
-                            qualityOpen = false
-                            val v = refs.video
-                            refs.pendingSeek = v?.currentTime
-                            refs.pendingPlay = v?.paused == false
-                            onQualitySelected(label)
-                        }
-                    }) {
-                        Text(label)
-                        if (label == quality) Span({ classes("grow") }) { Text(" ✓") }
-                    }
-                }
-            }
-        }
-
         Div({ classNames("ctl", if (controlsHidden) "hide" else null) }) {
             // The track, the buffered layer, the played fill, the knob, the invisible
             // range input and all three pointer listeners are keel's. What is left
@@ -579,11 +563,59 @@ fun CustomVideoPlayer(
                 Div({ classes("grow") })
 
                 if (ordered.size > 1) {
-                    Button({
-                        classes("q-btn", "mono")
-                        attr("aria-label", S.quality)
-                        onClick { qualityOpen = !qualityOpen }
-                    }) { Text(quality ?: ordered.first()) }
+                    // The trigger and the menu now share one positioned wrapper,
+                    // which is what keel's dropdown resolves against. Before, the menu
+                    // was a sibling of `.ctl` pinned to `.player` by a hand-measured
+                    // `right: 14px; bottom: 64px` - the 64 being this control bar's
+                    // height, so anything that changed the bar moved the menu off it.
+                    //
+                    // Nesting it inside `.ctl`, which fades out on the idle timer, is
+                    // safe only because that timer already refuses to fire while
+                    // `qualityOpen`: both paths that hide the bar test it. Without
+                    // those guards an open menu would fade out with the bar under it.
+                    Div({ classNames(dropdownAnchorClasses()) }) {
+                        Button({
+                            classes("q-btn", "mono")
+                            attr("aria-label", S.quality)
+                            // A disclosure, which is what this is: keel's menu is a
+                            // labelled *group* of buttons and says so, so
+                            // `aria-haspopup="menu"` would promise a role it does not
+                            // claim. `aria-expanded` alone is the honest half, and the
+                            // hand-built version announced neither.
+                            attr("aria-expanded", qualityOpen.toString())
+                            onClick { qualityOpen = !qualityOpen }
+                        }) { Text(quality ?: ordered.first()) }
+
+                        if (qualityOpen) {
+                            DropdownMenu(
+                                onDismiss = { qualityOpen = false },
+                                ariaLabel = S.quality,
+                                // The bar is pinned to the foot of the video, so a menu
+                                // hung downward opens off the bottom of the screen.
+                                side = DropdownSide.Above,
+                            ) {
+                                ordered.forEach { label ->
+                                    DropdownMenuItem(
+                                        label = label,
+                                        // The check and `aria-current` are keel's now.
+                                        // The old markup marked the current rendition
+                                        // with a "✓" in a `.grow` span and a red `.sel`
+                                        // class, and announced nothing at all - so
+                                        // which quality was playing was answerable only
+                                        // by looking.
+                                        selected = label == quality,
+                                        onClick = {
+                                            qualityOpen = false
+                                            val v = refs.video
+                                            refs.pendingSeek = v?.currentTime
+                                            refs.pendingPlay = v?.paused == false
+                                            onQualitySelected(label)
+                                        },
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
 
                 if (castSupported || castAvailable) {
