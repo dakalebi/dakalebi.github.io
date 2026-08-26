@@ -17,6 +17,8 @@ import io.github.bchmsl.keel.components.Drawer
 import io.github.bchmsl.keel.components.DrawerEdge
 import io.github.bchmsl.keel.components.ProgressBar
 import io.github.bchmsl.keel.components.ProgressBarSize
+import io.github.bchmsl.keel.components.Segment
+import io.github.bchmsl.keel.components.SegmentedControl
 import io.github.bchmsl.keel.dom.classNames
 import org.jetbrains.compose.web.attributes.ATarget
 import org.jetbrains.compose.web.attributes.target
@@ -188,25 +190,26 @@ private fun LanguagePicker() {
 
     Div({ classes("setting-row") }) {
         Div({ classes("lab") }) { Div { Text(S.language.caps) } }
-        Div({ classes("seg") }) {
-            I18n.available.forEach { language ->
-                val selected = language.tag == active
-                Button({
-                    classNames("seg-item", if (selected) "on" else null)
-                    attr("aria-pressed", selected.toString())
-                    attr("lang", language.tag)
-                    onClick {
-                        if (!selected) {
-                            settings.setLanguage(scope, language.tag) {
-                                toasts.error(S.settingNotSynced)
-                            }
-                        }
-                    }
-                }) {
-                    Text(language.caps(language.endonym))
-                }
-            }
-        }
+        SegmentedControl(
+            segments = I18n.available.map { language ->
+                Segment(
+                    value = language.tag,
+                    label = language.caps(language.endonym),
+                    // Each option is written in its own language, so each carries its
+                    // own `lang`. Without it a screen reader says "English" in the
+                    // page's Georgian voice.
+                    attrs = { attr("lang", language.tag) },
+                )
+            },
+            selected = active,
+            // No "is it already selected" guard any more, and none is needed: these
+            // are real radios, and clicking the checked one fires no change event.
+            onSelect = { tag ->
+                settings.setLanguage(scope, tag) { toasts.error(S.settingNotSynced) }
+            },
+            ariaLabel = S.language,
+            attrs = { classes("seg") },
+        )
     }
 }
 
