@@ -25,6 +25,9 @@ import ge.dakalebi.ui.EpisodeTile
 import ge.dakalebi.ui.Rail
 import ge.dakalebi.ui.Thumb
 import ge.dakalebi.ui.assetBase
+import io.github.bchmsl.keel.components.DropdownItemTone
+import io.github.bchmsl.keel.components.DropdownMenu
+import io.github.bchmsl.keel.components.DropdownMenuItem
 import io.github.bchmsl.keel.components.IconButton
 import io.github.bchmsl.keel.components.ProgressBar
 import io.github.bchmsl.keel.components.ProgressBarSize
@@ -32,6 +35,7 @@ import io.github.bchmsl.keel.components.Segment
 import io.github.bchmsl.keel.components.SegmentedControl
 import io.github.bchmsl.keel.components.SegmentedStyle
 import io.github.bchmsl.keel.dom.classNames
+import io.github.bchmsl.keel.dom.dropdownAnchorClasses
 import io.github.bchmsl.keel.icons.Icon
 import io.github.bchmsl.keel.icons.LucideIcon
 import kotlin.math.roundToInt
@@ -338,7 +342,10 @@ private fun Hero(episode: Episode) {
 @Composable
 private fun SeasonMenu(disabled: Boolean, onMark: () -> Unit, onReset: () -> Unit) {
     var open by remember { mutableStateOf(false) }
-    Div({ classes("rel") }) {
+    // The wrapper exists only to be what the menu positions against, which is what
+    // keel's anchor class says out loud - the old `.rel` was a `position: relative`
+    // with no name for why.
+    Div({ classNames(dropdownAnchorClasses()) }) {
         IconButton(
             ariaLabel = S.seasonActions,
             onClick = { open = !open },
@@ -346,14 +353,19 @@ private fun SeasonMenu(disabled: Boolean, onMark: () -> Unit, onReset: () -> Uni
         ) { Icon(LucideIcon.EllipsisVertical, size = ICON_NAV) }
 
         if (open) {
-            Div({ classes("popover-catch"); onClick { open = false } })
-            Div({ classes("menu") }) {
-                Button({ classes("menu-item"); onClick { open = false; onMark() } }) {
-                    Text(S.markSeasonWatched.caps)
-                }
-                Button({ classes("menu-item", "danger"); onClick { open = false; onReset() } }) {
-                    Text(S.resetSeasonProgress.caps)
-                }
+            // Escape closes it now; before, only a click outside did. The
+            // click-catcher and its z-index one below the menu are keel's too - this
+            // screen had already had to work out that a scrim could not be one.
+            DropdownMenu(onDismiss = { open = false }, ariaLabel = S.seasonActions) {
+                DropdownMenuItem(
+                    label = S.markSeasonWatched.caps,
+                    onClick = { open = false; onMark() },
+                )
+                DropdownMenuItem(
+                    label = S.resetSeasonProgress.caps,
+                    onClick = { open = false; onReset() },
+                    tone = DropdownItemTone.Danger,
+                )
             }
         }
     }

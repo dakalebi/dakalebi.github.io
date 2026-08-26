@@ -995,27 +995,10 @@ h3 {
    The dim behind the drawer, the dialogs' own overlay and the alpha they share are
    all in keel/components.css. */
 
-/*
- * Click-catcher for dropdowns. Deliberately not `.scrim`.
- *
- * `.scrim` is for modal surfaces - the drawer and the dialogs - so it dims and
- * blurs the page and sits above them at z-index 60. A dropdown needs the
- * opposite of both: catch the click outside, change nothing visually, and stay
- * *below* the menu it belongs to.
- *
- * The season menu reused `.scrim` and cancelled it with an inline
- * `background: transparent`. That cleared the dim but not `backdrop-filter`, so
- * the entire page blurred; and at z-index 60 against `.menu`'s 50 it covered
- * the very menu it had been opened for, so neither item could be clicked.
- */
-.popover-catch {
-  position: fixed;
-  inset: 0;
-  /* Above the sticky nav (40), below .menu (50). */
-  z-index: 49;
-  background: none;
-  backdrop-filter: none;
-}
+/* The click-catcher this file used to define is keel's, and so is the reasoning that
+   went with it: a dropdown's catcher must change nothing visually and sit one layer
+   *below* its own menu, which is why it cannot be a scrim. keel keeps it at
+   `--z-dropdown-catch`, one below `--z-dropdown`. */
 
 /* `.sheet` is gone entirely: it is keel's `.drawer.drawer--left`, down to the slide,
    which keel keeps as `keel-slide-in-from-left`. The three classes below are the
@@ -1164,37 +1147,10 @@ h3 {
   margin-top: 6px;
 }
 
-.menu {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 6px);
-  z-index: 50;
-  min-width: 220px;
-  background: var(--elev);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius);
-  padding: 5px;
-}
-.menu-item {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  width: 100%;
-  padding: 10px 12px;
-  font-size: 13.5px;
-  text-align: left;
-  border-radius: var(--radius-sm);
-}
-.menu-item:hover {
-  background: var(--elev2);
-}
-.menu-item.danger {
-  color: #ff8a85;
-}
-
-.rel {
-  position: relative;
-}
+/* The season menu is keel's `DropdownMenu`: `.dropdown`, `.dropdown__item` and the
+   danger tone, none of which is restated here. `.rel` went with it - it was a bare
+   `position: relative` and the menu now says what that element is for by wearing
+   `.dropdown-anchor`. */
 
 /* ---------------------------------------------------------------- toasts */
 
