@@ -17,15 +17,13 @@ import ge.dakalebi.presentation.Route
 import ge.dakalebi.presentation.Router
 import io.github.bchmsl.keel.components.Button as KeelButton
 import io.github.bchmsl.keel.components.ButtonVariant
+import io.github.bchmsl.keel.components.LinkButton
 import io.github.bchmsl.keel.components.Dialog as KeelDialog
 import io.github.bchmsl.keel.components.ProgressBar
-import io.github.bchmsl.keel.dom.classNames
 import io.github.bchmsl.keel.icons.Icon
 import io.github.bchmsl.keel.icons.LucideIcon
 import kotlinx.browser.document
 import kotlinx.browser.window
-import org.jetbrains.compose.web.attributes.ATarget
-import org.jetbrains.compose.web.attributes.target
 import org.jetbrains.compose.web.dom.A
 import org.jetbrains.compose.web.dom.Button
 import org.jetbrains.compose.web.dom.Div
@@ -261,14 +259,17 @@ fun ConfirmDialog(
 
 @Composable
 fun ExternalLink(href: String, label: String) {
-    // `ButtonVariant`/`ButtonSize`'s own `className` is internal to keel, so an
-    // `<a>` styled as a button - which keel has no composable for - names the
-    // literal class directly. Matches `ButtonVariant.Outline`/`ButtonSize.Default`.
-    A(href = href, attrs = {
-        classNames("btn", "btn--outline", "btn--size-default")
-        target(ATarget.Blank)
-        attr("rel", "noreferrer")
-    }) { Text(label) }
+    // keel's `LinkButton`, which is a real `<a href>` rather than a button that
+    // navigates - so it can be opened in a new tab, copied and middle-clicked. This
+    // used to spell keel's three class names literally, with a note that keel had no
+    // composable for the case; it has one now, and `external` sets the
+    // `target`/`rel` pair this was setting by hand.
+    LinkButton(
+        href = href,
+        label = label,
+        variant = ButtonVariant.Outline,
+        external = true,
+    )
 }
 
 /**

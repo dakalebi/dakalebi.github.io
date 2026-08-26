@@ -1,6 +1,10 @@
 package ge.dakalebi.ui.watch
 
 import androidx.compose.runtime.Composable
+import io.github.bchmsl.keel.components.Button
+import io.github.bchmsl.keel.components.ButtonSize
+import io.github.bchmsl.keel.components.ButtonVariant
+import io.github.bchmsl.keel.components.LinkButton
 import ge.dakalebi.domain.model.Episode
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
@@ -11,11 +15,9 @@ import io.github.bchmsl.keel.components.ProgressBar
 import io.github.bchmsl.keel.components.ProgressBarSize
 import io.github.bchmsl.keel.components.Surface
 import io.github.bchmsl.keel.components.SurfacePadding
-import io.github.bchmsl.keel.dom.classNames
 import io.github.bchmsl.keel.icons.Icon
 import io.github.bchmsl.keel.icons.LucideIcon
 import org.jetbrains.compose.web.dom.A
-import org.jetbrains.compose.web.dom.Button
 import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.Span
 import org.jetbrains.compose.web.dom.Text
@@ -23,11 +25,13 @@ import org.jetbrains.compose.web.dom.Text
 @Composable
 fun WatchNav(episode: Episode?) {
     Div({ classes("nav", "nav-solid") }) {
-        A(href = Router.href(Route.Dashboard), attrs = { classNames("btn", "btn--link", "btn--size-default") }) {
+        LinkButton(
+            href = Router.href(Route.Dashboard),
+            label = S.back.caps,
+            variant = ButtonVariant.Link,
             // Matches `.btn .ic svg` in web.css.
-            Icon(LucideIcon.ChevronLeft, size = 16)
-            Text(S.back.caps)
-        }
+            leading = { Icon(LucideIcon.ChevronLeft, size = 16) },
+        )
         episode?.let {
             Span({ classes("eyebrow-mut") }) {
                 Text(S.seasonAndEpisode(it.seasonNumber, it.episodeNumber).caps)
@@ -66,10 +70,17 @@ fun NextEpisodeCard(
                 )
             }
             Div({ classes("nextcard-row") }) {
-                Button({ classNames("btn", "btn--default", "btn--size-sm"); onClick { onPlayNext() } }) {
-                    Text(S.watch.caps)
-                }
-                Button({ classNames("btn", "btn--link", "btn--size-sm"); onClick { onDismiss() } }) { Text(S.dismiss.caps) }
+                Button(
+                    label = S.watch.caps,
+                    onClick = { onPlayNext() },
+                    size = ButtonSize.Small,
+                )
+                Button(
+                    label = S.dismiss.caps,
+                    onClick = { onDismiss() },
+                    variant = ButtonVariant.Link,
+                    size = ButtonSize.Small,
+                )
             }
         }
     }

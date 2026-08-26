@@ -29,6 +29,11 @@ import ge.dakalebi.ui.player.CustomVideoPlayer
 import ge.dakalebi.ui.player.NativeVideoPlayer
 import ge.dakalebi.ui.player.PlayerEvents
 import ge.dakalebi.ui.player.isAppleMobile
+import io.github.bchmsl.keel.components.Callout
+import io.github.bchmsl.keel.components.CalloutBody
+import io.github.bchmsl.keel.components.CalloutTone
+import io.github.bchmsl.keel.dom.buttonClasses
+import io.github.bchmsl.keel.components.ButtonVariant
 import io.github.bchmsl.keel.dom.classNames
 import kotlinx.browser.document
 import kotlinx.browser.window
@@ -427,18 +432,23 @@ fun WatchScreen(episodeId: String) {
             }
 
             if (error != null) {
-                Div({ classes("notice") }) { Text(error!!) }
+                // `announce`, because this arrives in response to something the viewer
+                // did - a stream that would not start - rather than sitting on the page
+                // from the beginning. A screen reader says it when it appears.
+                Callout(tone = CalloutTone.Destructive, announce = true) { Text(error!!) }
             }
 
             if (ended && nextEpisode != null) {
-                Div({ classes("ended") }) {
-                    Div({ classes("grow") }) {
+                // Not `announce`: this one is reached by playing to the end, and the
+                // viewer is looking at the screen when it happens.
+                Callout(tone = CalloutTone.Primary) {
+                    CalloutBody {
                         Div({ style { property("font-weight", "650") } }) { Text(S.episodeFinished.caps) }
                         Div({ classes("nextcard-s") }) {
                             Text(S.nextUp(nextEpisode.seasonNumber, nextEpisode.episodeNumber).caps)
                         }
                     }
-                    Button({ classNames("btn", "btn--default", "btn--size-default"); onClick { goToNext() } }) {
+                    Button({ classNames(buttonClasses()); onClick { goToNext() } }) {
                         Text(S.nextEpisodeAction.caps)
                     }
                 }
@@ -446,7 +456,7 @@ fun WatchScreen(episodeId: String) {
 
             Div({ classes("watch-acts") }) {
                 Button({
-                    classNames("btn", "btn--outline", "btn--size-default")
+                    classNames(buttonClasses(ButtonVariant.Outline))
                     onClick {
                         val video = refs.video
                         if (video != null) {
@@ -461,19 +471,19 @@ fun WatchScreen(episodeId: String) {
 
                 if (watched) {
                     Button({
-                        classNames("btn", "btn--outline", "btn--size-default")
+                        classNames(buttonClasses(ButtonVariant.Outline))
                         style { property("color", "var(--ok)"); property("border-color", "rgba(62,207,142,.45)") }
                         onClick { confirmReset = true }
                     }) { Text(S.watchedTick.caps) }
                 } else {
                     Button({
-                        classNames("btn", "btn--outline", "btn--size-default")
+                        classNames(buttonClasses(ButtonVariant.Outline))
                         onClick { persist(isWatched = true); toasts.ok(S.episodeMarkedWatched) }
                     }) { Text(S.markAsWatched.caps) }
                 }
 
                 if (nextEpisode != null) {
-                    Button({ classNames("btn", "btn--default", "btn--size-default"); onClick { goToNext() } }) {
+                    Button({ classNames(buttonClasses()); onClick { goToNext() } }) {
                         Text(S.nextEpisodeAction.caps)
                     }
                 }

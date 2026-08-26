@@ -17,6 +17,8 @@ import ge.dakalebi.ui.tv.focus.focusGroup
 import ge.dakalebi.ui.tv.focus.focusItem
 import io.github.bchmsl.keel.components.Surface
 import io.github.bchmsl.keel.components.SurfacePadding
+import io.github.bchmsl.keel.components.ButtonVariant
+import io.github.bchmsl.keel.dom.buttonClasses
 import io.github.bchmsl.keel.dom.classNames
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.web.attributes.AttrsScope
@@ -131,7 +133,7 @@ fun LoginScreen() {
                     }
                 }
                 Button({
-                    classNames("btn", "btn--default", "btn--size-default")
+                    classNames(buttonClasses())
                     style { property("justify-content", "center") }
                     if (busy) disabled()
                     dpadItem("submit")
@@ -149,7 +151,7 @@ fun LoginScreen() {
                 }
             }) {
                 Button({
-                    classNames("btn", "btn--link", "btn--size-default")
+                    classNames(buttonClasses(ButtonVariant.Link))
                     style { property("padding", "0") }
                     dpadItem("mode")
                     onClick { signUpMode = !signUpMode }
@@ -161,7 +163,7 @@ fun LoginScreen() {
 
                 if (!signUpMode) {
                     Button({
-                        classNames("btn", "btn--link", "btn--size-default")
+                        classNames(buttonClasses(ButtonVariant.Link))
                         style { property("padding", "0") }
                         dpadItem("reset")
                         onClick {

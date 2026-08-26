@@ -12,6 +12,8 @@ import ge.dakalebi.domain.service.orderedQualityLabels
 import ge.dakalebi.i18n.S
 import ge.dakalebi.ui.Icon as PlayerIcon
 import ge.dakalebi.ui.Icons as PlayerIcons
+import io.github.bchmsl.keel.components.ButtonSize
+import io.github.bchmsl.keel.components.ButtonVariant
 import io.github.bchmsl.keel.components.DropdownMenu
 import io.github.bchmsl.keel.components.DropdownMenuItem
 import io.github.bchmsl.keel.components.DropdownSide
@@ -22,6 +24,7 @@ import io.github.bchmsl.keel.components.Scrub
 import io.github.bchmsl.keel.components.ScrubHandle
 import io.github.bchmsl.keel.components.Spinner
 import io.github.bchmsl.keel.components.SpinnerSize
+import io.github.bchmsl.keel.dom.buttonClasses
 import io.github.bchmsl.keel.dom.classNames
 import io.github.bchmsl.keel.dom.dropdownAnchorClasses
 import io.github.bchmsl.keel.icons.Icon
@@ -575,7 +578,15 @@ fun CustomVideoPlayer(
                     // those guards an open menu would fade out with the bar under it.
                     Div({ classNames(dropdownAnchorClasses()) }) {
                         Button({
-                            classes("q-btn", "mono")
+                            // On-media, because it sits on the video frame rather than
+                            // on the page. Small rather than the default, so it reads as
+                            // chrome beside the transport buttons instead of competing
+                            // with them.
+                            classNames(
+                                "q-btn",
+                                "mono",
+                                buttonClasses(ButtonVariant.OnMedia, ButtonSize.Small),
+                            )
                             attr("aria-label", S.quality)
                             // A disclosure, which is what this is: keel's menu is a
                             // labelled *group* of buttons and says so, so
@@ -620,7 +631,7 @@ fun CustomVideoPlayer(
 
                 if (castSupported || castAvailable) {
                     Button({
-                        classNames("btn", "btn--ghost", "btn--size-icon")
+                        classNames(buttonClasses(ButtonVariant.Ghost, ButtonSize.Icon))
                         attr("aria-label", "Cast")
                         if (casting) style { property("color", "var(--red)") }
                         onClick { startCast() }

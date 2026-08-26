@@ -35,6 +35,7 @@ import io.github.bchmsl.keel.components.Segment
 import io.github.bchmsl.keel.components.SegmentedControl
 import io.github.bchmsl.keel.components.SegmentedStyle
 import io.github.bchmsl.keel.dom.classNames
+import io.github.bchmsl.keel.components.LinkButton
 import io.github.bchmsl.keel.dom.dropdownAnchorClasses
 import io.github.bchmsl.keel.icons.Icon
 import io.github.bchmsl.keel.icons.LucideIcon
@@ -42,7 +43,6 @@ import kotlin.math.roundToInt
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.web.dom.A
-import org.jetbrains.compose.web.dom.Button
 import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.H1
 import org.jetbrains.compose.web.dom.H2
@@ -325,12 +325,10 @@ private fun Hero(episode: Episode) {
                 )
             }
             Div({ classes("hero-cta") }) {
-                A(
+                LinkButton(
                     href = Router.href(Route.Watch(episode.id)),
-                    attrs = { classNames("btn", "btn--default", "btn--size-default") },
-                ) {
-                    Text("▶  " + (if (resuming) S.resume else S.watch).caps)
-                }
+                    label = "▶  " + (if (resuming) S.resume else S.watch).caps,
+                )
                 if (!episode.hasVideo) {
                     Span({ classes("hero-sub") }) { Text(S.videoUnavailableForEpisode) }
                 }

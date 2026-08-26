@@ -19,6 +19,9 @@ import io.github.bchmsl.keel.components.ProgressBar
 import io.github.bchmsl.keel.components.ProgressBarSize
 import io.github.bchmsl.keel.components.Segment
 import io.github.bchmsl.keel.components.SegmentedControl
+import io.github.bchmsl.keel.components.Surface
+import io.github.bchmsl.keel.components.SurfacePadding
+import io.github.bchmsl.keel.components.SurfaceRadius
 import io.github.bchmsl.keel.dom.classNames
 import org.jetbrains.compose.web.attributes.ATarget
 import org.jetbrains.compose.web.attributes.target
@@ -247,7 +250,13 @@ private fun BuildStamp() {
 
 @Composable
 private fun Stat(value: String, label: String) {
-    Div({ classes("stat") }) {
+    // A tile rather than a panel, which is what `SurfaceRadius.Small` is for: the panel
+    // radius on a 12px-padded box is a third of the box and reads as a lozenge.
+    Surface(
+        padding = SurfacePadding.Small,
+        radius = SurfaceRadius.Small,
+        attrs = { classNames("stat") },
+    ) {
         Div({ classes("mono") }) { Text(value) }
         Span { Text(label) }
     }
