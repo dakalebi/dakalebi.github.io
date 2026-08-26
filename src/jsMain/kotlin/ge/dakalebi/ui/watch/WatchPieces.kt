@@ -47,7 +47,7 @@ fun NextEpisodeCard(
     // A floating panel over the video. keel owns the box; `.nextcard` keeps only
     // where it sits, how wide it is and the entry animation.
     Surface(padding = SurfacePadding.Small, attrs = { classes("nextcard") }) {
-        Div({ classes("nextcard-th") }) { Thumb(episode, showLabel = false) }
+        Div({ classes("nextcard-th") }) { Thumb(episode) }
         Div({ classes("nextcard-b") }) {
             Div({ classes("eyebrow") }) { Text(S.nextEpisode.caps) }
             Div({ classes("nextcard-t") }) {

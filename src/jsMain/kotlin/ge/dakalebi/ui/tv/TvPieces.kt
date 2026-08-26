@@ -48,7 +48,7 @@ fun TvTile(episode: Episode, progress: WatchProgress?, entry: Boolean = false) {
         Div({ classes("tv-tile-art") }) {
             // No label inside the art: the badge and the name below already say
             // which episode this is, and a third copy is just noise.
-            Thumb(episode, showLabel = false)
+            Thumb(episode)
             Span({ classes("tv-tile-badge", "mono") }) { Text("E${episode.episodeNumber}") }
             if (watched) Span({ classes("tv-tile-seen") }) { Text("✓") }
             formatDuration(episode.durationSeconds)?.let {
@@ -135,7 +135,7 @@ fun TvSeasonRail(seasons: List<Int>, selected: Int?, onPick: (Int) -> Unit) {
     Div({ classes("tv-band") }) {
         H2({ classes("tv-sub") }) { Text(S.seasons.caps) }
         Div({
-            classes("tv-rail", "tv-chips")
+            classes("tv-rail")
             focusGroup("seasons", FocusAxis.X)
             actsAsOptionGroup(S.seasons)
             ref { element -> rail.el = element; onDispose { rail.el = null } }

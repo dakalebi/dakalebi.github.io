@@ -36,9 +36,21 @@ import org.jetbrains.compose.web.dom.P
 import org.jetbrains.compose.web.dom.Span
 import org.jetbrains.compose.web.dom.Text
 
-/** Episode still, or a deterministic gradient stand-in when there is none. */
+/**
+ * Episode still, or a deterministic gradient stand-in when there is none.
+ *
+ * [fallbackLabel] draws inside the stand-in, and it is a slot rather than a boolean
+ * because this composable is shared with the 10-foot shell. Something about the label
+ * has to live in here - whether the stand-in is showing at all depends on `failed`,
+ * which is private state - but its *markup* belongs to the caller that wants it, and
+ * only the web tile does. The `showLabel: Boolean = true` this replaces kept class
+ * names TV has no rules for inside a composable TV renders, one forgotten argument
+ * away from drawing them unstyled. As a slot they are unreachable from TV rather than
+ * merely unrequested, which is also what lets `tools/check-css-classes.py` tell the
+ * two apart.
+ */
 @Composable
-fun Thumb(episode: Episode, showLabel: Boolean = true) {
+fun Thumb(episode: Episode, fallbackLabel: (@Composable () -> Unit)? = null) {
     var failed by remember(episode.thumbnailUrl) { mutableStateOf(false) }
     val url = episode.thumbnailUrl
 
@@ -58,13 +70,17 @@ fun Thumb(episode: Episode, showLabel: Boolean = true) {
                 )
             }
         }) {
-            if (showLabel) {
-                Div {
-                    Div({ classes("fb-s") }) { Text(S.season(episode.seasonNumber).caps) }
-                    Div({ classes("fb-e") }) { Text(S.episode(episode.episodeNumber).caps) }
-                }
-            }
+            fallbackLabel?.invoke()
         }
+    }
+}
+
+/** The season and episode written over [Thumb]'s stand-in gradient. Web tiles only. */
+@Composable
+private fun ThumbLabel(episode: Episode) {
+    Div {
+        Div({ classes("fb-s") }) { Text(S.season(episode.seasonNumber).caps) }
+        Div({ classes("fb-e") }) { Text(S.episode(episode.episodeNumber).caps) }
     }
 }
 
@@ -78,7 +94,7 @@ fun EpisodeTile(episode: Episode, progress: WatchProgress?) {
     Div({ classes("tile") }) {
         A(href = Router.href(Route.Watch(episode.id)), attrs = { classes("tile-link") }) {
             Div({ classes("tile-img") }) {
-                Thumb(episode)
+                Thumb(episode, fallbackLabel = { ThumbLabel(episode) })
                 Span({ classes("tile-badge", "mono") }) { Text("E${episode.episodeNumber}") }
                 if (watched) {
                     Span({ classes("tile-seen") }) { Icon(LucideIcon.Check, size = ICON_TILE_ACTION) }
@@ -203,7 +219,7 @@ private fun UpNextRow(episode: Episode, progress: WatchProgress?) {
 
     A(href = Router.href(Route.Watch(episode.id)), attrs = { classes("uprow") }) {
         Div({ classes("uprow-th") }) {
-            Thumb(episode, showLabel = false)
+            Thumb(episode)
             if (watched) Span({ classes("tile-seen") }) { Icon(LucideIcon.Check, size = ICON_TILE_ACTION) }
             if (percent > 0) {
                 TileProgress(percent, watched)

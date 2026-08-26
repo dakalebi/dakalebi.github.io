@@ -286,7 +286,7 @@ fun TvWatchScreen(episodeId: String) {
 @Composable
 private fun TvUpNextCard(episode: Episode) {
     Div({ classes("tv-upnext-card") }) {
-        Div({ classes("tv-upnext-th") }) { Thumb(episode, showLabel = false) }
+        Div({ classes("tv-upnext-th") }) { Thumb(episode) }
         Div({ classes("tv-upnext-b") }) {
             Div({ classes("tv-upnext-eyebrow") }) { Text(S.nextEpisode.caps) }
             Div({ classes("tv-upnext-t") }) {

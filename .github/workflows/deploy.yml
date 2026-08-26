@@ -19,7 +19,12 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      # keel is a submodule, and `includeBuild("keel")` in settings.gradle.kts points
+      # straight at its directory. Without this the checkout leaves that directory
+      # empty and Gradle fails at configuration time, before any task runs.
       - uses: actions/checkout@v5
+        with:
+          submodules: true
 
       - uses: actions/setup-java@v5
         with:
@@ -30,6 +35,12 @@ jobs:
 
       - name: Build Kotlin/JS bundle
         run: ./gradlew jsBrowserDistribution
+
+      # Blocks the deploy rather than only the merge. The bug this guards against -
+      # a shared composable emitting classes one shell has no rules for - is
+      # invisible in a build log and reaches users as an unstyled screen.
+      - name: Every emitted CSS class is styleable on the shell that draws it
+        run: python3 tools/check-css-classes.py
 
       # GitHub Pages runs Jekyll by default, which drops files beginning with
       # an underscore. Kotlin/JS + webpack can emit those.

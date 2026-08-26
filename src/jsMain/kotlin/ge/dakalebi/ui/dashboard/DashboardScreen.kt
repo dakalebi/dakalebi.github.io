@@ -279,7 +279,7 @@ private fun Hero(episode: Episode) {
     val resuming = !watched && position > 5
 
     Div({ classes("hero") }) {
-        Div({ classes("hero-img") }) { Thumb(episode, showLabel = false) }
+        Div({ classes("hero-img") }) { Thumb(episode) }
         Div({ classes("hero-scrim") })
         Div({ classes("hero-body") }) {
             Div({ classes("eyebrow") }) {
