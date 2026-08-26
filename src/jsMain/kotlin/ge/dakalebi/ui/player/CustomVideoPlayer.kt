@@ -13,6 +13,8 @@ import ge.dakalebi.i18n.S
 import ge.dakalebi.ui.Icon as PlayerIcon
 import ge.dakalebi.ui.Icons as PlayerIcons
 import io.github.bchmsl.keel.components.IconButton
+import io.github.bchmsl.keel.components.Spinner
+import io.github.bchmsl.keel.components.SpinnerSize
 import io.github.bchmsl.keel.dom.classNames
 import io.github.bchmsl.keel.icons.Icon
 import io.github.bchmsl.keel.icons.LucideIcon
@@ -487,7 +489,12 @@ fun CustomVideoPlayer(
         }
 
         if (buffering) {
-            Div({ classes("loading-ring") }) { Div() }
+            // The wrapper is layout over the video and stays local; the ring itself is
+            // keel's. It also gains a label - the hand-built one announced nothing, so
+            // a screen reader user had no way to tell buffering from a stalled player.
+            Div({ classes("loading-ring") }) {
+                Spinner(SpinnerSize.Large, ariaLabel = S.loading)
+            }
         }
 
         overlay()
