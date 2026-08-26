@@ -148,6 +148,36 @@ html {
      cannot disagree about how big an episode is. Sized so a shelf shows about five
      and a half, which is what YouTube's geometry works out to. */
   --tile-w: 10.625rem; /* 170px */
+
+  /* ------------------------------------------- keel, at this viewing distance
+     keel's controls are configured here and nowhere else. Not one rule in this
+     sheet names `.btn`, `.input` or any other keel class: a design system that has
+     a component owns how it looks, and a consumer that restates its selectors has
+     quietly forked it for one app.
+
+     These are the same numbers the overrides used to state, converted from `em` at
+     the body size to `rem` so they scale with this page's root rather than with
+     whatever type a control happens to inherit. The button height is explicit
+     because keel gives a control a real height; it is the height the old
+     padding-and-line-height box measured out to.
+
+     `--focus-ring-width` and `--focus-glow-alpha` reach only one rule that fires
+     here, keel's `.input:focus` glow, and that is deliberate. The D-pad ring is
+     drawn by `[data-tv-item][data-tv-focus]` near the top of this sheet and is this
+     app's own cursor rather than a component's focus style; keel's button ring never
+     fires on this page, because the focus engine moves focus programmatically and
+     `:focus-visible` does not match a programmatic focus. So a focused field shows
+     the white cursor on its wrapper *and* keel's red glow on the field itself -
+     highlighted and being edited, two states, both keel's. */
+  --control-font-size: var(--t-body);
+  --control-font-weight: 600;
+  --control-h-default: 3.6rem;
+  --control-py-default: 0.875rem;
+  --control-px-default: 1.75rem;
+  --input-px: 1.25rem;
+  --input-py: 0.875rem;
+  --focus-ring-width: var(--focus-w);
+  --focus-glow-alpha: 0.6;
 }
 
 * {
@@ -796,11 +826,12 @@ body {
    markup is shared; the sizes are not, which is the same division the toast host below
    already uses.
 
-   The screen's *controls* are no longer defined here at all: the field is keel's
-   `.input` and the buttons are keel's `.btn`/`.btn--default`/`.btn--link`, from
-   `keel/components.css`, which this page now links. What is left below is the panel
-   around them — which keel has no component for — and, at the end of the block, the
-   handful of overrides that carry those controls from a phone's scale to this one.
+   The screen's *controls* are not defined here at all: the field is keel's `.input`
+   and the buttons are keel's `.btn`/`.btn--default`/`.btn--link`, from
+   `keel/components.css`, which this page links. Nothing below restates them — their
+   size and weight at this distance are set once, as keel's own tokens, in the `:root`
+   block at the top of this sheet. All that is left here is the panel around them,
+   which keel has no component for.
 
    `web.css` is still deliberately not linked here: it carries nineteen `:hover` rules,
    a `@media (hover: none)` block that force-shows controls a remote cannot reach, and a
@@ -891,64 +922,6 @@ body {
 .auth-field {
   display: block;
   border-radius: var(--radius);
-}
-
-/* ------------------------------------------- keel's controls, at this scale
-   keel sizes a control in literal rem rather than in tokens, and those values are
-   a phone's: a 2.5rem button and 0.875rem type, which is 40px and 14px here. So
-   the four rules below override by selector. They are the only reason this block
-   exists, and they go away once keel names those sizes — at which point this
-   becomes a handful of custom properties on `:root` instead.
-
-   Everything keel already gets right is absent on purpose: the field's radius,
-   border and background all resolve through `--radius`/`--input`/`--card` to the
-   same values `.field` used to state itself, and `font-family: inherit` on both
-   controls already picks up `--f-sans` from `body`. */
-
-.input {
-  font-size: var(--t-body);
-  padding: 0.7em 1em;
-}
-
-/* Edit mode: the input itself holds focus and the keyboard is up. A brighter border
-   marks it, distinct from the wrapper's ring which means only highlighted — keel's
-   own focus shadow is far too faint to carry that difference across a room. */
-.input:focus {
-  border-color: var(--tx);
-}
-
-.btn {
-  font-size: var(--t-body);
-  font-weight: 600;
-}
-
-/* `height: auto`, because keel fixes a control's height and this one is sized by its
-   own padding and type — a 2.5rem box would clip 20px text. */
-.btn--size-default {
-  height: auto;
-  padding: 0.7em 1.4em;
-}
-
-.btn--link {
-  font-size: var(--t-meta);
-}
-
-/* The ring here is the D-pad's, drawn by `[data-tv-item][data-tv-focus]` at the top of
-   this sheet. keel's focus shadow is suppressed rather than left to stack under it:
-   two rings on one control reads as a rendering fault, and keel's is a hairline at
-   this scale because its widths are literal px. */
-.btn:focus-visible {
-  box-shadow: none;
-}
-
-/* Focused, these invert the way every other TV control does. `.btn--default` is left
-   out on purpose: it is already filled, and the generic ring is enough. */
-.btn--link[data-tv-focus],
-.btn--link:focus {
-  background: var(--focus);
-  border-color: var(--focus);
-  color: #0f0f0f;
-  text-decoration: none;
 }
 
 /* ------------------------------------------------------------------ toasts
