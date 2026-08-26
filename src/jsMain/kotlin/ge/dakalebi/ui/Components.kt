@@ -18,6 +18,7 @@ import ge.dakalebi.presentation.Router
 import io.github.bchmsl.keel.components.Button as KeelButton
 import io.github.bchmsl.keel.components.ButtonVariant
 import io.github.bchmsl.keel.components.Dialog as KeelDialog
+import io.github.bchmsl.keel.components.ProgressBar
 import io.github.bchmsl.keel.dom.classNames
 import io.github.bchmsl.keel.icons.Icon
 import io.github.bchmsl.keel.icons.LucideIcon
@@ -86,9 +87,7 @@ fun EpisodeTile(episode: Episode, progress: WatchProgress?) {
                     Span({ classes("tile-dur", "mono") }) { Text(it) }
                 }
                 if (percent > 0) {
-                    Div({ classNames("tile-prog", if (watched) "done" else null) }) {
-                        Div({ style { property("width", "$percent%") } })
-                    }
+                    TileProgress(percent, watched)
                 }
             }
             Div({ classes("tile-meta") }) {
@@ -207,9 +206,7 @@ private fun UpNextRow(episode: Episode, progress: WatchProgress?) {
             Thumb(episode, showLabel = false)
             if (watched) Span({ classes("tile-seen") }) { Icon(LucideIcon.Check, size = ICON_TILE_ACTION) }
             if (percent > 0) {
-                Div({ classNames("tile-prog", if (watched) "done" else null) }) {
-                    Div({ style { property("width", "$percent%") } })
-                }
+                TileProgress(percent, watched)
             }
         }
         Div({ classes("uprow-b") }) {
@@ -288,6 +285,27 @@ private fun legacyCopy(text: String): Boolean = runCatching {
     document.body?.removeChild(area as org.w3c.dom.Node)
     ok
 }.onFailure { Log.w("clipboard", "execCommand fallback failed", it) }.getOrDefault(false)
+
+/**
+ * The watched-so-far line across the bottom of a thumbnail.
+ *
+ * keel's `ProgressBar` at `onMedia`, because it lies over a still whose colours are
+ * the episode's rather than the app's. `done` is why the finished state is a variant
+ * rather than a colour written here: a bar that is full and a bar that is full *and*
+ * watched should not look the same.
+ *
+ * `.tile-prog` keeps only the placement along the bottom edge.
+ */
+@Composable
+private fun TileProgress(percent: Double, watched: Boolean) {
+    ProgressBar(
+        fraction = percent / 100.0,
+        ariaLabel = S.statProgress,
+        onMedia = true,
+        done = watched,
+        attrs = { classes("tile-prog") },
+    )
+}
 
 /** Matches `.tile-act .ic svg, .tile-seen .ic svg` in web.css. */
 private const val ICON_TILE_ACTION = 14

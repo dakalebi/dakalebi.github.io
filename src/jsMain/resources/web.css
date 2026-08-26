@@ -260,17 +260,11 @@ h3 {
   color: var(--tx-dim);
 }
 
+/* keel's `ProgressBar` at `Large` + `onMedia`, which is this bar's own 4px and its
+   own white-at-0.22 track: keel reads `--primary-foreground`, which is white in
+   every palette. All that is left is how far it may run. */
 .hero-bar {
-  height: 4px;
-  border-radius: var(--radius-pill);
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.22);
   max-width: 340px;
-}
-.hero-bar > div {
-  display: block;
-  height: 100%;
-  background: var(--red);
 }
 
 .hero-cta {
@@ -492,22 +486,16 @@ h3 {
   color: var(--ok);
 }
 
+/* keel's `ProgressBar` at `onMedia` + `done`, which carries both of this bar's
+   fills - brand red while watching, white-at-0.7 once finished - and its own 3px.
+   The track moves from 0.24 to keel's 0.22. Placement stays here; a bar riding the
+   bottom edge of a thumbnail is the tile's arrangement, not the bar's. */
 .tile-prog {
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
-  height: 3px;
-  background: rgba(255, 255, 255, 0.24);
   z-index: 2;
-}
-.tile-prog > div {
-  display: block;
-  height: 100%;
-  background: var(--red);
-}
-.tile-prog.done > div {
-  background: rgba(255, 255, 255, 0.7);
 }
 
 .tile-meta {
@@ -787,16 +775,9 @@ h3 {
   left: 0;
   right: 0;
   bottom: 0;
-  height: 3px;
-  background: rgba(255, 255, 255, 0.18);
   z-index: 4;
   pointer-events: none;
   transition: opacity 0.25s;
-}
-.thinbar > div {
-  display: block;
-  height: 100%;
-  background: var(--red);
 }
 .thinbar.hide {
   opacity: 0;
@@ -862,16 +843,10 @@ h3 {
   font-size: 11px;
   color: var(--mut);
 }
+/* keel's `ProgressBar` at `Small` + `onMedia`: the same 2px and the same
+   white-at-0.22 track, and keel's own `width` transition in place of this one. */
 .nextcard-bar {
-  height: 2px;
-  background: rgba(255, 255, 255, 0.22);
   margin-top: 6px;
-}
-.nextcard-bar > div {
-  display: block;
-  height: 100%;
-  background: var(--red);
-  transition: width 0.2s linear;
 }
 .nextcard-row {
   display: flex;

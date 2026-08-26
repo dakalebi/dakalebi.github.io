@@ -26,6 +26,8 @@ import ge.dakalebi.ui.Rail
 import ge.dakalebi.ui.Thumb
 import ge.dakalebi.ui.assetBase
 import io.github.bchmsl.keel.components.IconButton
+import io.github.bchmsl.keel.components.ProgressBar
+import io.github.bchmsl.keel.components.ProgressBarSize
 import io.github.bchmsl.keel.dom.classNames
 import io.github.bchmsl.keel.icons.Icon
 import io.github.bchmsl.keel.icons.LucideIcon
@@ -279,9 +281,16 @@ private fun Hero(episode: Episode) {
                 Div { Text(S.episode(episode.episodeNumber).caps) }
             }
             if (percent > 0) {
-                Div({ classes("hero-bar") }) {
-                    Div({ style { property("width", "$percent%") } })
-                }
+                // `onMedia`: the hero bar lies over the episode still, so the track
+                // reads `--primary-foreground` at low alpha rather than a page colour
+                // that says nothing about what is behind it.
+                ProgressBar(
+                    fraction = percent / 100.0,
+                    ariaLabel = S.statProgress,
+                    size = ProgressBarSize.Large,
+                    onMedia = true,
+                    attrs = { classes("hero-bar") },
+                )
             }
             Div({ classes("hero-sub") }) {
                 Text(

@@ -14,6 +14,8 @@ import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
 import ge.dakalebi.ui.player.isAppleMobile
 import io.github.bchmsl.keel.components.DismissOnEscape
+import io.github.bchmsl.keel.components.ProgressBar
+import io.github.bchmsl.keel.components.ProgressBarSize
 import io.github.bchmsl.keel.dom.classNames
 import org.jetbrains.compose.web.attributes.ATarget
 import org.jetbrains.compose.web.attributes.target
@@ -51,9 +53,17 @@ fun MenuSheet(
             Stat("${stats.percent}%", S.statProgress.caps)
         }
 
-        Div({ classes("hero-bar"); style { property("max-width", "none") } }) {
-            Div({ style { property("width", "${stats.percent}%") } })
-        }
+        // `onMedia` even though there is no media here: the variant is really "track
+        // against something whose colour this component cannot know", and on the
+        // sheet's own dark fill keel's page-coloured track would be invisible. Same
+        // two colours this bar already had.
+        ProgressBar(
+            fraction = stats.percent / 100.0,
+            ariaLabel = S.statProgress,
+            size = ProgressBarSize.Large,
+            onMedia = true,
+            attrs = { classes("hero-bar"); style { property("max-width", "none") } },
+        )
 
         Div({ classes("sheet-list") }) {
             if (session.isAdmin) {

@@ -13,6 +13,8 @@ import ge.dakalebi.i18n.S
 import ge.dakalebi.ui.Icon as PlayerIcon
 import ge.dakalebi.ui.Icons as PlayerIcons
 import io.github.bchmsl.keel.components.IconButton
+import io.github.bchmsl.keel.components.ProgressBar
+import io.github.bchmsl.keel.components.ProgressHandle
 import io.github.bchmsl.keel.components.Spinner
 import io.github.bchmsl.keel.components.SpinnerSize
 import io.github.bchmsl.keel.dom.classNames
@@ -47,7 +49,7 @@ private class PlayerRefs {
     var fillCur: HTMLElement? = null
     var fillBuf: HTMLElement? = null
     var knob: HTMLElement? = null
-    var thinCur: HTMLElement? = null
+    var thinBar: ProgressHandle? = null
     var scrubInput: HTMLInputElement? = null
     var raf: Int? = null
     var hideTimer: Int? = null
@@ -107,7 +109,9 @@ fun CustomVideoPlayer(
             // the pointer.
             refs.scrubInput?.value = (pct * 10).roundToInt().toString()
         }
-        refs.thinCur?.style?.width = "$pct%"
+        // keel's handle rather than a `style.width` of our own: it moves the fill and
+        // rewrites `aria-valuenow` together, so the two cannot drift.
+        refs.thinBar?.setFraction(pct / 100.0)
 
         var bufEnd = 0.0
         val buffered = v.buffered
@@ -623,9 +627,23 @@ fun CustomVideoPlayer(
 
         // Always-visible position line: shown precisely when the control bar
         // is not, so there is never a moment without a progress indicator.
-        Div({ classNames("thinbar", if (!controlsHidden) "hide" else null) }) {
-            Div({ ref { el -> refs.thinCur = el; onDispose { refs.thinCur = null } } })
-        }
+        // Driven from the frame loop through `ProgressHandle`, which is what that
+        // escape exists for - recomposing sixty times a second to move one element is
+        // exactly what a player must not do. `fraction` is therefore a constant here.
+        //
+        // `aria-hidden`: this duplicates the scrub bar, which is a real range input and
+        // stays in the accessibility tree even while the control row is faded out. Two
+        // progressbars reporting the same position is noise, not redundancy.
+        ProgressBar(
+            fraction = 0.0,
+            ariaLabel = S.timeline,
+            onMedia = true,
+            attrs = {
+                classNames("thinbar", if (!controlsHidden) "hide" else null)
+                attr("aria-hidden", "true")
+            },
+            onHandleReady = { handle -> refs.thinBar = handle },
+        )
     }
 }
 
