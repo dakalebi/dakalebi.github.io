@@ -991,13 +991,9 @@ h3 {
 
 /* ----------------------------------------------------------------- panel */
 
-.scrim {
-  position: fixed;
-  inset: 0;
-  z-index: 60;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(3px);
-}
+/* `.scrim` is keel's, and it is a name keel owns - so this file must not define one.
+   The dim behind the drawer, the dialogs' own overlay and the alpha they share are
+   all in keel/components.css. */
 
 /*
  * Click-catcher for dropdowns. Deliberately not `.scrim`.
@@ -1021,28 +1017,9 @@ h3 {
   backdrop-filter: none;
 }
 
-.sheet {
-  position: fixed;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  z-index: 61;
-  width: min(360px, 88vw);
-  background: var(--elev);
-  border-right: 1px solid var(--line-strong);
-  border-radius: 0 var(--radius) var(--radius) 0;
-  padding: 22px var(--pad);
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  overflow-y: auto;
-  animation: slide 0.22s ease both;
-}
-@keyframes slide {
-  from {
-    transform: translateX(-100%);
-  }
-}
+/* `.sheet` is gone entirely: it is keel's `.drawer.drawer--left`, down to the slide,
+   which keel keeps as `keel-slide-in-from-left`. The three classes below are the
+   sheet's *contents* and stay - they are this menu's own arrangement, not a panel. */
 
 .sheet-stats {
   display: grid;

@@ -13,7 +13,8 @@ import ge.dakalebi.i18n.I18n
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
 import ge.dakalebi.ui.player.isAppleMobile
-import io.github.bchmsl.keel.components.DismissOnEscape
+import io.github.bchmsl.keel.components.Drawer
+import io.github.bchmsl.keel.components.DrawerEdge
 import io.github.bchmsl.keel.components.ProgressBar
 import io.github.bchmsl.keel.components.ProgressBarSize
 import io.github.bchmsl.keel.dom.classNames
@@ -37,9 +38,11 @@ fun MenuSheet(
     val catalog = catalog()
     val stats = catalog.stats
 
-    DismissOnEscape(onClose)
-    Div({ classes("scrim"); onClick { onClose() } })
-    Div({ classes("sheet") }) {
+    // The scrim, the Escape key, the slide, the panel and - new here - moving focus
+    // into the drawer on open and back out on close are all keel's. Nothing of the
+    // old `.sheet` rule survives as layout: every one of its twelve declarations was
+    // the component.
+    Drawer(onDismiss = onClose, ariaLabel = S.menu, edge = DrawerEdge.Left) {
         Div {
             Div({ classes("eyebrow-mut") }) { Text(S.menu.caps) }
             Div({ style { property("font-size", "13px"); property("color", "var(--tx-dim)") } }) {
