@@ -18,7 +18,15 @@ import ge.dakalebi.i18n.caps
 import ge.dakalebi.ui.tv.focus.FocusAxis
 import ge.dakalebi.ui.tv.focus.focusGroup
 import ge.dakalebi.ui.tv.focus.focusItem
+import io.github.bchmsl.keel.components.ButtonVariant
+import io.github.bchmsl.keel.components.SegmentedStyle
+import io.github.bchmsl.keel.dom.buttonClasses
 import io.github.bchmsl.keel.dom.classNames
+import io.github.bchmsl.keel.dom.segmentedClasses
+import io.github.bchmsl.keel.dom.segmentedItemClasses
+import io.github.bchmsl.keel.dom.segmentedLabelClasses
+import io.github.bchmsl.keel.dom.switchClasses
+import io.github.bchmsl.keel.dom.switchKnobClasses
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.H1
@@ -56,33 +64,47 @@ fun TvSettingsScreen() {
         // is a file, not a redesign.
         Div({ classes("tv-row") }) {
             Span({ classes("tv-row-label") }) { Text(S.language.caps) }
+            // keel's segmented control, built from its class names rather than by
+            // calling `SegmentedControl`. The composable renders a real radio input per
+            // choice, and this shell cannot use one: focus here is a cursor the app
+            // moves itself, and a native input brings its own activation behaviour to
+            // fight it. So the chips are flat divs carrying `aria-checked`, which is the
+            // second branch keel's selected-state rules read - the same state assistive
+            // technology reports for `role="radio"`, so nothing can drift.
+            //
+            // What it gives up by not being the composable is arrow-key navigation, and
+            // that costs nothing here: the D-pad engine below already owns Left and
+            // Right on this row.
             Div({
-                classes("tv-seg")
+                classNames("tv-seg", segmentedClasses(SegmentedStyle.Rail))
                 focusGroup("language", FocusAxis.X)
                 actsAsOptionGroup(S.language)
             }) {
                 I18n.available.forEach { language ->
                     val selected = language.tag == I18n.current.tag
-                    Div({
-                        classNames("tv-seg-item", if (selected) "on" else null)
-                        focusItem("lang-${language.tag}", entry = selected)
-                        // `radio`, not a pressed button. `aria-pressed` was here and was
-                        // inert: it only has meaning on `role="button"`, which a bare
-                        // `Div` is not, so nothing announced the selection at all.
-                        actsAsOption(selected)
-                        // Its own tag, so the label picks the right face and a
-                        // screen reader picks the right voice for it.
-                        attr("lang", language.tag)
-                        onClick {
-                            if (!selected) {
-                                settings.setLanguage(scope, language.tag) {
-                                    toasts.error(S.settingNotSynced)
+                    Div({ classNames(segmentedItemClasses()) }) {
+                        Div({
+                            classNames("tv-seg-item", segmentedLabelClasses())
+                            focusItem("lang-${language.tag}", entry = selected)
+                            // `radio`, not a pressed button. `aria-pressed` was here and
+                            // was inert: it only has meaning on `role="button"`, which a
+                            // bare `Div` is not, so nothing announced the selection at
+                            // all. It is now also what paints the chip.
+                            actsAsOption(selected)
+                            // Its own tag, so the label picks the right face and a
+                            // screen reader picks the right voice for it.
+                            attr("lang", language.tag)
+                            onClick {
+                                if (!selected) {
+                                    settings.setLanguage(scope, language.tag) {
+                                        toasts.error(S.settingNotSynced)
+                                    }
                                 }
                             }
-                        }
-                        // Cased by its own language, so "ქართული" is Mtavruli while
-                        // "English" is left alone.
-                    }) { Text(language.caps(language.endonym)) }
+                            // Cased by its own language, so "ქართული" is Mtavruli while
+                            // "English" is left alone.
+                        }) { Text(language.caps(language.endonym)) }
+                    }
                 }
             }
         }
@@ -91,8 +113,13 @@ fun TvSettingsScreen() {
         // between devices, which is why it lives on the account document.
         Div({ classes("tv-row") }) {
             Span({ classes("tv-row-label") }) { Text(S.autoplayTitle.caps) }
+            // keel's switch, again by class name rather than by composable: `Switch`
+            // renders a real `<button>`, and the argument against one here is the same
+            // as for the chips above. `role="switch"` and `aria-checked` were already
+            // set, and `aria-checked` is what keel keys the "on" colour off - so the
+            // local `.on` class it used to need has simply gone.
             Div({
-                classNames("tv-switch", if (settings.autoplayNext) "on" else null)
+                classNames(switchClasses())
                 focusItem("autoplay")
                 attr("role", "switch")
                 attr("aria-checked", settings.autoplayNext.toString())
@@ -101,13 +128,13 @@ fun TvSettingsScreen() {
                         toasts.error(S.settingNotSynced)
                     }
                 }
-            }) { Div() }
+            }) { Div({ classNames(switchKnobClasses()) }) }
         }
 
         Div({ classes("tv-row") }) {
             Span({ classes("tv-row-label") }) { Text(S.signOut.caps) }
             Div({
-                classes("tv-btn")
+                classNames("tv-btn", buttonClasses(ButtonVariant.Outline))
                 focusItem("sign-out")
                 // The visible text is the account, not the action, so the name has to
                 // carry both — "Sign out" alone would hide which account it signs out.

@@ -37,24 +37,21 @@ private fun svg(body: String, fill: String = "none"): String =
        focusable="false" aria-hidden="true">$body</svg>"""
 
 /**
- * The icons that stayed here rather than moving to keel's `LucideIcon`.
+ * The two icons that stayed here rather than moving to keel's `LucideIcon`.
  *
- * [back10] and [forward10] have no lucide equivalent - the "10" is baked into the
- * glyph itself. [play], [pause], [home] and [gear] are used only by the TV shell
- * (`TvVideoPlayer.kt`, `TvNavRail.kt`), which keeps this whole rendering path
- * deliberately: the rail's `.tv-nav-item .ic` and the player's `.tv-ctl-btn .ic`
- * carry a measured `display: grid; line-height: 0` fix for a real reported
- * alignment bug, and keel's `.icon` is `inline-flex` - close enough on the web
- * shell to migrate safely, not proven close enough on a remote-driven 10-foot
- * surface to risk it.
+ * Neither has a lucide equivalent, and the reason is the same for both: the "10" is
+ * baked into the glyph as a `<text>` node, so the drawing carries a number rather
+ * than only a shape. lucide ships `RotateCcw`/`RotateCw`, which are the arcs without
+ * it - and an arc alone does not say how far it seeks.
  *
- * Every other icon this object used to hold - volume, cast, fullscreen, menu,
- * more, link, download, check, back - moved to keel's `LucideIcon` on the web
- * shell only. `grid` was already unused and is simply gone.
+ * Everything else this object used to hold is gone. `volume`, `cast`, `fullscreen`,
+ * `menu`, `more`, `link`, `download`, `check` and `back` moved to `LucideIcon` with
+ * the web shell; `play`, `pause`, `home` and `gear` followed on the TV shell once
+ * keel's `.icon` was measured to carry the same `line-height: 0` plus
+ * `svg { display: block }` fix that this path's `.ic` was written for - the doubt
+ * recorded here previously was about that fix, and it no longer applies.
  */
 object Icons {
-    val play = svg("""<path d="M7 4.5v15l12-7.5z"/>""", fill = "currentColor")
-    val pause = svg("""<path d="M8.5 4.5v15M15.5 4.5v15"/>""")
     val back10 = svg(
         """<path d="M3.5 8.5A9 9 0 1 1 3 12"/><path d="M3.5 3.5v5h5"/>
            <text x="12" y="15.6" font-size="8" font-family="ui-monospace,monospace"
@@ -65,21 +62,5 @@ object Icons {
         """<path d="M20.5 8.5A9 9 0 1 0 21 12"/><path d="M20.5 3.5v5h-5"/>
            <text x="12" y="15.6" font-size="8" font-family="ui-monospace,monospace"
                  fill="currentColor" stroke="none" text-anchor="middle">10</text>""",
-    )
-
-    // The TV navigation rail. Line icons at the same weight as the rest, because a
-    // rail sets them beside each other at 24px and a mismatch in stroke shows.
-    val home = svg("""<path d="M3.5 10.2L12 3.5l8.5 6.7V20h-6v-6h-5v6h-6z"/>""")
-    /**
-     * A cog outline. The first attempt drew eight radiating spokes around a circle,
-     * which at a rail's 24px reads as a sunburst rather than a gear — the teeth have to
-     * be part of the body's silhouette, not separate strokes floating outside it.
-     */
-    val gear = svg(
-        """<circle cx="12" cy="12" r="2.9"/>
-           <path d="M19.4 14.6a7.6 7.6 0 0 0 0-5.2l2-1.4-2-3.4-2.3 1a7.6 7.6 0 0 0-2.3-1.3
-                    L14.4 2h-4l-.4 2.3a7.6 7.6 0 0 0-2.3 1.3l-2.3-1-2 3.4 2 1.4a7.6 7.6 0 0 0 0 5.2
-                    l-2 1.4 2 3.4 2.3-1a7.6 7.6 0 0 0 2.3 1.3l.4 2.3h4l.4-2.3a7.6 7.6 0 0 0 2.3-1.3
-                    l2.3 1 2-3.4z"/>""",
     )
 }

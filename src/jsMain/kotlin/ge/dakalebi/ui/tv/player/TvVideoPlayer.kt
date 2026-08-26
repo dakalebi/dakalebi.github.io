@@ -12,8 +12,8 @@ import ge.dakalebi.domain.service.orderedQualityLabels
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
 import ge.dakalebi.presentation.TvSeek
-import ge.dakalebi.ui.Icon
-import ge.dakalebi.ui.Icons
+import ge.dakalebi.ui.Icon as PlayerIcon
+import ge.dakalebi.ui.Icons as PlayerIcons
 import ge.dakalebi.ui.player.PlayerEvents
 import ge.dakalebi.ui.tv.TvConfig
 import ge.dakalebi.ui.tv.actsAsButton
@@ -30,7 +30,17 @@ import ge.dakalebi.ui.tv.input.MediaAction
 import ge.dakalebi.ui.tv.input.TvInput
 import ge.dakalebi.ui.tv.input.TvLayer
 import ge.dakalebi.ui.tv.ownsPopup
+import io.github.bchmsl.keel.components.ButtonSize
+import io.github.bchmsl.keel.components.ButtonVariant
+import io.github.bchmsl.keel.components.ProgressBar
+import io.github.bchmsl.keel.components.ProgressBarSize
+import io.github.bchmsl.keel.components.SwitchSize
+import io.github.bchmsl.keel.dom.buttonClasses
 import io.github.bchmsl.keel.dom.classNames
+import io.github.bchmsl.keel.dom.switchClasses
+import io.github.bchmsl.keel.dom.switchKnobClasses
+import io.github.bchmsl.keel.icons.Icon
+import io.github.bchmsl.keel.icons.LucideIcon
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlinx.browser.document
@@ -715,7 +725,15 @@ fun TvVideoPlayer(
                 Div({ classes("tv-ctl-start") }) {
                     if (autoplayNext != null && onToggleAutoplay != null) {
                         Div({
-                            classes("tv-ctl-autoplay")
+                            // keel's on-media wash on the pill, by class name: this row
+                            // used to write `rgba(255, 255, 255, 0.12)` out four times,
+                            // and it is now one token. `ButtonSize.Icon` for its
+                            // `padding: 0`, which `.tv-ctl-autoplay` then sets itself -
+                            // no size entry means "no box", and the pill's is its own.
+                            classNames(
+                                "tv-ctl-autoplay",
+                                buttonClasses(ButtonVariant.OnMedia, ButtonSize.Icon),
+                            )
                             focusItem("autoplay")
                             attr("role", "switch")
                             attr("aria-checked", autoplayNext.toString())
@@ -726,41 +744,66 @@ fun TvVideoPlayer(
                             onClick { onToggleAutoplay() }
                         }) {
                             Span({ classes("tv-ctl-autoplay-label") }) { Text(S.autoplayShort.caps) }
+                            // keel's switch at its small size. `aria-checked` on the
+                            // pill above is what announces the state; this is the
+                            // picture of it, so it repeats the attribute rather than
+                            // carrying a class - the same thing keel keys the colour
+                            // off, so the two cannot disagree.
                             Div({
-                                classNames("tv-switch", "tv-ctl-switch", if (autoplayNext) "on" else null)
-                            }) { Div() }
+                                classNames(switchClasses(SwitchSize.Small))
+                                attr("aria-checked", autoplayNext.toString())
+                                attr("aria-hidden", "true")
+                            }) { Div({ classNames(switchKnobClasses()) }) }
                         }
                     }
                 }
 
                 Div({ classes("tv-ctl-mid") }) {
                     Div({
-                        classes("tv-ctl-btn")
+                        classNames("tv-ctl-btn", buttonClasses(ButtonVariant.OnMedia, ButtonSize.Icon))
                         focusItem("back10")
                         actsAsButton(S.back10)
                         onClick { skip(-1) }
-                    }) { Icon(Icons.back10) }
+                    }) { PlayerIcon(PlayerIcons.back10) }
 
                     Div({
-                        classes("tv-ctl-btn", "tv-ctl-btn-lg")
+                        classNames(
+                            "tv-ctl-btn",
+                            "tv-ctl-btn-lg",
+                            buttonClasses(ButtonVariant.OnMedia, ButtonSize.Icon),
+                        )
                         focusItem("play")
                         actsAsButton(if (playing) S.pause else S.play)
                         onClick { togglePlay() }
-                    }) { Icon(if (playing) Icons.pause else Icons.play) }
+                    }) {
+                        // keel's icon, sized by `.tv-ctl-ic-lg` rather than at the call
+                        // site: see the note in `TvNavRail`. The two glyphs either side
+                        // of it stay local because the "10" is inside those drawings.
+                        Icon(
+                            if (playing) LucideIcon.Pause else LucideIcon.Play,
+                            size = null,
+                            className = "tv-ctl-ic-lg",
+                        )
+                    }
 
                     Div({
-                        classes("tv-ctl-btn")
+                        classNames("tv-ctl-btn", buttonClasses(ButtonVariant.OnMedia, ButtonSize.Icon))
                         focusItem("forward10")
                         actsAsButton(S.forward10)
                         onClick { skip(1) }
-                    }) { Icon(Icons.forward10) }
+                    }) { PlayerIcon(PlayerIcons.forward10) }
                 }
 
                 Div({ classes("tv-ctl-end") }) {
                     if (ordered.size > 1) {
                         val shown = quality ?: ordered.first()
                         Div({
-                            classes("tv-ctl-btn", "tv-q-btn", "mono")
+                            classNames(
+                                "tv-ctl-btn",
+                                "tv-q-btn",
+                                "mono",
+                                buttonClasses(ButtonVariant.OnMedia, ButtonSize.Icon),
+                            )
                             focusItem("quality")
                             // The name carries the rendition, because the rendition is
                             // what this button visibly shows. "Quality" alone replaced it
@@ -783,15 +826,24 @@ fun TvVideoPlayer(
 
         // Always something to read the position from, exactly when the control bar
         // is not there. Never a moment with no indicator at all.
-        Div({ classNames("tv-thinbar", if (mode == Mode.Controls) "hide" else null) }) {
-            Div({
-                style {
-                    property(
-                        "width",
-                        if (durationSec > 0) "${currentSec * 100.0 / durationSec}%" else "0%",
-                    )
-                }
-            })
-        }
+        // A real `fraction` rather than a `ProgressHandle`: this bar already follows
+        // recomposition, because `currentSec` is state the chrome reads anyway. The
+        // web player takes the handle instead, and for the opposite reason - it writes
+        // the position from its own frame loop.
+        //
+        // `aria-hidden`, as on the web: the scrub bar and the seek readout are what
+        // announce a position, and a decorative hairline reciting percentages through
+        // a whole episode is noise. `ariaLabel` is still required by the signature, so
+        // it stays accurate for anyone who removes the attribute.
+        ProgressBar(
+            fraction = if (durationSec > 0) currentSec.toDouble() / durationSec else 0.0,
+            ariaLabel = S.timeline,
+            size = ProgressBarSize.Small,
+            onMedia = true,
+            attrs = {
+                classNames("tv-thinbar", if (mode == Mode.Controls) "hide" else null)
+                attr("aria-hidden", "true")
+            },
+        )
     }
 }

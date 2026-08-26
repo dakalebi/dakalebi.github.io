@@ -18,6 +18,9 @@ import ge.dakalebi.ui.tv.focus.FocusAxis
 import ge.dakalebi.ui.tv.focus.SpatialNav
 import ge.dakalebi.ui.tv.focus.focusGroup
 import ge.dakalebi.ui.tv.focus.focusItem
+import io.github.bchmsl.keel.components.ButtonVariant
+import io.github.bchmsl.keel.dom.buttonClasses
+import io.github.bchmsl.keel.dom.classNames
 import kotlinx.browser.document
 import org.jetbrains.compose.web.dom.A
 import org.jetbrains.compose.web.dom.Div
@@ -129,12 +132,12 @@ private fun TvMasthead(episode: Episode) {
         left?.let { Span({ classes("tv-hero-sub", "mono") }) { Text(it) } }
         Div({ classes("tv-hero-acts"); focusGroup("hero", FocusAxis.X) }) {
             A(href = Router.href(Route.Watch(episode.id)), attrs = {
-                classes("tv-btn", "tv-btn-primary")
+                classNames("tv-btn", buttonClasses(ButtonVariant.Default))
                 focusItem("hero-play", entry = true)
             }) { Text((if (entry?.isStarted == true) S.continueLabel else S.watch).caps) }
 
             A(href = Router.href(Route.Watch(episode.id)), attrs = {
-                classes("tv-btn")
+                classNames("tv-btn", buttonClasses(ButtonVariant.Outline))
                 focusItem("hero-restart")
                 attr("data-from-start", "1")
             }) { Text(S.watchFromStart.caps) }
@@ -154,7 +157,7 @@ private fun TvMasthead(episode: Episode) {
 private fun TvBackToTop() {
     Div({ classes("tv-totop"); focusGroup("totop", FocusAxis.X) }) {
         Div({
-            classes("tv-btn")
+            classNames("tv-btn", buttonClasses(ButtonVariant.Outline))
             focusItem("back-to-top")
             actsAsButton()
             onClick {
