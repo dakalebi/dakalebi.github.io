@@ -15,6 +15,8 @@ import ge.dakalebi.i18n.caps
 import ge.dakalebi.ui.tv.focus.FocusAxis
 import ge.dakalebi.ui.tv.focus.focusGroup
 import ge.dakalebi.ui.tv.focus.focusItem
+import io.github.bchmsl.keel.components.Surface
+import io.github.bchmsl.keel.components.SurfacePadding
 import io.github.bchmsl.keel.dom.classNames
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.web.attributes.AttrsScope
@@ -78,7 +80,14 @@ fun LoginScreen() {
     Div({ classes("login-wrap") }) {
         Div({ classes("login-bg") })
 
-        Div({ classes("login-card"); dpadGroup("signin") }) {
+        // The box is keel's; `.login-card` carries only where it sits and how wide
+        // it is. tv.css still declares its own border, fill and padding for the same
+        // class and loads after keel, so the television keeps its measured tighter
+        // padding until Phase 5 moves it onto tokens.
+        Surface(padding = SurfacePadding.Large, attrs = {
+            classes("login-card")
+            dpadGroup("signin")
+        }) {
             Div({ classes("login-head") }) {
                 Img(src = "${assetBase}logo.png", alt = S.seriesTitle) { classes("login-mark") }
                 Div({ classes("eyebrow") }) { Text(S.signInEyebrow.caps) }

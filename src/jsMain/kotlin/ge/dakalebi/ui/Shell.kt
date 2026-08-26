@@ -18,7 +18,8 @@ enum class Shell { Web, Tv }
  *
  * To *look* at the TV UI without a television, open `/tv/` in any browser: it is
  * an ordinary page. `?ui=` exists to force a different root onto a page that did
- * not declare one, which is what `tv-demo` below needs. Note that `/?ui=tv` draws
+ * not declare one, which is what `tv-demo` below needs. `demo` deliberately does
+ * *not* start with `tv`, so `/?ui=demo` is the web UI on fixtures. Note that `/?ui=tv` draws
  * the TV UI against `web.css`, because the stylesheet is chosen by the document —
  * useful for driving focus, not for judging the design.
  */
@@ -36,13 +37,20 @@ private val declaredShell: String? by lazy {
  * True when the graph should be built from fixtures instead of Firebase.
  *
  * There is no Firebase session in an automated browser and signing in is not
- * possible there, so without this the TV screens could only ever be looked at on
- * a real television. Deliberately a separate flag rather than a third [Shell]:
- * it changes what the data is, not which UI renders it.
+ * possible there, so without this a screen could only ever be looked at against
+ * production data by a signed-in human. Deliberately a separate flag rather than a
+ * third [Shell]: it changes what the data is, not which UI renders it.
+ *
+ * Two spellings, because this same value also picks the shell above. `tv-demo`
+ * starts with `tv`, so it draws the TV UI; `demo` does not, so `/?ui=demo` draws the
+ * web one. Both reach the same fixtures. On `/tv/` either spelling gets the TV UI,
+ * because the document has already declared what it is.
  */
 val useFixtures: Boolean by lazy {
-    runCatching { URLSearchParams(window.location.search).get("ui") }.getOrNull() == "tv-demo"
+    runCatching { URLSearchParams(window.location.search).get("ui") }.getOrNull() in FIXTURE_UI
 }
+
+private val FIXTURE_UI = setOf("demo", "tv-demo")
 
 /**
  * Prefix for the images that sit at the site root.

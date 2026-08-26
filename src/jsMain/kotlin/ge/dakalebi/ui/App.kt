@@ -12,6 +12,8 @@ import ge.dakalebi.i18n.caps
 import ge.dakalebi.presentation.Route
 import ge.dakalebi.ui.dashboard.DashboardScreen
 import ge.dakalebi.ui.watch.WatchScreen
+import io.github.bchmsl.keel.components.Surface
+import io.github.bchmsl.keel.components.SurfacePadding
 import kotlinx.browser.document
 import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.H1
@@ -90,7 +92,7 @@ fun App() {
 fun SetupNotice() {
     Div({ classes("login-wrap") }) {
         Div({ classes("login-bg") })
-        Div({ classes("login-card") }) {
+        Surface(padding = SurfacePadding.Large, attrs = { classes("login-card") }) {
             Div({ classes("eyebrow") }) { Text(S.setupEyebrow.caps) }
             H1({ classes("login-h") }) { Text(S.setupTitle.caps) }
             P({

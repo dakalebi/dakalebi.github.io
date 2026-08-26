@@ -7,6 +7,8 @@ import ge.dakalebi.i18n.caps
 import ge.dakalebi.presentation.Route
 import ge.dakalebi.presentation.Router
 import ge.dakalebi.ui.Thumb
+import io.github.bchmsl.keel.components.Surface
+import io.github.bchmsl.keel.components.SurfacePadding
 import io.github.bchmsl.keel.dom.classNames
 import io.github.bchmsl.keel.icons.Icon
 import io.github.bchmsl.keel.icons.LucideIcon
@@ -40,7 +42,9 @@ fun NextEpisodeCard(
     onPlayNext: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    Div({ classes("nextcard") }) {
+    // A floating panel over the video. keel owns the box; `.nextcard` keeps only
+    // where it sits, how wide it is and the entry animation.
+    Surface(padding = SurfacePadding.Small, attrs = { classes("nextcard") }) {
         Div({ classes("nextcard-th") }) { Thumb(episode, showLabel = false) }
         Div({ classes("nextcard-b") }) {
             Div({ classes("eyebrow") }) { Text(S.nextEpisode.caps) }
