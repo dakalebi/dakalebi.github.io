@@ -23,6 +23,8 @@ import io.github.bchmsl.keel.components.Surface
 import io.github.bchmsl.keel.components.SurfacePadding
 import io.github.bchmsl.keel.components.SurfaceRadius
 import io.github.bchmsl.keel.dom.classNames
+import io.github.bchmsl.keel.dom.switchClasses
+import io.github.bchmsl.keel.dom.switchKnobClasses
 import org.jetbrains.compose.web.attributes.ATarget
 import org.jetbrains.compose.web.attributes.target
 import org.jetbrains.compose.web.dom.A
@@ -170,8 +172,8 @@ private fun ToggleRow(title: String, body: String, checked: Boolean, onToggle: (
             Div { Text(title) }
             Span { Text(body) }
         }
-        Span({ classNames("switch"); attr("aria-checked", checked.toString()) }) {
-            Span({ classNames("switch__knob") })
+        Span({ classNames(switchClasses()); attr("aria-checked", checked.toString()) }) {
+            Span({ classNames(switchKnobClasses()) })
         }
     }
 }

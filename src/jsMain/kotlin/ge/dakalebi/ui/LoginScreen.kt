@@ -20,6 +20,7 @@ import io.github.bchmsl.keel.components.SurfacePadding
 import io.github.bchmsl.keel.components.ButtonVariant
 import io.github.bchmsl.keel.dom.buttonClasses
 import io.github.bchmsl.keel.dom.classNames
+import io.github.bchmsl.keel.dom.inputClasses
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.web.attributes.AttrsScope
 import org.jetbrains.compose.web.attributes.InputType
@@ -111,7 +112,7 @@ fun LoginScreen() {
             }) {
                 Div({ classes("auth-field"); dpadField("email", emailField, entry = true) }) {
                     Input(InputType.Email) {
-                        classNames("input")
+                        classNames(inputClasses())
                         name("email")
                         placeholder(S.emailPlaceholder)
                         required()
@@ -122,7 +123,7 @@ fun LoginScreen() {
                 }
                 Div({ classes("auth-field"); dpadField("password", passwordField) }) {
                     Input(InputType.Password) {
-                        classNames("input")
+                        classNames(inputClasses())
                         name("password")
                         placeholder(S.passwordPlaceholder)
                         required()
