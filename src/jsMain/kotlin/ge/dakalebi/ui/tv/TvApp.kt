@@ -14,12 +14,12 @@ import ge.dakalebi.i18n.S
 import ge.dakalebi.presentation.Route
 import ge.dakalebi.ui.LoginScreen
 import ge.dakalebi.ui.ToastHost
-import ge.dakalebi.ui.classNames
 import ge.dakalebi.ui.tv.focus.FocusMemory
 import ge.dakalebi.ui.tv.focus.ITEM_ATTR
 import ge.dakalebi.ui.tv.focus.SpatialNav
 import ge.dakalebi.ui.tv.input.TvInput
 import ge.dakalebi.ui.tv.input.TvLayer
+import io.github.bchmsl.keel.dom.classNames
 import kotlinx.browser.document
 import kotlinx.browser.window
 import org.jetbrains.compose.web.dom.Div

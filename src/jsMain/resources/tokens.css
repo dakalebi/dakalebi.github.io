@@ -36,6 +36,23 @@
   /* Apple's standard ease-out. Short, decisive, no bounce. */
   --ease: cubic-bezier(0.32, 0.72, 0, 1);
 
+  /* keel's overlay ladder, moved up as a block.
+
+     keel numbers its layers 20/30/39/40/50/60 - scrim, drawer, dropdown catcher,
+     dropdown, dialog, toast - which assumes the app underneath stays below 20. This
+     one does not: the sticky nav is at 40, and left alone it would draw over the
+     drawer and the dropdown both. So the whole ladder shifts by 40, which keeps
+     keel's ordering exactly and clears every layer this app declares (its highest
+     outside these six is that nav). Shifted rather than set one by one, because the
+     gaps between them are keel's decisions and not this app's - the catcher sitting
+     one below its own menu is the load-bearing one. */
+  --z-scrim: 60;
+  --z-drawer: 70;
+  --z-dropdown-catch: 79;
+  --z-dropdown: 80;
+  --z-dialog: 90;
+  --z-toast: 100;
+
   --f-sans: "Noto Sans Georgian", "BPG Arial", Sylfaen, ui-sans-serif, system-ui,
     -apple-system, "Segoe UI", sans-serif;
   /* Timecodes, counters and quality labels. A face of its own so numbers read

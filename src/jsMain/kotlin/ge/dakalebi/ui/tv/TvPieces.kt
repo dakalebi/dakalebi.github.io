@@ -11,12 +11,17 @@ import ge.dakalebi.i18n.caps
 import ge.dakalebi.presentation.Route
 import ge.dakalebi.presentation.Router
 import ge.dakalebi.ui.Thumb
-import ge.dakalebi.ui.classNames
 import ge.dakalebi.ui.tv.focus.Axis
 import ge.dakalebi.ui.tv.focus.FocusAxis
 import ge.dakalebi.ui.tv.focus.centre
 import ge.dakalebi.ui.tv.focus.focusGroup
 import ge.dakalebi.ui.tv.focus.focusItem
+import io.github.bchmsl.keel.components.SegmentedStyle
+import io.github.bchmsl.keel.dom.classNames
+import io.github.bchmsl.keel.dom.segmentedClasses
+import io.github.bchmsl.keel.dom.segmentedItemClasses
+import io.github.bchmsl.keel.dom.segmentedLabelClasses
+import kotlin.math.roundToInt
 import kotlinx.browser.window
 import org.jetbrains.compose.web.dom.A
 import org.jetbrains.compose.web.dom.Div
@@ -24,7 +29,6 @@ import org.jetbrains.compose.web.dom.H2
 import org.jetbrains.compose.web.dom.Span
 import org.jetbrains.compose.web.dom.Text
 import org.w3c.dom.HTMLElement
-import kotlin.math.roundToInt
 
 /**
  * One episode, as a single focus stop.
@@ -48,7 +52,7 @@ fun TvTile(episode: Episode, progress: WatchProgress?, entry: Boolean = false) {
         Div({ classes("tv-tile-art") }) {
             // No label inside the art: the badge and the name below already say
             // which episode this is, and a third copy is just noise.
-            Thumb(episode, showLabel = false)
+            Thumb(episode)
             Span({ classes("tv-tile-badge", "mono") }) { Text("E${episode.episodeNumber}") }
             if (watched) Span({ classes("tv-tile-seen") }) { Text("✓") }
             formatDuration(episode.durationSeconds)?.let {
@@ -134,22 +138,33 @@ fun TvSeasonRail(seasons: List<Int>, selected: Int?, onPick: (Int) -> Unit) {
 
     Div({ classes("tv-band") }) {
         H2({ classes("tv-sub") }) { Text(S.seasons.caps) }
+        // keel's segmented control on its rail treatment, built from the class names
+        // rather than by calling `SegmentedControl`: the composable renders a real radio
+        // input per choice, and focus here is a cursor this app moves itself. The chips
+        // are flat divs carrying `aria-checked`, which is the branch keel's rules read.
+        //
+        // `.tv-rail` stays on the container for the ring room. A rail scrolls, an outline
+        // is clipped by a scrolling ancestor, and reserving the ring's width is this
+        // shell's cursor geometry rather than anything keel knows about. It also sets the
+        // gap, so the season strip keeps this page's rhythm rather than keel's.
         Div({
-            classes("tv-rail", "tv-chips")
+            classNames("tv-rail", segmentedClasses(SegmentedStyle.Rail))
             focusGroup("seasons", FocusAxis.X)
             actsAsOptionGroup(S.seasons)
             ref { element -> rail.el = element; onDispose { rail.el = null } }
         }) {
             seasons.forEach { season ->
                 val isSelected = season == selected
-                Div({
-                    classNames("tv-chip", if (isSelected) "on" else null)
-                    // The current season is where a fresh Down onto the strip should land,
-                    // not season one. See [ge.dakalebi.ui.tv.focus.SpatialNav].
-                    focusItem("season-$season", entry = isSelected)
-                    actsAsOption(selected = isSelected)
-                    onClick { onPick(season) }
-                }) { Text(S.season(season).caps) }
+                Div({ classNames(segmentedItemClasses()) }) {
+                    Div({
+                        classNames("tv-chip", segmentedLabelClasses())
+                        // The current season is where a fresh Down onto the strip should
+                        // land, not season one. See [ge.dakalebi.ui.tv.focus.SpatialNav].
+                        focusItem("season-$season", entry = isSelected)
+                        actsAsOption(selected = isSelected)
+                        onClick { onPick(season) }
+                    }) { Text(S.season(season).caps) }
+                }
             }
         }
     }
@@ -162,7 +177,7 @@ fun TvSeasonRail(seasons: List<Int>, selected: Int?, onPick: (Int) -> Unit) {
     DisposableEffect(selected) {
         val timer = window.setTimeout({
             val scroller = rail.el ?: return@setTimeout
-            (scroller.querySelector(".tv-chip.on") as? HTMLElement)
+            (scroller.querySelector(".tv-chip[aria-checked='true']") as? HTMLElement)
                 ?.let { centre(it, setOf(Axis.X), scroller) }
         }, 0)
         onDispose { window.clearTimeout(timer) }

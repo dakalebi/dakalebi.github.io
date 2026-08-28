@@ -8,9 +8,9 @@ import ge.dakalebi.i18n.S
 import ge.dakalebi.ui.App
 import ge.dakalebi.ui.SetupNotice
 import ge.dakalebi.ui.Shell
+import ge.dakalebi.ui.dev.fixtureGraph
 import ge.dakalebi.ui.shell
 import ge.dakalebi.ui.tv.TvApp
-import ge.dakalebi.ui.tv.dev.tvFixtureGraph
 import ge.dakalebi.ui.useFixtures
 import kotlinx.browser.document
 import kotlinx.coroutines.MainScope
@@ -28,13 +28,13 @@ fun main() {
     // First, so a crash during the rest of startup is still reported.
     Log.installGlobalHandlers()
 
-    // `?ui=tv-demo` swaps the outside world for fixtures and never touches
-    // Firebase. It is how the TV screens are verified at all: an automated
-    // browser has no session and cannot sign in, so every screen past the
-    // sign-in form would otherwise be reachable only on a real television.
+    // `/?ui=demo` and `/tv/?ui=tv-demo` swap the outside world for fixtures and
+    // never touch Firebase. It is how either shell is verified at all: an automated
+    // browser has no session and cannot sign in, so every screen past the sign-in
+    // form is otherwise reachable only against production data.
     val graph = if (useFixtures) {
         Log.w("boot", "fixture graph: no Firebase, no real data")
-        tvFixtureGraph()
+        fixtureGraph()
     } else {
         // Touching Firebase before the config is filled in throws on init, so the
         // setup notice has to render without a graph at all.

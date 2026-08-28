@@ -1,16 +1,23 @@
 package ge.dakalebi.ui.watch
 
 import androidx.compose.runtime.Composable
+import io.github.bchmsl.keel.components.Button
+import io.github.bchmsl.keel.components.ButtonSize
+import io.github.bchmsl.keel.components.ButtonVariant
+import io.github.bchmsl.keel.components.LinkButton
 import ge.dakalebi.domain.model.Episode
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
 import ge.dakalebi.presentation.Route
 import ge.dakalebi.presentation.Router
-import ge.dakalebi.ui.Icon
-import ge.dakalebi.ui.Icons
 import ge.dakalebi.ui.Thumb
+import io.github.bchmsl.keel.components.ProgressBar
+import io.github.bchmsl.keel.components.ProgressBarSize
+import io.github.bchmsl.keel.components.Surface
+import io.github.bchmsl.keel.components.SurfacePadding
+import io.github.bchmsl.keel.icons.Icon
+import io.github.bchmsl.keel.icons.LucideIcon
 import org.jetbrains.compose.web.dom.A
-import org.jetbrains.compose.web.dom.Button
 import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.Span
 import org.jetbrains.compose.web.dom.Text
@@ -18,10 +25,13 @@ import org.jetbrains.compose.web.dom.Text
 @Composable
 fun WatchNav(episode: Episode?) {
     Div({ classes("nav", "nav-solid") }) {
-        A(href = Router.href(Route.Dashboard), attrs = { classes("btn", "btn-quiet") }) {
-            Icon(Icons.back)
-            Text(S.back.caps)
-        }
+        LinkButton(
+            href = Router.href(Route.Dashboard),
+            label = S.back.caps,
+            variant = ButtonVariant.Link,
+            // Matches `.btn .ic svg` in web.css.
+            leading = { Icon(LucideIcon.ChevronLeft, size = 16) },
+        )
         episode?.let {
             Span({ classes("eyebrow-mut") }) {
                 Text(S.seasonAndEpisode(it.seasonNumber, it.episodeNumber).caps)
@@ -38,23 +48,39 @@ fun NextEpisodeCard(
     onPlayNext: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    Div({ classes("nextcard") }) {
-        Div({ classes("nextcard-th") }) { Thumb(episode, showLabel = false) }
+    // A floating panel over the video. keel owns the box; `.nextcard` keeps only
+    // where it sits, how wide it is and the entry animation.
+    Surface(padding = SurfacePadding.Small, attrs = { classes("nextcard") }) {
+        Div({ classes("nextcard-th") }) { Thumb(episode) }
         Div({ classes("nextcard-b") }) {
             Div({ classes("eyebrow") }) { Text(S.nextEpisode.caps) }
             Div({ classes("nextcard-t") }) {
                 Text(S.seasonAndEpisode(episode.seasonNumber, episode.episodeNumber).caps)
             }
             if (autoplayOn) {
-                Div({ classes("nextcard-bar") }) {
-                    Div({ style { property("width", "${(countdown * 100).coerceIn(0.0, 100.0)}%") } })
-                }
+                // `aria-hidden`, and keel still requires the label: a bar announcing
+                // "22%" does not tell anyone that autoplay is four seconds away, and
+                // the card already says which episode is next and offers the button.
+                ProgressBar(
+                    fraction = countdown,
+                    ariaLabel = S.nextEpisode,
+                    size = ProgressBarSize.Small,
+                    onMedia = true,
+                    attrs = { classes("nextcard-bar"); attr("aria-hidden", "true") },
+                )
             }
             Div({ classes("nextcard-row") }) {
-                Button({ classes("btn", "btn-primary"); style { property("padding", "7px 13px") }; onClick { onPlayNext() } }) {
-                    Text(S.watch.caps)
-                }
-                Button({ classes("btn", "btn-quiet"); onClick { onDismiss() } }) { Text(S.dismiss.caps) }
+                Button(
+                    label = S.watch.caps,
+                    onClick = { onPlayNext() },
+                    size = ButtonSize.Small,
+                )
+                Button(
+                    label = S.dismiss.caps,
+                    onClick = { onDismiss() },
+                    variant = ButtonVariant.Link,
+                    size = ButtonSize.Small,
+                )
             }
         }
     }

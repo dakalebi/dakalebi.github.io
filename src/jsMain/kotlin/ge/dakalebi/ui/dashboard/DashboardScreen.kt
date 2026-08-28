@@ -22,23 +22,33 @@ import ge.dakalebi.presentation.Router
 import ge.dakalebi.presentation.ToastStore
 import ge.dakalebi.ui.ConfirmDialog
 import ge.dakalebi.ui.EpisodeTile
-import ge.dakalebi.ui.Icon
-import ge.dakalebi.ui.Icons
 import ge.dakalebi.ui.Rail
 import ge.dakalebi.ui.Thumb
 import ge.dakalebi.ui.assetBase
-import ge.dakalebi.ui.classNames
+import io.github.bchmsl.keel.components.DropdownItemTone
+import io.github.bchmsl.keel.components.DropdownMenu
+import io.github.bchmsl.keel.components.DropdownMenuItem
+import io.github.bchmsl.keel.components.IconButton
+import io.github.bchmsl.keel.components.ProgressBar
+import io.github.bchmsl.keel.components.ProgressBarSize
+import io.github.bchmsl.keel.components.Segment
+import io.github.bchmsl.keel.components.SegmentedControl
+import io.github.bchmsl.keel.components.SegmentedStyle
+import io.github.bchmsl.keel.dom.classNames
+import io.github.bchmsl.keel.components.LinkButton
+import io.github.bchmsl.keel.dom.dropdownAnchorClasses
+import io.github.bchmsl.keel.icons.Icon
+import io.github.bchmsl.keel.icons.LucideIcon
+import kotlin.math.roundToInt
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.web.dom.A
-import org.jetbrains.compose.web.dom.Button
 import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.H1
 import org.jetbrains.compose.web.dom.H2
 import org.jetbrains.compose.web.dom.Img
 import org.jetbrains.compose.web.dom.Span
 import org.jetbrains.compose.web.dom.Text
-import kotlin.math.roundToInt
 
 private enum class Confirm { None, ResetAll, MarkSeason, ResetSeason }
 
@@ -114,21 +124,29 @@ fun DashboardScreen() {
                             H2 { Text(S.seasons.caps) }
                             Span({ classes("count") }) { Text("${catalog.seasons.size}") }
                         }
-                        Div({ classes("chips") }) {
-                            catalog.seasons.forEach { number ->
+                        // A radio group now, not a row of buttons. That is the part
+                        // worth noticing: eighteen buttons were eighteen tab stops
+                        // with no arrow-key movement between them, and nothing said
+                        // which of how many was chosen. Native radios sharing a name
+                        // give all of that away for free.
+                        SegmentedControl(
+                            segments = catalog.seasons.map { number ->
                                 val all = catalog.season(number)
-                                val done = all.count { catalog.progress[it.id]?.isWatched == true }
-                                Button({
-                                    classNames("chip", if (number == season) "sel" else null)
-                                    onClick { seasonOverride = number }
-                                }) {
-                                    Text(S.season(number).caps)
-                                    if (all.isNotEmpty() && done == all.size) {
-                                        Span({ classes("done") }) { Text("✓") }
-                                    }
-                                }
-                            }
-                        }
+                                Segment(
+                                    value = number,
+                                    label = S.season(number).caps,
+                                    complete = all.isNotEmpty() &&
+                                        all.all { catalog.progress[it.id]?.isWatched == true },
+                                )
+                            },
+                            selected = season,
+                            onSelect = { seasonOverride = it },
+                            ariaLabel = S.seasons,
+                            style = SegmentedStyle.Rail,
+                            // Only the page gutter is left: the rail's own scrolling,
+                            // gap and hidden scrollbar are keel's.
+                            attrs = { classes("chips") },
+                        )
                     }
 
                     Div {
@@ -230,11 +248,7 @@ private fun DashboardNav(onMenu: () -> Unit) {
     val catalog = catalog()
 
     Div({ classes("nav") }) {
-        Button({
-            classes("icon-btn")
-            attr("aria-label", S.menu)
-            onClick { onMenu() }
-        }) { Icon(Icons.menu, S.menu) }
+        IconButton(ariaLabel = S.menu, onClick = onMenu) { Icon(LucideIcon.Menu, size = ICON_NAV) }
         // The mark is lettering, so it *is* the wordmark — the name lives in
         // `alt` rather than being repeated beside it.
         Img(src = "${assetBase}logo.png", alt = S.appName) { classes("nav-mark") }
@@ -265,7 +279,7 @@ private fun Hero(episode: Episode) {
     val resuming = !watched && position > 5
 
     Div({ classes("hero") }) {
-        Div({ classes("hero-img") }) { Thumb(episode, showLabel = false) }
+        Div({ classes("hero-img") }) { Thumb(episode) }
         Div({ classes("hero-scrim") })
         Div({ classes("hero-body") }) {
             Div({ classes("eyebrow") }) {
@@ -282,9 +296,16 @@ private fun Hero(episode: Episode) {
                 Div { Text(S.episode(episode.episodeNumber).caps) }
             }
             if (percent > 0) {
-                Div({ classes("hero-bar") }) {
-                    Div({ style { property("width", "$percent%") } })
-                }
+                // `onMedia`: the hero bar lies over the episode still, so the track
+                // reads `--primary-foreground` at low alpha rather than a page colour
+                // that says nothing about what is behind it.
+                ProgressBar(
+                    fraction = percent / 100.0,
+                    ariaLabel = S.statProgress,
+                    size = ProgressBarSize.Large,
+                    onMedia = true,
+                    attrs = { classes("hero-bar") },
+                )
             }
             Div({ classes("hero-sub") }) {
                 Text(
@@ -304,12 +325,10 @@ private fun Hero(episode: Episode) {
                 )
             }
             Div({ classes("hero-cta") }) {
-                A(
+                LinkButton(
                     href = Router.href(Route.Watch(episode.id)),
-                    attrs = { classes("btn", "btn-primary") },
-                ) {
-                    Text("▶  " + (if (resuming) S.resume else S.watch).caps)
-                }
+                    label = "▶  " + (if (resuming) S.resume else S.watch).caps,
+                )
                 if (!episode.hasVideo) {
                     Span({ classes("hero-sub") }) { Text(S.videoUnavailableForEpisode) }
                 }
@@ -321,24 +340,34 @@ private fun Hero(episode: Episode) {
 @Composable
 private fun SeasonMenu(disabled: Boolean, onMark: () -> Unit, onReset: () -> Unit) {
     var open by remember { mutableStateOf(false) }
-    Div({ classes("rel") }) {
-        Button({
-            classes("icon-btn")
-            attr("aria-label", S.seasonActions)
-            if (disabled) attr("disabled", "")
-            onClick { open = !open }
-        }) { Icon(Icons.more, S.seasonActions) }
+    // The wrapper exists only to be what the menu positions against, which is what
+    // keel's anchor class says out loud - the old `.rel` was a `position: relative`
+    // with no name for why.
+    Div({ classNames(dropdownAnchorClasses()) }) {
+        IconButton(
+            ariaLabel = S.seasonActions,
+            onClick = { open = !open },
+            enabled = !disabled,
+        ) { Icon(LucideIcon.EllipsisVertical, size = ICON_NAV) }
 
         if (open) {
-            Div({ classes("popover-catch"); onClick { open = false } })
-            Div({ classes("menu") }) {
-                Button({ classes("menu-item"); onClick { open = false; onMark() } }) {
-                    Text(S.markSeasonWatched.caps)
-                }
-                Button({ classes("menu-item", "danger"); onClick { open = false; onReset() } }) {
-                    Text(S.resetSeasonProgress.caps)
-                }
+            // Escape closes it now; before, only a click outside did. The
+            // click-catcher and its z-index one below the menu are keel's too - this
+            // screen had already had to work out that a scrim could not be one.
+            DropdownMenu(onDismiss = { open = false }, ariaLabel = S.seasonActions) {
+                DropdownMenuItem(
+                    label = S.markSeasonWatched.caps,
+                    onClick = { open = false; onMark() },
+                )
+                DropdownMenuItem(
+                    label = S.resetSeasonProgress.caps,
+                    onClick = { open = false; onReset() },
+                    tone = DropdownItemTone.Danger,
+                )
             }
         }
     }
 }
+
+/** The global default in web.css's `.ic svg`; neither icon-btn here overrides it. */
+private const val ICON_NAV = 20

@@ -4,13 +4,13 @@ import androidx.compose.runtime.Composable
 import ge.dakalebi.i18n.S
 import ge.dakalebi.presentation.Route
 import ge.dakalebi.presentation.Router
-import ge.dakalebi.ui.Icon
-import ge.dakalebi.ui.Icons
 import ge.dakalebi.ui.assetBase
-import ge.dakalebi.ui.classNames
 import ge.dakalebi.ui.tv.focus.FocusAxis
 import ge.dakalebi.ui.tv.focus.focusGroup
 import ge.dakalebi.ui.tv.focus.focusItem
+import io.github.bchmsl.keel.dom.classNames
+import io.github.bchmsl.keel.icons.Icon
+import io.github.bchmsl.keel.icons.LucideIcon
 import org.jetbrains.compose.web.dom.A
 import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.Img
@@ -66,7 +66,7 @@ fun TvNavRail(route: Route) {
         NavItem(
             key = "nav-home",
             route = Route.Dashboard,
-            icon = Icons.home,
+            icon = LucideIcon.House,
             label = S.home,
             // Active whenever we are not in Settings, so an episode opened from a
             // shelf still reads as "you are in Home".
@@ -77,7 +77,7 @@ fun TvNavRail(route: Route) {
             NavItem(
                 key = "nav-settings",
                 route = Route.Settings,
-                icon = Icons.gear,
+                icon = LucideIcon.Settings,
                 label = S.settings,
                 active = route is Route.Settings,
             )
@@ -96,7 +96,7 @@ fun TvNavRail(route: Route) {
 private fun NavItem(
     key: String,
     route: Route,
-    icon: String,
+    icon: LucideIcon,
     label: String,
     active: Boolean,
 ) {
@@ -104,7 +104,11 @@ private fun NavItem(
         classNames("tv-nav-item", if (active) "on" else null)
         focusItem(key)
     }) {
-        Icon(icon)
+        // `size = null` on purpose, and it is the whole reason keel's `Icon` can serve a
+        // 10-foot surface at all: an inline `px` written at the call site is the one
+        // length that cannot follow this sheet's scaled root font size. `.tv-nav-ic`
+        // sizes it in `rem` instead.
+        Icon(icon, size = null, className = "tv-nav-ic")
         Span({ classes("tv-nav-label") }) { Text(label) }
     }
 }

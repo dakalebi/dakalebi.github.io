@@ -1,4 +1,4 @@
-package ge.dakalebi.ui.tv.dev
+package ge.dakalebi.ui.dev
 
 import ge.dakalebi.data.local.BrowserPreferencesRepository
 import ge.dakalebi.di.AppGraph
@@ -23,27 +23,30 @@ import org.w3c.dom.url.URLSearchParams
  * A whole app graph with no Firebase behind it.
  *
  * There is no Firebase session in an automated browser and signing in there is not
- * possible, so without this every TV screen past the sign-in form could only ever
- * be looked at on a real television. That is not a standard worth accepting for a
- * UI whose entire interaction model is new.
+ * possible, so without this every screen past the sign-in form could only ever be
+ * looked at against production data by a signed-in human. The TV shell was the first
+ * to refuse that standard; the web shell had accepted it for far longer, which is why
+ * nothing there but the sign-in screen had ever actually been checked.
  *
  * The seam is already in the design: [AppGraph] takes every repository as a
  * constructor parameter with a default, so this replaces the outside world and
  * nothing else. The stores, the use cases and the screens are the real ones.
  *
- * Reachable at `/tv/?ui=tv-demo`. It ships in the bundle — a few hundred lines of
- * fake data inside 1.9MB is a fair price for a TV UI that is otherwise unverifiable.
+ * Reachable at `/tv/?ui=tv-demo` and `/?ui=demo`. Nothing in it is TV-specific — it
+ * is episodes, progress, settings and an account — which is why it no longer lives in
+ * the TV package. It ships in the bundle: a few hundred lines of fake data inside
+ * 1.9MB is a fair price for two front ends that are otherwise unverifiable.
  */
-internal fun tvFixtureGraph(): AppGraph {
+internal fun fixtureGraph(): AppGraph {
     val episodes = fixtureEpisodes()
     return AppGraph(
         catalogCache = NoCatalogCache,
         catalogRepository = FixtureCatalogRepository(episodes),
         progressRepository = FixtureProgressRepository(fixtureProgress(episodes)),
         settingsRepository = FixtureSettingsRepository(),
-        // `?ui=tv-demo&signedout` starts with no account, so the sign-in screen —
-        // otherwise unreachable without a real recomposition to swap it in — renders
-        // on the first paint and can be driven like every other TV screen.
+        // `&signedout` starts with no account, so the sign-in screen — otherwise
+        // unreachable without a real recomposition to swap it in — renders on the
+        // first paint and can be driven like every other screen.
         accountRepository = FixtureAccountRepository(startSignedOut = fixtureSignedOut()),
         adminRepository = FixtureAdminRepository,
         // The real one: per-device preferences are `localStorage`, which the
@@ -171,7 +174,7 @@ private class FixtureSettingsRepository : SettingsRepository {
  * auth gate and the sign-in screen are both reachable in the fixture rather than
  * being the one thing it cannot show.
  */
-/** Whether `?ui=tv-demo&signedout` asked the fixture to start with no account. */
+/** Whether `&signedout` asked the fixture to start with no account. */
 private fun fixtureSignedOut(): Boolean =
     runCatching { URLSearchParams(window.location.search).has("signedout") }.getOrDefault(false)
 

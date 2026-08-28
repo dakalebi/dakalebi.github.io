@@ -10,9 +10,29 @@ import ge.dakalebi.core.Log
 import ge.dakalebi.core.formatTime
 import ge.dakalebi.domain.service.orderedQualityLabels
 import ge.dakalebi.i18n.S
-import ge.dakalebi.ui.Icon
-import ge.dakalebi.ui.Icons
-import ge.dakalebi.ui.classNames
+import ge.dakalebi.ui.Icon as PlayerIcon
+import ge.dakalebi.ui.Icons as PlayerIcons
+import io.github.bchmsl.keel.components.ButtonSize
+import io.github.bchmsl.keel.components.ButtonVariant
+import io.github.bchmsl.keel.components.DropdownMenu
+import io.github.bchmsl.keel.components.DropdownMenuItem
+import io.github.bchmsl.keel.components.DropdownSide
+import io.github.bchmsl.keel.components.IconButton
+import io.github.bchmsl.keel.components.ProgressBar
+import io.github.bchmsl.keel.components.ProgressHandle
+import io.github.bchmsl.keel.components.Scrub
+import io.github.bchmsl.keel.components.ScrubHandle
+import io.github.bchmsl.keel.components.Spinner
+import io.github.bchmsl.keel.components.SpinnerSize
+import io.github.bchmsl.keel.dom.buttonClasses
+import io.github.bchmsl.keel.dom.classNames
+import io.github.bchmsl.keel.dom.dropdownAnchorClasses
+import io.github.bchmsl.keel.icons.Icon
+import io.github.bchmsl.keel.icons.LucideIcon
+import kotlin.math.floor
+import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.roundToInt
 import kotlinx.browser.document
 import kotlinx.browser.window
 import org.jetbrains.compose.web.attributes.InputType
@@ -26,24 +46,16 @@ import org.jetbrains.compose.web.dom.Span
 import org.jetbrains.compose.web.dom.Text
 import org.jetbrains.compose.web.dom.Video
 import org.w3c.dom.HTMLElement
-import org.w3c.dom.HTMLInputElement
 import org.w3c.dom.HTMLVideoElement
 import org.w3c.dom.events.Event
 import org.w3c.dom.events.KeyboardEvent
-import kotlin.math.floor
-import kotlin.math.max
-import kotlin.math.min
-import kotlin.math.roundToInt
 
 /** Mutable holders that must not trigger recomposition when they change. */
 private class PlayerRefs {
     var video: HTMLVideoElement? = null
     var container: HTMLElement? = null
-    var fillCur: HTMLElement? = null
-    var fillBuf: HTMLElement? = null
-    var knob: HTMLElement? = null
-    var thinCur: HTMLElement? = null
-    var scrubInput: HTMLInputElement? = null
+    var scrub: ScrubHandle? = null
+    var thinBar: ProgressHandle? = null
     var raf: Int? = null
     var hideTimer: Int? = null
     var feedbackTimer: Int? = null
@@ -51,7 +63,6 @@ private class PlayerRefs {
     /** Position to restore after a quality swap. */
     var pendingSeek: Double? = null
     var pendingPlay: Boolean = false
-    var scrubbing: Boolean = false
 
     /** Last position the animation loop saw, for detecting real progress. */
     var lastTickTime: Double = -1.0
@@ -91,18 +102,20 @@ fun CustomVideoPlayer(
         val duration = if (v.duration.isFinite() && v.duration > 0) v.duration else 0.0
         val pct = if (duration > 0) (v.currentTime / duration * 100).coerceIn(0.0, 100.0) else 0.0
 
-        if (!refs.scrubbing) {
-            refs.fillCur?.style?.width = "$pct%"
-            refs.knob?.style?.left = "$pct%"
-            // The bar people see is painted here, but the range input layered
-            // over it for interaction is what the keyboard and screen readers
-            // actually address. Leaving its value behind meant arrow-key
-            // seeking jumped from a stale position and assistive tech
-            // announced the wrong one. Skipped mid-drag so it never fights
-            // the pointer.
-            refs.scrubInput?.value = (pct * 10).roundToInt().toString()
-        }
-        refs.thinCur?.style?.width = "$pct%"
+        // One call for the fill, the knob and the range input's own value and
+        // `aria-valuetext`. The drag guard that used to be written out here is inside
+        // the handle: mid-drag this does nothing, so the frame loop cannot pull the
+        // knob back to the video's time while a finger is still moving it.
+        //
+        // The time is read from the element rather than from `currentSec`, which is
+        // composition state and is a frame or more behind here.
+        refs.scrub?.setPosition(
+            fraction = pct / 100.0,
+            valueText = "${formatTime(v.currentTime)} / ${formatTime(duration)}",
+        )
+        // keel's handle rather than a `style.width` of our own: it moves the fill and
+        // rewrites `aria-valuenow` together, so the two cannot drift.
+        refs.thinBar?.setFraction(pct / 100.0)
 
         var bufEnd = 0.0
         val buffered = v.buffered
@@ -116,7 +129,7 @@ fun CustomVideoPlayer(
             if (start >= v.currentTime && end > bufEnd) bufEnd = end
         }
         val bufPct = if (duration > 0) (bufEnd / duration * 100).coerceIn(0.0, 100.0) else 0.0
-        refs.fillBuf?.style?.width = "$bufPct%"
+        refs.scrub?.setBuffered(bufPct / 100.0)
     }
 
     fun syncClock() {
@@ -474,12 +487,22 @@ fun CustomVideoPlayer(
 
         if (!started || (!playing && !buffering)) {
             Div({ classes("player-center"); onClick { togglePlay() } }) {
-                Div({ classes("big") }) { Icon(Icons.play) }
+                // The `-1` in the CSS class name is web.css's own optical nudge for
+                // a triangle glyph, which sits visually off-centre inside a circle -
+                // matching `.player-center .big .ic svg { margin-left: 3px }`.
+                Div({ classes("big") }) {
+                    Icon(LucideIcon.Play, size = ICON_PLAYER_BIG, className = "player-glyph-nudge")
+                }
             }
         }
 
         if (buffering) {
-            Div({ classes("spinner") }) { Div() }
+            // The wrapper is layout over the video and stays local; the ring itself is
+            // keel's. It also gains a label - the hand-built one announced nothing, so
+            // a screen reader user had no way to tell buffering from a stalled player.
+            Div({ classes("loading-ring") }) {
+                Spinner(SpinnerSize.Large, ariaLabel = S.loading)
+            }
         }
 
         overlay()
@@ -488,83 +511,42 @@ fun CustomVideoPlayer(
             Div({ classes("feedback") }) { Text(it) }
         }
 
-        if (qualityOpen && ordered.size > 1) {
-            Div({ classes("q-menu") }) {
-                ordered.forEach { label ->
-                    Button({
-                        classNames("q-item", if (label == quality) "sel" else null)
-                        onClick {
-                            qualityOpen = false
-                            val v = refs.video
-                            refs.pendingSeek = v?.currentTime
-                            refs.pendingPlay = v?.paused == false
-                            onQualitySelected(label)
-                        }
-                    }) {
-                        Text(label)
-                        if (label == quality) Span({ classes("grow") }) { Text(" ✓") }
-                    }
-                }
-            }
-        }
-
         Div({ classNames("ctl", if (controlsHidden) "hide" else null) }) {
-            Div({ classes("scrub") }) {
-                Div({ classes("scrub-track") }) {
-                    Div({
-                        classes("scrub-buf")
-                        ref { el -> refs.fillBuf = el; onDispose { refs.fillBuf = null } }
-                    })
-                    Div({
-                        classes("scrub-cur")
-                        ref { el -> refs.fillCur = el; onDispose { refs.fillCur = null } }
-                    })
-                }
-                Div({
-                    classes("scrub-knob")
-                    ref { el -> refs.knob = el; onDispose { refs.knob = null } }
-                })
-                Input(InputType.Range) {
-                    min("0"); max("1000"); step(1.0)
-                    attr("aria-label", S.timeline)
-                    ref { el -> refs.scrubInput = el; onDispose { refs.scrubInput = null } }
-                    onInput { event ->
-                        val v = refs.video ?: return@onInput
-                        if (!v.duration.isFinite() || v.duration <= 0) return@onInput
-                        val fraction = (event.value.toString().toDoubleOrNull() ?: 0.0) / 1000.0
+            // The track, the buffered layer, the played fill, the knob, the invisible
+            // range input and all three pointer listeners are keel's. What is left
+            // here is the one thing only this player knows: where in the video a
+            // fraction of the timeline is.
+            Scrub(
+                ariaLabel = S.timeline,
+                onSeek = { fraction ->
+                    val v = refs.video
+                    if (v != null && v.duration.isFinite() && v.duration > 0) {
                         v.currentTime = fraction * v.duration
-                        refs.fillCur?.style?.width = "${fraction * 100}%"
-                        refs.knob?.style?.left = "${fraction * 100}%"
                     }
-                    addEventListener("pointerdown") { refs.scrubbing = true }
-                    addEventListener("pointerup") { refs.scrubbing = false }
-                    addEventListener("pointercancel") { refs.scrubbing = false }
-                }
-            }
+                },
+                onHandleReady = { handle -> refs.scrub = handle },
+            )
 
             Div({ classes("ctl-row") }) {
-                Button({
-                    classes("icon-btn")
-                    attr("aria-label", if (playing) S.pause else S.play)
-                    onClick { togglePlay() }
-                }) { Icon(if (playing) Icons.pause else Icons.play) }
+                IconButton(
+                    ariaLabel = if (playing) S.pause else S.play,
+                    onClick = { togglePlay() },
+                ) { Icon(if (playing) LucideIcon.Pause else LucideIcon.Play, size = ICON_PLAYER_CTL) }
 
-                Button({
-                    classes("icon-btn")
-                    attr("aria-label", S.back10)
-                    onClick { seekBy(-10.0) }
-                }) { Icon(Icons.back10) }
+                IconButton(ariaLabel = S.back10, onClick = { seekBy(-10.0) }) { PlayerIcon(PlayerIcons.back10) }
 
                 Div({ classes("vol-wrap") }) {
-                    Button({
-                        classes("icon-btn")
-                        attr("aria-label", if (muted) S.unmute else S.mute)
-                        onClick {
-                            val v = refs.video ?: return@onClick
-                            v.muted = !v.muted
-                            muted = v.muted
-                        }
-                    }) { Icon(if (muted || volume == 0.0) Icons.volumeOff else Icons.volumeOn) }
+                    IconButton(
+                        ariaLabel = if (muted) S.unmute else S.mute,
+                        onClick = {
+                            refs.video?.let { v -> v.muted = !v.muted; muted = v.muted }
+                        },
+                    ) {
+                        Icon(
+                            if (muted || volume == 0.0) LucideIcon.VolumeX else LucideIcon.Volume2,
+                            size = ICON_PLAYER_CTL,
+                        )
+                    }
 
                     Div({ classes("vol") }) {
                         Div({ style { property("width", "${if (muted) 0.0 else volume * 100}%") } })
@@ -584,34 +566,111 @@ fun CustomVideoPlayer(
                 Div({ classes("grow") })
 
                 if (ordered.size > 1) {
-                    Button({
-                        classes("q-btn", "mono")
-                        attr("aria-label", S.quality)
-                        onClick { qualityOpen = !qualityOpen }
-                    }) { Text(quality ?: ordered.first()) }
+                    // The trigger and the menu now share one positioned wrapper,
+                    // which is what keel's dropdown resolves against. Before, the menu
+                    // was a sibling of `.ctl` pinned to `.player` by a hand-measured
+                    // `right: 14px; bottom: 64px` - the 64 being this control bar's
+                    // height, so anything that changed the bar moved the menu off it.
+                    //
+                    // Nesting it inside `.ctl`, which fades out on the idle timer, is
+                    // safe only because that timer already refuses to fire while
+                    // `qualityOpen`: both paths that hide the bar test it. Without
+                    // those guards an open menu would fade out with the bar under it.
+                    Div({ classNames(dropdownAnchorClasses()) }) {
+                        Button({
+                            // On-media, because it sits on the video frame rather than
+                            // on the page. Small rather than the default, so it reads as
+                            // chrome beside the transport buttons instead of competing
+                            // with them.
+                            classNames(
+                                "q-btn",
+                                "mono",
+                                buttonClasses(ButtonVariant.OnMedia, ButtonSize.Small),
+                            )
+                            attr("aria-label", S.quality)
+                            // A disclosure, which is what this is: keel's menu is a
+                            // labelled *group* of buttons and says so, so
+                            // `aria-haspopup="menu"` would promise a role it does not
+                            // claim. `aria-expanded` alone is the honest half, and the
+                            // hand-built version announced neither.
+                            attr("aria-expanded", qualityOpen.toString())
+                            onClick { qualityOpen = !qualityOpen }
+                        }) { Text(quality ?: ordered.first()) }
+
+                        if (qualityOpen) {
+                            DropdownMenu(
+                                onDismiss = { qualityOpen = false },
+                                ariaLabel = S.quality,
+                                // The bar is pinned to the foot of the video, so a menu
+                                // hung downward opens off the bottom of the screen.
+                                side = DropdownSide.Above,
+                            ) {
+                                ordered.forEach { label ->
+                                    DropdownMenuItem(
+                                        label = label,
+                                        // The check and `aria-current` are keel's now.
+                                        // The old markup marked the current rendition
+                                        // with a "✓" in a `.grow` span and a red `.sel`
+                                        // class, and announced nothing at all - so
+                                        // which quality was playing was answerable only
+                                        // by looking.
+                                        selected = label == quality,
+                                        onClick = {
+                                            qualityOpen = false
+                                            val v = refs.video
+                                            refs.pendingSeek = v?.currentTime
+                                            refs.pendingPlay = v?.paused == false
+                                            onQualitySelected(label)
+                                        },
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
 
                 if (castSupported || castAvailable) {
                     Button({
-                        classes("icon-btn")
+                        classNames(buttonClasses(ButtonVariant.Ghost, ButtonSize.Icon))
                         attr("aria-label", "Cast")
                         if (casting) style { property("color", "var(--red)") }
                         onClick { startCast() }
-                    }) { Icon(Icons.cast) }
+                    }) { Icon(LucideIcon.Cast, size = ICON_PLAYER_CTL) }
                 }
 
-                Button({
-                    classes("icon-btn")
-                    attr("aria-label", S.fullscreen)
-                    onClick { toggleFullscreen() }
-                }) { Icon(if (fullscreen) Icons.exitFullscreen else Icons.fullscreen) }
+                IconButton(ariaLabel = S.fullscreen, onClick = { toggleFullscreen() }) {
+                    Icon(
+                        if (fullscreen) LucideIcon.Minimize else LucideIcon.Maximize,
+                        size = ICON_PLAYER_CTL,
+                    )
+                }
             }
         }
 
         // Always-visible position line: shown precisely when the control bar
         // is not, so there is never a moment without a progress indicator.
-        Div({ classNames("thinbar", if (!controlsHidden) "hide" else null) }) {
-            Div({ ref { el -> refs.thinCur = el; onDispose { refs.thinCur = null } } })
-        }
+        // Driven from the frame loop through `ProgressHandle`, which is what that
+        // escape exists for - recomposing sixty times a second to move one element is
+        // exactly what a player must not do. `fraction` is therefore a constant here.
+        //
+        // `aria-hidden`: this duplicates the scrub bar, which is a real range input and
+        // stays in the accessibility tree even while the control row is faded out. Two
+        // progressbars reporting the same position is noise, not redundancy.
+        ProgressBar(
+            fraction = 0.0,
+            ariaLabel = S.timeline,
+            onMedia = true,
+            attrs = {
+                classNames("thinbar", if (!controlsHidden) "hide" else null)
+                attr("aria-hidden", "true")
+            },
+            onHandleReady = { handle -> refs.thinBar = handle },
+        )
     }
 }
+
+/** Matches `.player-center .big .ic svg` in web.css. */
+private const val ICON_PLAYER_BIG = 30
+
+/** Matches `.ctl .ic svg` in web.css. */
+private const val ICON_PLAYER_CTL = 24

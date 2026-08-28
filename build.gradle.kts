@@ -123,6 +123,11 @@ kotlin {
             kotlin.srcDir(generateBuildInfo)
             dependencies {
                 implementation(project(":shared"))
+                // The icon catalogue and the shared components. See the note on
+                // `includeBuild("keel")` in settings.gradle.kts for what this app
+                // still keeps its own CSS for, and the `jsProcessResources` block
+                // below for why this line alone is not enough to paint any of it.
+                implementation("io.github.bchmsl:keel")
                 implementation("org.jetbrains.compose.runtime:runtime:1.11.1")
                 // Compose HTML is Kotlin/JS only and has no multiplatform
                 // variant, so it cannot move into `:shared`. Neither can the
@@ -139,4 +144,24 @@ kotlin {
         // No `jsTest`: the tests are in `:shared`, where the code they exercise
         // now lives. `./gradlew jsNodeTest` still runs them.
     }
+}
+
+/*
+ * Take keel's stylesheets into this module's own resources.
+ *
+ * Not optional, and there is no way to leave it out safely: a Kotlin Multiplatform
+ * library's `jsMain/resources` do NOT reach a consumer's distribution on their own -
+ * not copied into `jsProcessResources`, not packed into the klib, absent from
+ * `build/dist`. See keel/ARCHITECTURE.md, "How the CSS gets there".
+ *
+ * The failure without this block is silent: an unresolved `var()` falls back to the
+ * property's initial value, so the page renders unstyled with a clean console and a
+ * green build.
+ *
+ * The path is `keel/keel/...` because the submodule root is `keel/` and the library
+ * module inside it is also named `keel` - the in-repo form keel's own gallery uses,
+ * `keel/src/...`, is one level too shallow from here.
+ */
+tasks.named<Copy>("jsProcessResources") {
+    from(rootProject.layout.projectDirectory.dir("keel/keel/src/jsMain/resources"))
 }

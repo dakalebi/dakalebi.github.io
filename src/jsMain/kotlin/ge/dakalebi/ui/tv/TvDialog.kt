@@ -10,6 +10,12 @@ import ge.dakalebi.ui.tv.focus.SpatialNav
 import ge.dakalebi.ui.tv.focus.focusGroup
 import ge.dakalebi.ui.tv.focus.focusItem
 import ge.dakalebi.ui.tv.input.TvLayer
+import io.github.bchmsl.keel.components.ButtonVariant
+import io.github.bchmsl.keel.components.SurfacePadding
+import io.github.bchmsl.keel.dom.buttonClasses
+import io.github.bchmsl.keel.dom.classNames
+import io.github.bchmsl.keel.dom.scrimClasses
+import io.github.bchmsl.keel.dom.surfaceClasses
 import kotlinx.browser.window
 import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.H2
@@ -65,9 +71,14 @@ fun TvConfirmDialog(
         }
     }
 
-    Div({ classes("tv-scrim") })
+    // keel's scrim and keel's surface box, by class name. Not keel's `Dialog`, which
+    // composes `DismissOnEscape` and so installs a second global `keydown` listener -
+    // this shell has exactly one by design, and two independent listeners for the same
+    // event have no ordering guarantee between them. Back is handled by the input layer
+    // pushed above instead.
+    Div({ classNames(scrimClasses(blurred = false)) })
     Div({
-        classes("tv-dialog")
+        classNames("tv-dialog", surfaceClasses(SurfacePadding.None))
         ref { element -> refs.container = element; onDispose { refs.container = null } }
     }) {
         H2({ classes("tv-dialog-title") }) { Text(title) }
@@ -76,14 +87,14 @@ fun TvConfirmDialog(
             // No `aria-label`: the visible text already names each action, and adding one
             // would only shadow it. See [actsAsButton].
             Div({
-                classes("tv-btn")
+                classNames("tv-btn", buttonClasses(ButtonVariant.Outline))
                 focusItem("dialog-cancel", entry = true)
                 actsAsButton()
                 onClick { onDismiss() }
             }) { Text(S.cancel.caps) }
 
             Div({
-                classes("tv-btn", "tv-btn-primary")
+                classNames("tv-btn", buttonClasses(ButtonVariant.Default))
                 focusItem("dialog-confirm")
                 actsAsButton()
                 onClick { onConfirm() }

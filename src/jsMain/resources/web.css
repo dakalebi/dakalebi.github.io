@@ -111,94 +111,13 @@ h3 {
 }
 
 /* --------------------------------------------------------------- buttons */
+/* `.btn`/`.btn--*` (and `.icon-btn`'s replacement, `.btn--ghost .btn--size-icon`)
+   now come from keel/components.css, painted with this app's own colours from
+   keel-theme.css - see the `--radius-md` override there for why they still
+   come out as a capsule and a circle rather than keel's own rounded-rect. */
 
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 11px 20px;
-  border-radius: var(--radius-pill);
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  white-space: nowrap;
-  transition: background 0.2s var(--ease), border-color 0.2s var(--ease),
-    opacity 0.2s var(--ease), transform 0.2s var(--ease);
-}
-.btn:active {
-  transform: scale(0.97);
-}
-
-.btn-primary {
-  background: #fff;
-  color: #000;
-}
-.btn-primary:hover {
-  background: #d8d8dc;
-}
-
-.btn-ghost {
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  color: var(--tx);
-}
-.btn-ghost:hover {
-  border-color: #fff;
-  background: rgba(255, 255, 255, 0.06);
-}
-
-.btn-quiet {
-  color: var(--mut);
-  padding: 9px 14px;
-}
-.btn-quiet:hover {
-  color: var(--tx);
-}
-
-.btn-danger {
-  border: 1px solid rgba(225, 53, 47, 0.5);
-  color: #ff8a85;
-}
-.btn-danger:hover {
-  background: rgba(225, 53, 47, 0.14);
-  border-color: var(--red);
-}
-
-.btn[disabled] {
-  opacity: 0.45;
-  pointer-events: none;
-}
-
-.icon-btn {
-  width: 40px;
-  height: 40px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  color: var(--tx);
-  transition: background 0.2s var(--ease), transform 0.2s var(--ease);
-}
-.icon-btn:hover {
-  background: rgba(255, 255, 255, 0.14);
-}
-.icon-btn:active {
-  transform: scale(0.92);
-}
-
-/* Icon sizing lives here rather than in the SVG markup, so the same glyph can
-   be small in the nav and comfortably large in the player. */
-.ic svg {
-  width: 20px;
-  height: 20px;
-}
-.ctl .ic svg {
-  width: 24px;
-  height: 24px;
-}
-.player-center .ic svg {
-  width: 34px;
-  height: 34px;
-}
+/* Icon sizing for `.ic` now lives in one rule further down, because `.ic` is down to a
+   single glyph on this shell. See the note beside it. */
 
 /* ------------------------------------------------------------------- nav */
 
@@ -329,17 +248,11 @@ h3 {
   color: var(--tx-dim);
 }
 
+/* keel's `ProgressBar` at `Large` + `onMedia`, which is this bar's own 4px and its
+   own white-at-0.22 track: keel reads `--primary-foreground`, which is white in
+   every palette. All that is left is how far it may run. */
 .hero-bar {
-  height: 4px;
-  border-radius: var(--radius-pill);
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.22);
   max-width: 340px;
-}
-.hero-bar > div {
-  display: block;
-  height: 100%;
-  background: var(--red);
 }
 
 .hero-cta {
@@ -414,45 +327,13 @@ h3 {
 }
 
 /* Season picker — a rail of chips rather than a <select>, so the whole run of
-   18 seasons is scannable and thumb-scrollable on a phone. */
+   18 seasons is scannable and thumb-scrollable on a phone. That rail is keel's
+   `.segmented--rail`, including the chips, the selected fill, the finished-season
+   check and the hidden scrollbar. What is left is where the rail sits on the page:
+   the gutter, which the component cannot know, and the 2px below it so a chip's
+   focus ring is not clipped by the scroll box. */
 .chips {
-  display: flex;
-  gap: 6px;
-  overflow-x: auto;
   padding: 0 var(--pad) 2px;
-  scrollbar-width: none;
-}
-.chips::-webkit-scrollbar {
-  display: none;
-}
-.chip {
-  flex: none;
-  padding: 9px 17px;
-  font-size: 13.5px;
-  font-weight: 600;
-  color: var(--tx-dim);
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid transparent;
-  border-radius: var(--radius-pill);
-  white-space: nowrap;
-  transition: background 0.2s var(--ease), color 0.2s var(--ease);
-}
-.chip:hover {
-  color: var(--tx);
-  background: rgba(255, 255, 255, 0.12);
-}
-.chip.sel {
-  color: #000;
-  background: #fff;
-  border-color: #fff;
-}
-.chip .done {
-  color: var(--ok);
-  margin-left: 5px;
-  font-size: 10px;
-}
-.chip.sel .done {
-  color: #12794f;
 }
 
 /* ----------------------------------------------------------------- tiles */
@@ -561,22 +442,16 @@ h3 {
   color: var(--ok);
 }
 
+/* keel's `ProgressBar` at `onMedia` + `done`, which carries both of this bar's
+   fills - brand red while watching, white-at-0.7 once finished - and its own 3px.
+   The track moves from 0.24 to keel's 0.22. Placement stays here; a bar riding the
+   bottom edge of a thumbnail is the tile's arrangement, not the bar's. */
 .tile-prog {
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
-  height: 3px;
-  background: rgba(255, 255, 255, 0.24);
   z-index: 2;
-}
-.tile-prog > div {
-  display: block;
-  height: 100%;
-  background: var(--red);
-}
-.tile-prog.done > div {
-  background: rgba(255, 255, 255, 0.7);
 }
 
 .tile-meta {
@@ -691,26 +566,20 @@ h3 {
   transform: scale(1.05);
 }
 
-.spinner {
+/* Where the buffering ring sits over the video. The ring itself is keel's
+   `Spinner`; this is only the layer that centres it and keeps it out of the
+   pointer's way.
+
+   Still `.loading-ring` rather than `.spinner`: keel/base.css owns that name as
+   the "rotate this icon" utility, and keel's own component avoids it for the same
+   reason - see the note above `.loader` in keel/components.css. */
+.loading-ring {
   position: absolute;
   inset: 0;
   display: grid;
   place-items: center;
   pointer-events: none;
   z-index: 3;
-}
-.spinner > div {
-  width: 38px;
-  height: 38px;
-  border: 3px solid rgba(255, 255, 255, 0.24);
-  border-top-color: #fff;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 .ctl {
@@ -728,48 +597,11 @@ h3 {
   pointer-events: none;
 }
 
-.scrub {
-  position: relative;
-  height: 16px;
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-}
-.scrub-track {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: rgba(255, 255, 255, 0.24);
-}
-.scrub-buf {
-  position: absolute;
-  inset: 0 auto 0 0;
-  background: rgba(255, 255, 255, 0.4);
-}
-.scrub-cur {
-  position: absolute;
-  inset: 0 auto 0 0;
-  background: var(--red);
-}
-.scrub-knob {
-  position: absolute;
-  top: 50%;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: var(--red);
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-}
-.scrub input {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  opacity: 0;
-  cursor: pointer;
-  margin: 0;
-}
+/* The scrub bar is keel's `.scrub`, and nothing of it is left here. Unlike every
+   other adoption in this file there is no layout half to keep: the whole rule was
+   the component - hit area, rail, buffered layer, position, knob and the invisible
+   range input on top. `.scrub` is also a name keel now owns, so leaving even a
+   trimmed copy behind would be a same-name rule loading after the design system. */
 
 .ctl-row {
   display: flex;
@@ -814,46 +646,27 @@ h3 {
   flex: 1;
 }
 
+/* The quality button's label, and nothing else. The translucent fill, its hover, the
+   capsule and the horizontal padding are keel's `ButtonVariant.OnMedia` at
+   `ButtonSize.Small` - and the fill matches byte for byte, because `--on-media-alpha`
+   and its hover value were taken from the rule this replaces. What is left is that the
+   label is small, heavy and letter-spaced, which is type rather than treatment. */
 .q-btn {
   font-size: 12px;
   font-weight: 650;
   letter-spacing: 0.04em;
-  padding: 7px 12px;
-  border-radius: var(--radius-pill);
-  background: rgba(255, 255, 255, 0.16);
-}
-.q-btn:hover {
-  background: rgba(255, 255, 255, 0.3);
 }
 
-.q-menu {
-  position: absolute;
-  right: 14px;
-  bottom: 64px;
-  border-radius: var(--radius);
-  z-index: 8;
-  background: rgba(10, 10, 12, 0.96);
-  border: 1px solid var(--line-strong);
-  min-width: 118px;
-  padding: 4px;
-}
-.q-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 9px 12px;
-  font-size: 13px;
-  border-radius: var(--radius-sm);
-  text-align: left;
-}
-.q-item:hover {
-  background: rgba(255, 255, 255, 0.1);
-}
-.q-item.sel {
-  color: var(--red);
-  font-weight: 650;
-}
+/* The quality menu is keel's `DropdownMenu`: `.dropdown`, `.dropdown--above`,
+   `.dropdown__item` and the selected item's check, none of them restated here. The
+   `right`/`bottom`/`z-index` trio went with them - the menu used to be positioned
+   against `.player` with its `bottom` hand-measured against the control bar's height,
+   and it now hangs off the trigger inside `.dropdown-anchor` instead.
+
+   `.q-btn` above is now keel's too. It was the gap recorded here - an on-media button,
+   a translucent white fill over picture, which none of keel's six variants could paint
+   because each resolves against a palette colour and a video frame is not one. keel
+   grew `ButtonVariant.OnMedia` for it, and this sheet keeps only the label's type. */
 
 /* Always-visible position line — stays when the control bar fades out, in
    windowed and fullscreen alike. */
@@ -862,16 +675,9 @@ h3 {
   left: 0;
   right: 0;
   bottom: 0;
-  height: 3px;
-  background: rgba(255, 255, 255, 0.18);
   z-index: 4;
   pointer-events: none;
   transition: opacity 0.25s;
-}
-.thinbar > div {
-  display: block;
-  height: 100%;
-  background: var(--red);
 }
 .thinbar.hide {
   opacity: 0;
@@ -892,16 +698,14 @@ h3 {
 
 /* -------------------------------------------------------- next-up card */
 
+/* Box from keel's `Surface` at `SurfacePadding.Small`; this keeps the placement over
+   the video, the width cap and the entry animation. */
 .nextcard {
   position: absolute;
   right: 14px;
   bottom: 82px;
-  border-radius: var(--radius);
   z-index: 6;
   width: min(330px, calc(100% - 28px));
-  background: rgba(10, 10, 12, 0.93);
-  border: 1px solid var(--line-strong);
-  padding: 11px;
   display: flex;
   gap: 11px;
   animation: rise 0.3s ease both;
@@ -939,16 +743,10 @@ h3 {
   font-size: 11px;
   color: var(--mut);
 }
+/* keel's `ProgressBar` at `Small` + `onMedia`: the same 2px and the same
+   white-at-0.22 track, and keel's own `width` transition in place of this one. */
 .nextcard-bar {
-  height: 2px;
-  background: rgba(255, 255, 255, 0.22);
   margin-top: 6px;
-}
-.nextcard-bar > div {
-  display: block;
-  height: 100%;
-  background: var(--red);
-  transition: width 0.2s linear;
 }
 .nextcard-row {
   display: flex;
@@ -1018,24 +816,24 @@ h3 {
   gap: 8px;
 }
 
-.ended {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 16px 18px;
-  border-radius: var(--radius);
-  border: 1px solid var(--line-strong);
-  background: linear-gradient(to right, rgba(225, 53, 47, 0.1), transparent);
-}
+/* `.ended` is gone: keel's `Callout` at `CalloutTone.Primary`, with the text side in
+   `CalloutBody` so it takes the room the button does not. The flex row, the 14px gap
+   and the radius are keel's and were already identical.
 
-.notice {
-  padding: 12px 16px;
-  border-radius: var(--radius);
-  border: 1px solid rgba(225, 53, 47, 0.4);
-  background: rgba(225, 53, 47, 0.08);
-  font-size: 13px;
-  color: #ff9d99;
-}
+   Two deliberate changes. The border was neutral and is now the primary colour at 40%,
+   which is what makes the tone read as a tone. And the fill was a left-to-right fade
+   and is now a flat 9% tint - a gradient for one tone and a flat wash for another is
+   not a difference a *tone* should encode, so the callout paints all three the same
+   way. */
+
+/* `.notice` is gone: keel's `Callout` at `CalloutTone.Destructive`. Every number here
+   already matched it - 40% border, ~8% tint, 13px - because keel's callout tokens were
+   taken from this rule. The one change is the ink, which was `#ff9d99` and is now
+   `--foreground`, and that is a fix rather than a swap: measured, red ink on its own
+   red tint reaches 3.0-3.1:1 on a light palette and 4.38-4.47:1 on a dark one, against
+   the 4.5:1 that 13px text needs, while `--foreground` on the same box is 12.1:1 or
+   better everywhere. It also gained `role="alert"`, so a playback failure is spoken
+   when it appears rather than whenever focus happens to reach it. */
 
 .uplist {
   display: flex;
@@ -1118,15 +916,15 @@ h3 {
     radial-gradient(70% 55% at 50% 0%, rgba(225, 53, 47, 0.16), transparent 70%),
     #000;
 }
+/* The border, the radius, the fill and the padding are keel's `Surface` now, at
+   `SurfacePadding.Large`. What is left is where the panel sits and how wide it is,
+   which is this page's business rather than the component's. The radius happens to
+   land on the same 18px it had here as `calc(var(--radius) + 4px)`. */
 .login-card {
   position: relative;
   z-index: 2;
   width: 100%;
   max-width: 380px;
-  border-radius: calc(var(--radius) + 4px);
-  border: 1px solid var(--line-strong);
-  background: rgba(13, 13, 15, 0.9);
-  padding: 30px 26px;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -1149,97 +947,30 @@ h3 {
 .auth-field {
   display: contents;
 }
-.field {
-  width: 100%;
-  padding: 11px 13px;
-  background: #000;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius);
-  color: var(--tx);
-  font: inherit;
-  font-size: 14px;
-}
-/* iOS Safari zooms the viewport whenever a focused field is under 16px, and
-   never zooms back out — you finish signing in on a page scrolled sideways.
-   Raising it only on touch pointers keeps the desktop form at 14px. */
-@media (pointer: coarse) {
-  .field {
-    font-size: 16px;
-  }
-}
-.field:focus {
-  outline: none;
-  border-color: var(--red);
-}
-.field::placeholder {
-  color: #5f5f68;
-}
 
 /* ----------------------------------------------------------------- panel */
 
-.scrim {
-  position: fixed;
-  inset: 0;
-  z-index: 60;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(3px);
-}
+/* `.scrim` is keel's, and it is a name keel owns - so this file must not define one.
+   The dim behind the drawer, the dialogs' own overlay and the alpha they share are
+   all in keel/components.css. */
 
-/*
- * Click-catcher for dropdowns. Deliberately not `.scrim`.
- *
- * `.scrim` is for modal surfaces - the drawer and the dialogs - so it dims and
- * blurs the page and sits above them at z-index 60. A dropdown needs the
- * opposite of both: catch the click outside, change nothing visually, and stay
- * *below* the menu it belongs to.
- *
- * The season menu reused `.scrim` and cancelled it with an inline
- * `background: transparent`. That cleared the dim but not `backdrop-filter`, so
- * the entire page blurred; and at z-index 60 against `.menu`'s 50 it covered
- * the very menu it had been opened for, so neither item could be clicked.
- */
-.popover-catch {
-  position: fixed;
-  inset: 0;
-  /* Above the sticky nav (40), below .menu (50). */
-  z-index: 49;
-  background: none;
-  backdrop-filter: none;
-}
+/* The click-catcher this file used to define is keel's, and so is the reasoning that
+   went with it: a dropdown's catcher must change nothing visually and sit one layer
+   *below* its own menu, which is why it cannot be a scrim. keel keeps it at
+   `--z-dropdown-catch`, one below `--z-dropdown`. */
 
-.sheet {
-  position: fixed;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  z-index: 61;
-  width: min(360px, 88vw);
-  background: var(--elev);
-  border-right: 1px solid var(--line-strong);
-  border-radius: 0 var(--radius) var(--radius) 0;
-  padding: 22px var(--pad);
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  overflow-y: auto;
-  animation: slide 0.22s ease both;
-}
-@keyframes slide {
-  from {
-    transform: translateX(-100%);
-  }
-}
+/* `.sheet` is gone entirely: it is keel's `.drawer.drawer--left`, down to the slide,
+   which keel keeps as `keel-slide-in-from-left`. The three classes below are the
+   sheet's *contents* and stay - they are this menu's own arrangement, not a panel. */
 
 .sheet-stats {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
 }
-.stat {
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  padding: 12px;
-}
+/* The box is keel's `Surface` at `SurfacePadding.Small` and `SurfaceRadius.Small`;
+   what stays is the two type treatments, which is the whole reason this is not a keel
+   `Stat` component - a value over a caption is this app's typography, not a shape. */
 .stat .mono {
   display: block;
   font-size: 17px;
@@ -1304,32 +1035,8 @@ h3 {
   font-size: 11.5px;
   color: var(--mut);
 }
-.switch {
-  width: 51px;
-  height: 31px;
-  border-radius: 999px;
-  background: #39393d;
-  position: relative;
-  flex: none;
-  transition: background 0.25s var(--ease);
-}
-.switch > div {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 27px;
-  height: 27px;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.45);
-  transition: transform 0.25s var(--ease);
-}
-.switch.on {
-  background: var(--red);
-}
-.switch.on > div {
-  transform: translateX(20px);
-}
+/* `.switch`/`.switch__knob` now come from keel/components.css. `toggle-row`
+   keys the knob off `aria-checked`, not an `.on` class - see MenuSheet.kt. */
 
 /* Settings stack. The rows are separate elements rather than one bordered
    group, so the spacing has to come from the container — margins between
@@ -1357,59 +1064,20 @@ h3 {
   font-weight: 600;
 }
 
+/* The track and the chips are keel's `SegmentedControl` (`.segmented*` in
+   keel/components.css). All that is left here is the one thing the row needs and
+   the control cannot know: it must not give up width when the label beside it is
+   long. keel's own `.segmented` is an `inline-flex`, so as a flex item it would
+   default to shrinkable. */
 .seg {
-  display: flex;
-  gap: 2px;
-  padding: 2px;
-  border-radius: var(--radius-pill);
-  background: var(--elev2);
   flex: none;
-}
-.seg-item {
-  padding: 6px 13px;
-  border-radius: var(--radius-pill);
-  font-size: 11.5px;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  color: var(--tx-dim);
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 0.2s var(--ease), color 0.2s var(--ease);
-}
-.seg-item:hover:not(.on) {
-  color: var(--tx);
-}
-.seg-item.on {
-  background: var(--tx);
-  color: #000;
-  cursor: default;
 }
 
 /* --------------------------------------------------------------- dialogs */
+/* The overlay and the panel itself are keel's `Dialog` now (`.dialog__overlay`,
+   `.dialog__content` in keel/components.css) - only the button row below is
+   still this app's own. */
 
-.dialog {
-  position: fixed;
-  z-index: 70;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  width: min(420px, calc(100vw - 32px));
-  background: var(--elev);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius);
-  padding: 22px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.dialog h3 {
-  font-size: 17px;
-}
-.dialog p {
-  margin: 0;
-  font-size: 13.5px;
-  color: var(--tx-dim);
-}
 .dialog-row {
   display: flex;
   justify-content: flex-end;
@@ -1417,86 +1085,28 @@ h3 {
   margin-top: 6px;
 }
 
-.menu {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 6px);
-  z-index: 50;
-  min-width: 220px;
-  background: var(--elev);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius);
-  padding: 5px;
-}
-.menu-item {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  width: 100%;
-  padding: 10px 12px;
-  font-size: 13.5px;
-  text-align: left;
-  border-radius: var(--radius-sm);
-}
-.menu-item:hover {
-  background: var(--elev2);
-}
-.menu-item.danger {
-  color: #ff8a85;
-}
-
-.rel {
-  position: relative;
-}
+/* The season menu is keel's `DropdownMenu`: `.dropdown`, `.dropdown__item` and the
+   danger tone, none of which is restated here. `.rel` went with it - it was a bare
+   `position: relative` and the menu now says what that element is for by wearing
+   `.dropdown-anchor`. */
 
 /* ---------------------------------------------------------------- toasts */
 
-.toasts {
-  position: fixed;
-  top: 16px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 90;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  width: min(400px, calc(100vw - 24px));
-  pointer-events: none;
-}
-.toast {
-  background: rgba(22, 22, 26, 0.94);
-  backdrop-filter: blur(18px);
-  border: 1px solid var(--line-strong);
-  border-left: 3px solid var(--tx);
-  border-radius: var(--radius);
-  padding: 12px 16px;
-  font-size: 13.5px;
-  animation: rise 0.22s ease both;
-}
-.toast.ok {
-  border-left-color: var(--ok);
-}
-.toast.err {
-  border-left-color: var(--red);
-}
+/* The strip and the notices are keel's `.toast-host` and `.toast`, both of which are
+   names keel owns - so this file defines neither. The tone lives on the left edge
+   there too, which is where this app had already put it. */
 
 /* ------------------------------------------------------------- skeletons */
 
-.skel {
-  background: linear-gradient(90deg, var(--elev) 25%, var(--elev2) 50%, var(--elev) 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.3s linear infinite;
-}
-@keyframes shimmer {
-  to {
-    background-position: -200% 0;
-  }
-}
+/* The shimmer is keel's `.skeleton`, whose gradient reads `--muted` and `--accent`
+   — which keel-theme.css sets to this app's own `--elev` and `--elev2`, so the two
+   were already the same two colours. What is left here is only the size of the
+   thing each placeholder stands in for, which is the one thing keel deliberately
+   does not decide: the line's height comes from `SkeletonShape.Line`. */
 .skel-tile {
   aspect-ratio: 16 / 9;
 }
 .skel-line {
-  height: 10px;
   margin-top: 8px;
   width: 62%;
 }
@@ -1509,18 +1119,9 @@ h3 {
   font-size: 14px;
 }
 
-.empty {
-  margin: 0 var(--pad);
-  border: 1px dashed var(--line-strong);
-  border-radius: var(--radius);
-  padding: 48px 24px;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 14px;
-  color: var(--mut);
-}
+/* `.empty` is gone: it is keel's `EmptyState`. The page gutter it also carried
+   (`margin: 0 var(--pad)`) moved to the wrapper in DashboardStates.kt, because a
+   gutter is the page's decision and the panel is keel's. */
 
 /* ------------------------------------------------------------ responsive */
 
@@ -1582,18 +1183,29 @@ h3 {
   line-height: 0;
   flex: none;
 }
-.tile-act .ic svg,
-.tile-seen .ic svg {
-  width: 14px;
-  height: 14px;
-}
+/* One rule, for one glyph. `.ic` used to wrap every icon this app drew and carried six
+   sizing rules to suit each place - the nav at 20px, the control bar at 24, the centre
+   play button at 34, a tile action at 14, a button at 16. All of those are keel's
+   `Icon` now, sized by `size` at the call site, and `Icons` is down to `back10` and
+   `forward10`, of which this shell renders one: the seek button in the control bar.
+   Five of the six rules had no subject left. `Icons.svg()` hardcodes width="20" and a
+   presentation attribute has zero specificity, so this is what decides. */
 .btn .ic svg {
   width: 16px;
   height: 16px;
 }
-.player-center .big .ic svg {
-  width: 30px;
-  height: 30px;
+
+/* `.icon` is keel's own wrapper rule (keel/components.css), and it was restated
+   here byte for byte. That is how a consumer sheet becomes a fork: keel's fallback
+   for an unsized icon - `width: 1em; height: 1em` - lives in a *second* `.icon`
+   rule, so a copy that carries the first half and not the second would drift apart
+   from it at the next edit to either. `.ic` above is a different wrapper with a
+   different sizing model and stays local. */
+
+/* The play triangle's optical-centring nudge, matching what `.player-center .big
+   .ic svg` gave the old glyph - a triangle sits visually off-centre in a circle
+   without it. */
+.player-glyph-nudge {
   margin-left: 3px;
 }
 

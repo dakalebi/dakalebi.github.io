@@ -1,0 +1,38 @@
+name: Checks
+
+# Everything except main. Pushes to main are covered by the deploy workflow, which
+# runs the same guard against the same build before it publishes anything.
+on:
+  push:
+    branches-ignore: [main]
+  pull_request:
+  workflow_dispatch:
+
+# One run per branch. A newer push makes an older run's answer irrelevant.
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  css-classes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: true
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      # The guard reads the *built* stylesheets: keel's four sheets come from the
+      # submodule and only sit beside this app's own in the output, and the check is
+      # about what each shell's page actually links.
+      - name: Build Kotlin/JS bundle
+        run: ./gradlew jsBrowserDistribution
+
+      - name: Every emitted CSS class is styleable on the shell that draws it
+        run: python3 tools/check-css-classes.py

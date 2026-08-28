@@ -18,6 +18,9 @@ import ge.dakalebi.ui.tv.focus.FocusAxis
 import ge.dakalebi.ui.tv.focus.SpatialNav
 import ge.dakalebi.ui.tv.focus.focusGroup
 import ge.dakalebi.ui.tv.focus.focusItem
+import io.github.bchmsl.keel.components.ButtonVariant
+import io.github.bchmsl.keel.dom.buttonClasses
+import io.github.bchmsl.keel.dom.classNames
 import kotlinx.browser.document
 import org.jetbrains.compose.web.dom.A
 import org.jetbrains.compose.web.dom.Div
@@ -114,12 +117,12 @@ private fun TvMasthead(episode: Episode) {
     Div({ classes("tv-masthead") }) {
         // The episode still, full-bleed behind the text, YouTube's mainstage
         // treatment. `Thumb` already handles the CDN's occasional 404 by falling
-        // back to a gradient, which reads as a perfectly good backdrop; `showLabel`
-        // is off because the scrim and the heading below already name the episode.
+        // back to a gradient, which reads as a perfectly good backdrop, and no label
+        // is passed because the scrim and the heading below already name the episode.
         // `aria-hidden`, because it is pure decoration — the heading is the accessible
         // name, and the still's own `alt` would otherwise be announced on top of it.
         Div({ classes("tv-masthead-art"); attr("aria-hidden", "true") }) {
-            Thumb(episode, showLabel = false)
+            Thumb(episode)
         }
 
         Span({ classes("tv-eyebrow") }) { Text(eyebrow.caps) }
@@ -129,12 +132,12 @@ private fun TvMasthead(episode: Episode) {
         left?.let { Span({ classes("tv-hero-sub", "mono") }) { Text(it) } }
         Div({ classes("tv-hero-acts"); focusGroup("hero", FocusAxis.X) }) {
             A(href = Router.href(Route.Watch(episode.id)), attrs = {
-                classes("tv-btn", "tv-btn-primary")
+                classNames("tv-btn", buttonClasses(ButtonVariant.Default))
                 focusItem("hero-play", entry = true)
             }) { Text((if (entry?.isStarted == true) S.continueLabel else S.watch).caps) }
 
             A(href = Router.href(Route.Watch(episode.id)), attrs = {
-                classes("tv-btn")
+                classNames("tv-btn", buttonClasses(ButtonVariant.Outline))
                 focusItem("hero-restart")
                 attr("data-from-start", "1")
             }) { Text(S.watchFromStart.caps) }
@@ -154,7 +157,7 @@ private fun TvMasthead(episode: Episode) {
 private fun TvBackToTop() {
     Div({ classes("tv-totop"); focusGroup("totop", FocusAxis.X) }) {
         Div({
-            classes("tv-btn")
+            classNames("tv-btn", buttonClasses(ButtonVariant.Outline))
             focusItem("back-to-top")
             actsAsButton()
             onClick {

@@ -1,11 +1,9 @@
 package ge.dakalebi.ui
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import ge.dakalebi.core.Log
 import ge.dakalebi.core.formatDuration
@@ -13,14 +11,19 @@ import ge.dakalebi.di.router
 import ge.dakalebi.di.toasts
 import ge.dakalebi.domain.model.Episode
 import ge.dakalebi.domain.model.WatchProgress
-import ge.dakalebi.presentation.Route
-import ge.dakalebi.presentation.Router
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
+import ge.dakalebi.presentation.Route
+import ge.dakalebi.presentation.Router
+import io.github.bchmsl.keel.components.Button as KeelButton
+import io.github.bchmsl.keel.components.ButtonVariant
+import io.github.bchmsl.keel.components.LinkButton
+import io.github.bchmsl.keel.components.Dialog as KeelDialog
+import io.github.bchmsl.keel.components.ProgressBar
+import io.github.bchmsl.keel.icons.Icon
+import io.github.bchmsl.keel.icons.LucideIcon
 import kotlinx.browser.document
 import kotlinx.browser.window
-import org.jetbrains.compose.web.attributes.ATarget
-import org.jetbrains.compose.web.attributes.target
 import org.jetbrains.compose.web.dom.A
 import org.jetbrains.compose.web.dom.Button
 import org.jetbrains.compose.web.dom.Div
@@ -30,12 +33,22 @@ import org.jetbrains.compose.web.dom.Img
 import org.jetbrains.compose.web.dom.P
 import org.jetbrains.compose.web.dom.Span
 import org.jetbrains.compose.web.dom.Text
-import org.w3c.dom.events.Event
-import org.w3c.dom.events.KeyboardEvent
 
-/** Episode still, or a deterministic gradient stand-in when there is none. */
+/**
+ * Episode still, or a deterministic gradient stand-in when there is none.
+ *
+ * [fallbackLabel] draws inside the stand-in, and it is a slot rather than a boolean
+ * because this composable is shared with the 10-foot shell. Something about the label
+ * has to live in here - whether the stand-in is showing at all depends on `failed`,
+ * which is private state - but its *markup* belongs to the caller that wants it, and
+ * only the web tile does. The `showLabel: Boolean = true` this replaces kept class
+ * names TV has no rules for inside a composable TV renders, one forgotten argument
+ * away from drawing them unstyled. As a slot they are unreachable from TV rather than
+ * merely unrequested, which is also what lets `tools/check-css-classes.py` tell the
+ * two apart.
+ */
 @Composable
-fun Thumb(episode: Episode, showLabel: Boolean = true) {
+fun Thumb(episode: Episode, fallbackLabel: (@Composable () -> Unit)? = null) {
     var failed by remember(episode.thumbnailUrl) { mutableStateOf(false) }
     val url = episode.thumbnailUrl
 
@@ -55,13 +68,17 @@ fun Thumb(episode: Episode, showLabel: Boolean = true) {
                 )
             }
         }) {
-            if (showLabel) {
-                Div {
-                    Div({ classes("fb-s") }) { Text(S.season(episode.seasonNumber).caps) }
-                    Div({ classes("fb-e") }) { Text(S.episode(episode.episodeNumber).caps) }
-                }
-            }
+            fallbackLabel?.invoke()
         }
+    }
+}
+
+/** The season and episode written over [Thumb]'s stand-in gradient. Web tiles only. */
+@Composable
+private fun ThumbLabel(episode: Episode) {
+    Div {
+        Div({ classes("fb-s") }) { Text(S.season(episode.seasonNumber).caps) }
+        Div({ classes("fb-e") }) { Text(S.episode(episode.episodeNumber).caps) }
     }
 }
 
@@ -75,18 +92,16 @@ fun EpisodeTile(episode: Episode, progress: WatchProgress?) {
     Div({ classes("tile") }) {
         A(href = Router.href(Route.Watch(episode.id)), attrs = { classes("tile-link") }) {
             Div({ classes("tile-img") }) {
-                Thumb(episode)
+                Thumb(episode, fallbackLabel = { ThumbLabel(episode) })
                 Span({ classes("tile-badge", "mono") }) { Text("E${episode.episodeNumber}") }
                 if (watched) {
-                    Span({ classes("tile-seen") }) { Icon(Icons.check) }
+                    Span({ classes("tile-seen") }) { Icon(LucideIcon.Check, size = ICON_TILE_ACTION) }
                 }
                 formatDuration(episode.durationSeconds)?.let {
                     Span({ classes("tile-dur", "mono") }) { Text(it) }
                 }
                 if (percent > 0) {
-                    Div({ classNames("tile-prog", if (watched) "done" else null) }) {
-                        Div({ style { property("width", "$percent%") } })
-                    }
+                    TileProgress(percent, watched)
                 }
             }
             Div({ classes("tile-meta") }) {
@@ -121,7 +136,7 @@ fun EpisodeTile(episode: Episode, progress: WatchProgress?) {
                         else toasts.error(S.copyFailed)
                     }
                 }
-            }) { Icon(Icons.link) }
+            }) { Icon(LucideIcon.Link, size = ICON_TILE_ACTION) }
 
             episode.videoUrl?.let { videoUrl ->
                 Button({
@@ -136,7 +151,7 @@ fun EpisodeTile(episode: Episode, progress: WatchProgress?) {
                             else toasts.error(S.copyFailed)
                         }
                     }
-                }) { Icon(Icons.download) }
+                }) { Icon(LucideIcon.Download, size = ICON_TILE_ACTION) }
             }
         }
     }
@@ -155,30 +170,6 @@ fun Rail(title: String, subtitle: String? = null, episodes: List<Episode>, progr
                 EpisodeTile(episode, progress[episode.id])
             }
         }
-    }
-}
-
-/**
- * Closes an overlay on Escape.
- *
- * Every modal here could already be dismissed by clicking the scrim, but
- * nothing listened for Escape — which is the first thing a keyboard user
- * reaches for, and the only thing available to them once focus is inside a
- * dialog.
- */
-@Composable
-fun DismissOnEscape(onDismiss: () -> Unit) {
-    val latest by rememberUpdatedState(onDismiss)
-    DisposableEffect(Unit) {
-        val handler: (Event) -> Unit = { raw ->
-            val event = raw as? KeyboardEvent
-            if (event != null && event.key == "Escape") {
-                event.preventDefault()
-                latest()
-            }
-        }
-        window.addEventListener("keydown", handler)
-        onDispose { window.removeEventListener("keydown", handler) }
     }
 }
 
@@ -226,12 +217,10 @@ private fun UpNextRow(episode: Episode, progress: WatchProgress?) {
 
     A(href = Router.href(Route.Watch(episode.id)), attrs = { classes("uprow") }) {
         Div({ classes("uprow-th") }) {
-            Thumb(episode, showLabel = false)
-            if (watched) Span({ classes("tile-seen") }) { Icon(Icons.check) }
+            Thumb(episode)
+            if (watched) Span({ classes("tile-seen") }) { Icon(LucideIcon.Check, size = ICON_TILE_ACTION) }
             if (percent > 0) {
-                Div({ classNames("tile-prog", if (watched) "done" else null) }) {
-                    Div({ style { property("width", "$percent%") } })
-                }
+                TileProgress(percent, watched)
             }
         }
         Div({ classes("uprow-b") }) {
@@ -254,28 +243,33 @@ fun ConfirmDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    DismissOnEscape(onDismiss)
-    Div({ classes("scrim"); onClick { onDismiss() } })
-    Div({ classes("dialog") }) {
+    KeelDialog(title = title, description = body, onDismiss = onDismiss) {
         H3 { Text(title) }
         P { Text(body) }
         Div({ classes("dialog-row") }) {
-            Button({ classes("btn", "btn-ghost"); onClick { onDismiss() } }) { Text(S.cancel.caps) }
-            Button({
-                classes("btn", if (destructive) "btn-danger" else "btn-primary")
-                onClick { onConfirm() }
-            }) { Text(confirmLabel) }
+            KeelButton(label = S.cancel.caps, onClick = onDismiss, variant = ButtonVariant.Outline)
+            KeelButton(
+                label = confirmLabel,
+                onClick = onConfirm,
+                variant = if (destructive) ButtonVariant.Destructive else ButtonVariant.Default,
+            )
         }
     }
 }
 
 @Composable
 fun ExternalLink(href: String, label: String) {
-    A(href = href, attrs = {
-        classes("btn", "btn-ghost")
-        target(ATarget.Blank)
-        attr("rel", "noreferrer")
-    }) { Text(label) }
+    // keel's `LinkButton`, which is a real `<a href>` rather than a button that
+    // navigates - so it can be opened in a new tab, copied and middle-clicked. This
+    // used to spell keel's three class names literally, with a note that keel had no
+    // composable for the case; it has one now, and `external` sets the
+    // `target`/`rel` pair this was setting by hand.
+    LinkButton(
+        href = href,
+        label = label,
+        variant = ButtonVariant.Outline,
+        external = true,
+    )
 }
 
 /**
@@ -308,3 +302,27 @@ private fun legacyCopy(text: String): Boolean = runCatching {
     document.body?.removeChild(area as org.w3c.dom.Node)
     ok
 }.onFailure { Log.w("clipboard", "execCommand fallback failed", it) }.getOrDefault(false)
+
+/**
+ * The watched-so-far line across the bottom of a thumbnail.
+ *
+ * keel's `ProgressBar` at `onMedia`, because it lies over a still whose colours are
+ * the episode's rather than the app's. `done` is why the finished state is a variant
+ * rather than a colour written here: a bar that is full and a bar that is full *and*
+ * watched should not look the same.
+ *
+ * `.tile-prog` keeps only the placement along the bottom edge.
+ */
+@Composable
+private fun TileProgress(percent: Double, watched: Boolean) {
+    ProgressBar(
+        fraction = percent / 100.0,
+        ariaLabel = S.statProgress,
+        onMedia = true,
+        done = watched,
+        attrs = { classes("tile-prog") },
+    )
+}
+
+/** Matches `.tile-act .ic svg, .tile-seen .ic svg` in web.css. */
+private const val ICON_TILE_ACTION = 14

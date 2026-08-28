@@ -78,6 +78,18 @@ html {
   --safe-x: 3rem;   /* 48px at the reference canvas */
   --safe-y: 1.75rem;
 
+  /* keel's toast strip measures its edge inset from the viewport, which on a
+     television is the wrong edge: `--toast-inset`'s 1rem would put a notice inside
+     the band the panel crops. The overscan margin is the only honest value for it
+     here, and setting the token is all it takes - the strip itself is keel's. */
+  --toast-inset: var(--safe-y);
+
+  /* And its text is this sheet's smallest-but-one step rather than keel's 0.8125rem,
+     which at the reference canvas is 13px - below `--t-label`, the smallest size
+     anything on this surface is allowed to be. A notice nobody can read from a sofa
+     is not a notice. */
+  --toast-font-size: var(--t-meta);
+
   /* Type scale, in sixteenths of the reference body size:
      14 / 16 / 20 / 28 / 40px at 960x540.
      YouTube's smallest text anywhere is 14px on a 1280 canvas, about 10.5px at this
@@ -148,6 +160,82 @@ html {
      cannot disagree about how big an episode is. Sized so a shelf shows about five
      and a half, which is what YouTube's geometry works out to. */
   --tile-w: 10.625rem; /* 170px */
+
+  /* ------------------------------------------- keel, at this viewing distance
+     keel's controls are configured here and nowhere else. Not one rule in this
+     sheet names `.btn`, `.input` or any other keel class: a design system that has
+     a component owns how it looks, and a consumer that restates its selectors has
+     quietly forked it for one app.
+
+     These are the same numbers the overrides used to state, converted from `em` at
+     the body size to `rem` so they scale with this page's root rather than with
+     whatever type a control happens to inherit. The button height is explicit
+     because keel gives a control a real height; it is the height the old
+     padding-and-line-height box measured out to.
+
+     `--focus-ring-width` and `--focus-glow-alpha` reach only one rule that fires
+     here, keel's `.input:focus` glow, and that is deliberate. The D-pad ring is
+     drawn by `[data-tv-item][data-tv-focus]` near the top of this sheet and is this
+     app's own cursor rather than a component's focus style; keel's button ring never
+     fires on this page, because the focus engine moves focus programmatically and
+     `:focus-visible` does not match a programmatic focus. So a focused field shows
+     the white cursor on its wrapper *and* keel's red glow on the field itself -
+     highlighted and being edited, two states, both keel's. */
+  --control-font-size: var(--t-body);
+  --control-font-weight: 600;
+  --control-h-default: 3.6rem;
+  --control-py-default: 0.875rem;
+  --control-px-default: 1.75rem;
+  --input-px: 1.25rem;
+  --input-py: 0.875rem;
+  --focus-ring-width: var(--focus-w);
+  --focus-glow-alpha: 0.6;
+
+  /* The two switches, both of them iOS proportions scaled for the room. These are the
+     six numbers the hand-written `.tv-switch` and `.tv-ctl-switch` stated; the knob's
+     travel is not among them because keel derives it from the other three, so the
+     2rem and 1.625rem that used to be written out here cannot fall out of step with
+     the track any more.
+
+     The insets are equal at both sizes on purpose: a knob resting against either end
+     should leave the same gap, and that is only true if one number covers both. */
+  --switch-track-w: 4.625rem;
+  --switch-track-h: 2.625rem;
+  --switch-knob-size: 2.125rem;
+  --switch-knob-inset: 0.25rem;
+  --switch-track-w-sm: 3.75rem;
+  --switch-track-h-sm: 2.125rem;
+  --switch-knob-size-sm: 1.625rem;
+  --switch-knob-inset-sm: 0.25rem;
+
+  /* The wash a control takes when it sits over the video rather than over the page.
+     12% rather than keel's 16%: these controls sit in a wide dark bar already, so they
+     need less presence than a phone's do directly on a scene. It resolves to
+     `--primary-foreground` at this alpha, which is the same white the four player
+     controls each wrote out as `rgba(255, 255, 255, 0.12)`.
+
+     There is no hover alpha here because there is no pointer. Focus is the only
+     highlight on this surface and it inverts the control instead. */
+  --on-media-alpha: 0.12;
+
+  /* The position hairline under the picture, which is keel's `ProgressBar` at
+     `ProgressBarSize.Small`. keel's small is 0.125rem, and on this sheet a `rem` is
+     already scaled - so at the reference canvas that lands on 2px where this surface
+     had 4px, and a 2px line seen from a sofa is not a line. Same reasoning as the
+     control heights and the switch geometry above: the treatment is keel's, the
+     10-foot size is this sheet's. */
+  --progress-h-sm: 0.25rem;
+
+  /* Back to keel's own 20. `tokens.css`, which this page also links, pushes keel's z
+     ladder up by 40 so that a scrim clears the web shell's sticky nav at 40. There is
+     no sticky nav here - this shell's own layers stop at 3 - and the confirm dialog
+     sits at 21, so the shifted value would put the scrim over the dialog it dims. */
+  --z-scrim: 20;
+
+  /* The dim, matching what `.tv-scrim` stated. Slightly lighter than keel's 0.7: this
+     screen is already near-black, so a heavier dim mostly removes the difference
+     between "behind the dialog" and "nothing there". */
+  --scrim-alpha: 0.6;
 }
 
 * {
@@ -253,13 +341,24 @@ body {
 /* Chrome inverts instead: light plate, dark ink.
    Measured: the focused variant sets the chip background to `#f1f1f1` and its text to
    `#0f0f0f`. Inversion reads from across a room in a way a 10% tint does not, and on a
-   button that is already light the tint is worse than nothing. */
+   button that is already light the tint is worse than nothing.
+
+   The two chip branches name their container, and that is specificity rather than
+   tidiness. The chips are keel's segmented control now, whose selected rail rule is
+   `.segmented--rail .segmented__label[aria-checked='true']` at (0,3,0). A bare
+   `.tv-chip[data-tv-focus]` is (0,2,0) and would lose to it - so the ring would land
+   on the *selected* season, which is exactly where it lands on arrival, and the chip
+   under it would stay red instead of inverting. With the container in front both sides
+   are (0,3,0) and this sheet, linked last in `tv/index.html`, wins the tie.
+
+   The button branches need no such help: keel's variant classes are single classes at
+   (0,1,0). */
 .tv-btn[data-tv-focus],
 .tv-btn:focus,
-.tv-chip[data-tv-focus],
-.tv-chip:focus,
-.tv-seg-item[data-tv-focus],
-.tv-seg-item:focus {
+.tv-rail .tv-chip[data-tv-focus],
+.tv-rail .tv-chip:focus,
+.tv-seg .tv-seg-item[data-tv-focus],
+.tv-seg .tv-seg-item:focus {
   background: var(--focus);
   border-color: var(--focus);
   color: #0f0f0f;
@@ -545,16 +644,18 @@ body {
     background-color var(--t-focus) var(--ease-tv);
 }
 
-.tv-nav-item .ic {
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 1.75rem;
-}
+/* The rail's two glyphs are keel's - `LucideIcon.House` and `.Settings` - so all this
+   has to do is give them a size in `rem`, which is why the call site passes
+   `size = null`. keel's `.icon` brings `flex: none` and `line-height: 0` itself.
 
-.tv-nav-item .ic svg {
+   `margin-inline` rather than a wider box: the icon used to sit centred in a 1.75rem
+   slot, and that slot is what sets the gap between the rail's edge and the label. A
+   1.5rem glyph with 0.125rem either side is the same 1.75rem, without depending on an
+   svg's aspect-ratio handling to stay square inside a non-square box. */
+.tv-nav-ic {
   width: 1.5rem;
   height: 1.5rem;
+  margin-inline: 0.125rem;
 }
 
 /* The active destination, which is not the same thing as the focused one. The rail
@@ -689,45 +790,21 @@ body {
 }
 
 /* --------------------------------------------------------------- controls */
-.tv-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.55em 1.5em;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-pill);
-  background: var(--elev);
-  color: var(--tx);
-  font-family: var(--f-sans);
-  font-size: var(--t-meta);
-  text-decoration: none;
-  white-space: nowrap;
-  cursor: default;
-}
+/* The chrome controls are keel's now, and none of them is styled here.
+   `.tv-btn` is keel's `.btn` with `--outline` or `--default`; `.tv-chip` and
+   `.tv-seg-item` are its segmented control's chips, on the rail treatment. What each
+   one keeps below is only what this surface adds: the focus inversion, which is this
+   app's own cursor rather than a component's focus style.
 
-.tv-btn-primary {
-  background: var(--tx);
-  color: #000;
-  border-color: var(--tx);
-  font-weight: 600;
-}
+   Two visible changes, both of them the design system winning an argument the local
+   rules were losing:
 
-.tv-chip {
-  flex: none;
-  padding: 0.45em 1.2em;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-pill);
-  background: var(--elev);
-  color: var(--tx-dim);
-  font-size: var(--t-meta);
-  white-space: nowrap;
-}
-
-.tv-chip.on {
-  background: var(--red);
-  border-color: var(--red);
-  color: var(--tx);
-}
+   - the hero's primary button is keel's red rather than white-on-black. The web shell
+     made the same move a migration ago, so the two front ends now agree.
+   - a *selected* chip is red instead of white. It had to change: `--focus` is
+     `#f1f1f1` with dark ink, so a white selected chip and a focused chip were the
+     same picture, and "which season am I on" and "which season is the ring on" are
+     the two things this rail exists to tell apart. */
 
 /* --------------------------------------------------------------- settings */
 .tv-settings {
@@ -748,45 +825,19 @@ body {
 
 .tv-row-label { font-size: var(--t-body); }
 
-.tv-seg { display: flex; gap: 0.5rem; }
+/* The language picker: keel's segmented control on its rail treatment, so it matches
+   the season rail rather than being a second kind of chip row.
 
-.tv-seg-item {
-  padding: 0.45em 1.2em;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-pill);
-  background: var(--elev);
-  color: var(--tx-dim);
-  font-size: var(--t-meta);
+   The ring room is this sheet's business and not keel's. A rail scrolls, and an
+   outline drawn outside the border box is clipped by an ancestor that scrolls - so
+   every scroller on this page reserves the ring's width and pulls it back with a
+   negative margin. `.tv-rail` and `.tv-hero-acts` already do exactly this. */
+.tv-seg {
+  display: flex;
+  gap: 0.5rem;
+  padding: var(--ring-room);
+  margin: calc(-1 * var(--ring-room));
 }
-
-.tv-seg-item.on { background: var(--tx); color: #000; border-color: var(--tx); }
-
-/* iOS proportions, scaled for the room. */
-.tv-switch {
-  position: relative;
-  width: 4.625rem;
-  height: 2.625rem;
-  flex: none;
-  border-radius: var(--radius-pill);
-  background: #39393d;
-  transition: background 0.25s var(--ease);
-}
-
-.tv-switch.on { background: var(--red); }
-
-.tv-switch > div {
-  position: absolute;
-  top: 0.25rem;
-  left: 0.25rem;
-  width: 2.125rem;
-  height: 2.125rem;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 0.1875rem 0.5rem rgba(0, 0, 0, 0.45);
-  transition: transform 0.25s var(--ease);
-}
-
-.tv-switch.on > div { transform: translateX(2rem); }
 
 .tv-foot { font-size: var(--t-label); color: var(--mut); }
 
@@ -796,9 +847,16 @@ body {
    markup is shared; the sizes are not, which is the same division the toast host below
    already uses.
 
-   Everything the screen needs is defined here, because `web.css` is deliberately not
-   linked on this page: it carries nineteen `:hover` rules, a `@media (hover: none)`
-   block that force-shows controls a remote cannot reach, and a phone type scale. */
+   The screen's *controls* are not defined here at all: the field is keel's `.input`
+   and the buttons are keel's `.btn`/`.btn--default`/`.btn--link`, from
+   `keel/components.css`, which this page links. Nothing below restates them — their
+   size and weight at this distance are set once, as keel's own tokens, in the `:root`
+   block at the top of this sheet. All that is left here is the panel around them,
+   which keel has no component for.
+
+   `web.css` is still deliberately not linked here: it carries nineteen `:hover` rules,
+   a `@media (hover: none)` block that force-shows controls a remote cannot reach, and a
+   phone type scale. */
 
 /* Signed out there is no rail, so the panel must not be inset for one. */
 .tv-root-signin {
@@ -887,97 +945,12 @@ body {
   border-radius: var(--radius);
 }
 
-.field {
-  display: block;
-  width: 100%;
-  font-size: var(--t-body);
-  font-family: var(--f-sans);
-  padding: 0.7em 1em;
-  border-radius: var(--radius);
-  border: 1px solid var(--line-strong);
-  background: var(--elev);
-  color: var(--tx);
-}
-
-/* Edit mode: the input itself holds focus and the keyboard is up. A brighter border
-   marks it, distinct from the wrapper's ring which means only highlighted.
-   `outline: none` here is safe — the wrapper already carries the D-pad ring. */
-.field:focus {
-  border-color: var(--tx);
-  outline: none;
-}
-
-.field::placeholder {
-  color: var(--mut);
-}
-
-/* The screen's buttons. `.btn` is the web sheet's name and this screen is the only
-   thing on a television that uses it; every TV-native control is `.tv-btn`. */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.7em 1.4em;
-  border: 1px solid transparent;
-  border-radius: var(--radius-pill);
-  font-family: var(--f-sans);
-  font-size: var(--t-body);
-  font-weight: 600;
-  white-space: nowrap;
-  background: transparent;
-  color: var(--tx);
-}
-
-.btn-primary {
-  background: #fff;
-  color: #0f0f0f;
-}
-
-.btn-quiet {
-  color: var(--mut);
-  font-size: var(--t-meta);
-}
-
-/* ARIA-disabled rather than the attribute would be the TV convention, but this screen
-   is shared and the web version uses the real attribute, so both are honoured. The
-   control keeps its pointer events on a television: the ring must never sit on
-   something that cannot be pressed without saying so. */
-.btn[disabled] {
-  opacity: 0.45;
-}
-
-/* Focused, these invert the way every other TV control does. `.btn-primary` is left
-   out on purpose: it is already white, and the generic ring is enough. */
-.btn-quiet[data-tv-focus],
-.btn-quiet:focus {
-  background: var(--focus);
-  border-color: var(--focus);
-  color: #0f0f0f;
-}
-
 /* ------------------------------------------------------------------ toasts
    The host is reused from the web UI unchanged; only the placement is new. */
-.toasts {
-  position: fixed;
-  left: 50%;
-  bottom: var(--safe-y);
-  transform: translateX(-50%);
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  z-index: 40;
-}
-
-.toast {
-  padding: 0.6em 1.4em;
-  border-radius: var(--radius-pill);
-  background: var(--elev2);
-  border: 1px solid var(--line-strong);
-  font-size: var(--t-meta);
-}
-
-.toast.err { border-color: var(--red); }
-.toast.ok { border-color: var(--ok); }
+/* The toast strip is keel's, and both shells render the same Kotlin for it. What is
+   TV's here is one token, set in the `:root` block above: the strip's edge inset is
+   the overscan margin rather than keel's 1rem, because on a television 1rem of the
+   scaled root is inside the part the panel crops. */
 
 /* The masthead's heading names an episode, it is not the page title. `balance` because
    it would otherwise break mid-label and orphan the episode number on a line of its
@@ -1249,9 +1222,6 @@ body {
   gap: 0.6rem;
   height: 3.25rem;
   padding: 0 1em;
-  border-radius: var(--radius-pill);
-  background: rgba(255, 255, 255, 0.12);
-  color: var(--tx);
   white-space: nowrap;
   transition: background-color var(--t-focus) var(--ease-tv),
     color var(--t-focus) var(--ease-tv);
@@ -1268,34 +1238,27 @@ body {
   font-size: var(--t-meta);
 }
 
-/* The switch itself, sized down from the settings switch to sit inside the pill next to
-   the label. Same look and behaviour, smaller. */
-.tv-ctl-switch {
-  width: 3.75rem;
-  height: 2.125rem;
-}
-
-.tv-ctl-switch > div {
-  width: 1.625rem;
-  height: 1.625rem;
-}
-
-.tv-ctl-switch.on > div {
-  transform: translateX(1.625rem);
-}
+/* The switch inside the pill is keel's small size - `SwitchSize.Small`, whose four
+   `-sm` tokens are set at the top of this sheet. It used to be three rules restating
+   the track, the knob and the knob's travel, and the travel was the one that could go
+   wrong silently: it is the track minus the knob minus both insets, and nothing
+   checked that the number written here still was. */
 
 /* A transport control.
    Square by default and grown by padding only when it holds text, because an
    icon-only pill sized by `min-width` plus `em` padding is not actually centred —
-   see the note on `.ic` below, and `.tv-q-btn` for the text case. */
+   see the note on `.ic` below, and `.tv-q-btn` for the text case.
+
+   The translucent white fill and the circle are keel's: `ButtonVariant.OnMedia` at
+   `--on-media-alpha`, and `--radius-md` which this app resolves to a pill. What is
+   left here is the size, which is 10-foot geometry rather than a treatment - keel's
+   icon button is one control height square, and a transport button aimed at from a
+   sofa is not. */
 .tv-ctl-btn {
   display: grid;
   place-items: center;
   width: 3.25rem;
   height: 3.25rem;
-  border-radius: var(--radius-pill);
-  background: rgba(255, 255, 255, 0.12);
-  color: var(--tx);
   transition: background-color var(--t-focus) var(--ease-tv),
     color var(--t-focus) var(--ease-tv);
 }
@@ -1306,7 +1269,10 @@ body {
   height: 4.25rem;
 }
 
-.tv-ctl-btn-lg .ic svg {
+/* Play/pause is keel's icon rather than a local drawing, so it is sized on the span
+   itself - keel's `.icon > svg` is already 100% of it. The `.ic` rules further down
+   still serve the two seek glyphs either side, which stayed local. */
+.tv-ctl-ic-lg {
   width: 2.25rem;
   height: 2.25rem;
 }
@@ -1326,9 +1292,12 @@ body {
  *
  * `grid` makes `.ic` a block-level box with no baseline to sit on, `line-height: 0`
  * removes the strut, and `display: block` on the svg stops it being treated as inline
- * content in turn. The navigation rail (`.tv-nav-item .ic`) had the grid box all
- * along, which is why its icons were centred and the player's were not; this brings
- * the player in line.
+ * content in turn. The navigation rail had the grid box all along, which is why its
+ * icons were centred and the player's were not; this brings the player in line.
+ *
+ * keel's `.icon` reaches the same place by a different route - `inline-flex` plus
+ * `line-height: 0`, with `display: block` on the svg - which is why `.tv-ctl-ic-lg`
+ * and `.tv-nav-ic` need to set nothing but a size.
  */
 .tv-ctl-btn .ic {
   display: grid;
@@ -1351,8 +1320,8 @@ body {
   outline: none;
 }
 
-/* One rule rescales every glyph: `Icons.svg()` hardcodes width="20", and a
-   presentation attribute has zero specificity, so CSS always wins. */
+/* The two seek glyphs, which is all `.ic` still renders here. `Icons.svg()` hardcodes
+   width="20", and a presentation attribute has zero specificity, so CSS always wins. */
 .tv-ctl-btn .ic svg {
   width: 1.75rem;
   height: 1.75rem;
@@ -1377,22 +1346,19 @@ body {
   color: var(--tx-dim);
 }
 
+/* Where the hairline sits, and nothing else. The track, the fill, the fill's colour
+   and the rounding are keel's `ProgressBar` with `onMedia = true` - the same call the
+   web player's `.thinbar` makes. What is left is that this one is pinned to the
+   bottom edge of the picture and fades out when the full control bar takes over. */
 .tv-thinbar {
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
-  height: 0.25rem;
-  background: rgba(255, 255, 255, 0.18);
   transition: opacity 0.25s var(--ease);
 }
 
 .tv-thinbar.hide { opacity: 0; }
-
-.tv-thinbar > div {
-  height: 100%;
-  background: var(--red);
-}
 
 /* The scrub readout: the offset chosen, and the position it lands on.
    The only confirmation that a held press registered, since a scrub deliberately does
@@ -1547,17 +1513,27 @@ body {
 
 /* ----------------------------------------------------------------- dialog
    A modal question. The scrim dims the screen behind; the dialog is a real focus trap
-   (its own input layer), so there is nowhere for the ring to go but its two buttons. */
-.tv-scrim {
-  position: fixed;
-  inset: 0;
-  z-index: 20;
-  background: rgba(0, 0, 0, 0.6);
-}
+   (its own input layer), so there is nowhere for the ring to go but its two buttons.
 
+   The scrim is keel's, with no rule here: `Scrim(blurred = false)`, because a remote
+   cannot click the page behind it and the blur is a full-screen composite on every
+   frame. Its height comes from `--z-scrim`, which this sheet resets below - the web
+   shell pushes keel's whole ladder up by 40 to clear a sticky nav at 40, and this shell
+   has no such layer, so it takes keel's own value back. */
+
+/* The box is keel's `Surface` - border, radius and fill, none of them restated here.
+   It cannot be keel's `Dialog`: that composable installs a second global `keydown`
+   listener, and this shell already has exactly one by design, with no ordering
+   guarantee between two independent listeners for the same event.
+
+   What stays is where the panel sits and how big it is. The z-index in particular is
+   this shell's own layer stack rather than keel's - the rail, the player chrome and
+   this dialog are ordered against each other, not against a scrim keel would place at
+   its own height. */
 .tv-dialog {
   position: fixed;
-  z-index: 21;
+  /* One above its scrim, derived rather than stated, so the pair cannot drift. */
+  z-index: calc(var(--z-scrim) + 1);
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
@@ -1566,9 +1542,6 @@ body {
   flex-direction: column;
   gap: var(--tv-gap);
   padding: var(--tv-gap-lg);
-  border-radius: var(--radius);
-  background: var(--elev);
-  border: 1px solid var(--line-strong);
 }
 
 .tv-dialog-title {

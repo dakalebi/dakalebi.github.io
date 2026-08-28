@@ -15,6 +15,12 @@ import ge.dakalebi.i18n.caps
 import ge.dakalebi.ui.tv.focus.FocusAxis
 import ge.dakalebi.ui.tv.focus.focusGroup
 import ge.dakalebi.ui.tv.focus.focusItem
+import io.github.bchmsl.keel.components.Surface
+import io.github.bchmsl.keel.components.SurfacePadding
+import io.github.bchmsl.keel.components.ButtonVariant
+import io.github.bchmsl.keel.dom.buttonClasses
+import io.github.bchmsl.keel.dom.classNames
+import io.github.bchmsl.keel.dom.inputClasses
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.web.attributes.AttrsScope
 import org.jetbrains.compose.web.attributes.InputType
@@ -77,7 +83,14 @@ fun LoginScreen() {
     Div({ classes("login-wrap") }) {
         Div({ classes("login-bg") })
 
-        Div({ classes("login-card"); dpadGroup("signin") }) {
+        // The box is keel's; `.login-card` carries only where it sits and how wide
+        // it is. tv.css still declares its own border, fill and padding for the same
+        // class and loads after keel, so the television keeps its measured tighter
+        // padding until Phase 5 moves it onto tokens.
+        Surface(padding = SurfacePadding.Large, attrs = {
+            classes("login-card")
+            dpadGroup("signin")
+        }) {
             Div({ classes("login-head") }) {
                 Img(src = "${assetBase}logo.png", alt = S.seriesTitle) { classes("login-mark") }
                 Div({ classes("eyebrow") }) { Text(S.signInEyebrow.caps) }
@@ -99,7 +112,7 @@ fun LoginScreen() {
             }) {
                 Div({ classes("auth-field"); dpadField("email", emailField, entry = true) }) {
                     Input(InputType.Email) {
-                        classes("field")
+                        classNames(inputClasses())
                         name("email")
                         placeholder(S.emailPlaceholder)
                         required()
@@ -110,7 +123,7 @@ fun LoginScreen() {
                 }
                 Div({ classes("auth-field"); dpadField("password", passwordField) }) {
                     Input(InputType.Password) {
-                        classes("field")
+                        classNames(inputClasses())
                         name("password")
                         placeholder(S.passwordPlaceholder)
                         required()
@@ -121,7 +134,7 @@ fun LoginScreen() {
                     }
                 }
                 Button({
-                    classes("btn", "btn-primary")
+                    classNames(buttonClasses())
                     style { property("justify-content", "center") }
                     if (busy) disabled()
                     dpadItem("submit")
@@ -139,7 +152,7 @@ fun LoginScreen() {
                 }
             }) {
                 Button({
-                    classes("btn", "btn-quiet")
+                    classNames(buttonClasses(ButtonVariant.Link))
                     style { property("padding", "0") }
                     dpadItem("mode")
                     onClick { signUpMode = !signUpMode }
@@ -151,7 +164,7 @@ fun LoginScreen() {
 
                 if (!signUpMode) {
                     Button({
-                        classes("btn", "btn-quiet")
+                        classNames(buttonClasses(ButtonVariant.Link))
                         style { property("padding", "0") }
                         dpadItem("reset")
                         onClick {
