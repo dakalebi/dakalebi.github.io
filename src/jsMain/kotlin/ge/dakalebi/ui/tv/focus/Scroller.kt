@@ -135,27 +135,29 @@ internal fun centreXRevealY(item: HTMLElement, within: Element) {
 }
 
 /**
- * Which element a vertical move should bring into view: the whole [group] when it fits
- * its scroller, otherwise the [item] itself. Decides *what* to centre; the caller
+ * Which element a vertical move should bring into view: the whole [group] for a single
+ * row of items, otherwise the [item] itself. Decides *what* to centre; the caller
  * ([centreAxes]) does the scrolling.
  *
  * Centring the group keeps a rail's heading on screen above the focused row rather than
- * scrolling off. That is right only while the group fits its scroller. A group taller
- * than the viewport — a full season is six rows — has no single scroll position that
- * shows every row, so centring it parks a fixed midpoint and the ring walks straight
- * off the bottom. Measured: a 548px grid in a 540px viewport pinned at `scrollTop` 553
- * and the row below the fold never returned. So the item is centred instead once the
- * group overflows.
+ * scrolling off, and holds the page still while the ring sweeps sideways. That only
+ * makes sense for a group that *is* one row — an `X` rail, where the group and the
+ * focused tile occupy the same band of the screen anyway.
+ *
+ * A multi-row group must centre the item instead, and merely fitting the viewport is
+ * not enough to make group-centring safe. Measured at 960x540: a three-row season grid
+ * 498px tall fits, so centring it parked the page with 21px of clearance above and
+ * below — the seasons strip sat at y -83 and the "to top" button at y 566, both fully
+ * outside the viewport, and since geometric navigation only sees what is visible the
+ * ring could not leave the grid in either direction. Centring the focused row instead
+ * puts a neighbour on screen at both ends. A group taller than the viewport was already
+ * broken for the stronger reason that no single scroll position shows every row.
  *
  * Returning the target rather than scrolling here is what lets [centreAxes] read the X
  * and Y rectangles together before any write, saving a reflow on every vertical press.
  */
-internal fun verticalTarget(item: HTMLElement, group: HTMLElement, within: Element): HTMLElement {
-    val scroller = scrollableAncestor(group, Axis.Y, within)
-    val groupFits = scroller == null ||
-        group.getBoundingClientRect().height <= scroller.clientHeight
-    return if (groupFits) group else item
-}
+internal fun verticalTarget(item: HTMLElement, group: HTMLElement): HTMLElement =
+    if (SpatialNav.axisOf(group) == FocusAxis.X) group else item
 
 /**
  * The closest ancestor that can actually scroll [from] on [axis], stopping at
@@ -233,7 +235,7 @@ internal fun HTMLElement.isFixed(): Boolean {
  * nothing toggles it at runtime. The cached flag is an expando on the element, so it is
  * collected with the node and cannot leak across Compose re-creating the DOM.
  */
-private fun HTMLElement.scrollsOn(axis: Axis): Boolean {
+internal fun HTMLElement.scrollsOn(axis: Axis): Boolean {
     val key = if (axis == Axis.X) "__tvScrollsX" else "__tvScrollsY"
     (asDynamic()[key] as? Boolean)?.let { return it }
     val property = if (axis == Axis.X) "overflow-x" else "overflow-y"

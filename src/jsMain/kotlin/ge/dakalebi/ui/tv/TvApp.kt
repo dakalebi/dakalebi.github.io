@@ -196,7 +196,7 @@ fun TvApp() {
          * 2. It keeps the promise the focus engine makes: a keypress touches DOM nodes
          *    and nothing else.
          */
-        SpatialNav.onFocusChanged = { item ->
+        val unsubscribeFocus = SpatialNav.onFocusChanged { item ->
             val open = item.closest("[data-tv-group=\"$NAV_GROUP\"]") != null
             refs.root?.let { root ->
                 root.classList.toggle("rail-open", open)
@@ -211,7 +211,7 @@ fun TvApp() {
 
         onDispose {
             window.clearTimeout(landFocus)
-            SpatialNav.onFocusChanged = null
+            unsubscribeFocus()
             layer.dismiss()
             removeListeners()
         }

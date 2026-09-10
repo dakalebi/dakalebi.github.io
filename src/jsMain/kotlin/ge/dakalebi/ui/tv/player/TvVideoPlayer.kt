@@ -2,6 +2,7 @@ package ge.dakalebi.ui.tv.player
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -20,7 +21,9 @@ import ge.dakalebi.ui.tv.actsAsButton
 import ge.dakalebi.ui.tv.actsAsOption
 import ge.dakalebi.ui.tv.actsAsOptionGroup
 import ge.dakalebi.ui.tv.focus.Direction
+import ge.dakalebi.ui.tv.focus.ENTRY_ATTR
 import ge.dakalebi.ui.tv.focus.FocusAxis
+import ge.dakalebi.ui.tv.focus.GROUP_ATTR
 import ge.dakalebi.ui.tv.focus.ITEM_ATTR
 import ge.dakalebi.ui.tv.focus.SpatialNav
 import ge.dakalebi.ui.tv.focus.focusGroup
@@ -51,6 +54,7 @@ import org.jetbrains.compose.web.dom.Text
 import org.jetbrains.compose.web.dom.Video
 import org.w3c.dom.HTMLElement
 import org.w3c.dom.HTMLVideoElement
+import org.w3c.dom.asList
 
 /** What the D-pad currently means. */
 private enum class Mode { Idle, Controls, Scrubbing }
@@ -63,6 +67,13 @@ private class TvPlayerRefs {
     var fillBuf: HTMLElement? = null
     var thumb: HTMLElement? = null
     var ghost: HTMLElement? = null
+
+    /** The sliding column of episode rails; see [TvVideoPlayer]'s note on the shelf. */
+    var shelfTrack: HTMLElement? = null
+
+    /** The quality menu, while it is open. Used as its own input layer's root. */
+    var qualityMenu: HTMLElement? = null
+
     var raf: Int? = null
     var hideTimer: Int? = null
     var scrub: TvSeek? = null
@@ -148,13 +159,12 @@ fun TvVideoPlayer(
     autoplayNext: Boolean? = null,
     onToggleAutoplay: (() -> Unit)? = null,
     /**
-     * Extra bands rendered inside the chrome, below the transport row.
+     * Extra bands rendered in the shelf below the transport row.
      *
      * A slot rather than parameters, so the player stays a player and does not learn
-     * about episodes: the watch screen fills it with the next/previous rails. Whatever
-     * goes here becomes part of the chrome's `Y` group, so the spatial engine walks
-     * down into it from the buttons with no extra wiring, and it hides and shows with
-     * the rest of the chrome.
+     * about episodes: the watch screen fills it with the next/previous rails. Each band
+     * it supplies should be one focus group; the shelf counts them to decide how far it
+     * has been pulled up, and knows nothing else about them.
      */
     chromeExtra: @Composable () -> Unit = {},
     /**
@@ -177,6 +187,21 @@ fun TvVideoPlayer(
     var durationSec by remember { mutableStateOf(0) }
     var seekPreview by remember { mutableStateOf<String?>(null) }
     var qualityOpen by remember { mutableStateOf(false) }
+
+    /**
+     * How far the episode shelf has been pulled up, in whole bands.
+     *
+     * `0` is the resting state: the transport is up and the first band only peeks above
+     * the bottom edge. `1` puts the first band fully on screen with the second peeking,
+     * `2` the second with the third peeking, and so on — YouTube's progressive reveal.
+     *
+     * **Derived from wherever the ring is, never driven.** A `focusin` listener maps the
+     * focused element back to the band that holds it, so the shelf cannot disagree with
+     * the cursor. Driving it from the key handler instead would mean re-deciding, in the
+     * player, everything the spatial engine already decides correctly about which band a
+     * press lands in.
+     */
+    var shelfLevel by remember { mutableStateOf(0) }
 
     val ordered = remember(sources) { orderedQualityLabels(sources) }
 
@@ -248,6 +273,49 @@ fun TvVideoPlayer(
     }
 
     /**
+     * The bands the shelf holds, in the order they are drawn.
+     *
+     * Read off the DOM rather than passed in, because the bands arrive through
+     * [chromeExtra] and the player is not told what they are. One focus group is one
+     * band: that is the only structural thing the shelf assumes about the slot.
+     */
+    fun shelfBands(): List<HTMLElement> =
+        refs.shelfTrack
+            ?.querySelectorAll("[$GROUP_ATTR]")
+            ?.asList()
+            ?.filterIsInstance<HTMLElement>()
+            ?.mapNotNull { it.parentElement as? HTMLElement }
+            ?: emptyList()
+
+    /**
+     * Slides the shelf so the band at [shelfLevel] sits at the top of its window.
+     *
+     * Measured rather than calculated from a row pitch. The offset is the band's
+     * position *within the track*, which is the difference of two rects and therefore
+     * unaffected by the translate already applied — so this stays correct however many
+     * times it runs, and does not care that a band's height depends on what is in it.
+     *
+     * At level 0 the track is pushed back down by the window's own height, less the
+     * peek, which is the one case with no band to align to.
+     */
+    fun applyShelf(level: Int) {
+        val track = refs.shelfTrack ?: return
+        // The window is `overflow: hidden`, which still scrolls: a browser bringing a
+        // focused child into view moves it, and that would silently offset everything
+        // the transform below computes. The engine focuses with `preventScroll`, so this
+        // should already be zero — pinning it costs nothing and removes the whole class
+        // of drift, including whatever a WebView decides to do on its own.
+        (track.parentElement as? HTMLElement)?.scrollTop = 0.0
+        val band = shelfBands().getOrNull(level - 1)
+        track.style.transform = if (band == null) {
+            "translateY(calc(var(--shelf-h) - var(--shelf-peek)))"
+        } else {
+            val offset = band.getBoundingClientRect().top - track.getBoundingClientRect().top
+            "translateY(${-offset}px)"
+        }
+    }
+
+    /**
      * Five seconds, not the web player's 2.5. A remote is slower to aim than a
      * mouse, and the penalty for hiding too early is a press spent bringing the
      * chrome back rather than doing what you meant. Media3's `PlayerControlView` and
@@ -262,7 +330,11 @@ fun TvVideoPlayer(
         refs.hideTimer?.let { window.clearTimeout(it) }
         refs.hideTimer = window.setTimeout({
             val v = refs.video
-            if (v != null && !v.paused && !qualityOpen) hideControls()
+            // Not while the ring is down in the shelf. Taking the episode list away
+            // from under someone who is reading it is the timer doing the opposite of
+            // what it is for, and the shelf is the chrome's own surface — the same
+            // reason an open quality menu holds it off.
+            if (v != null && !v.paused && !qualityOpen && shelfLevel == 0) hideControls()
         }, TvConfig.CONTROLS_HIDE_MS)
     }
 
@@ -400,6 +472,11 @@ fun TvVideoPlayer(
                         // Cancel, per the contract: the gesture is abandoned and the
                         // position it started from is the one still playing.
                         mode == Mode.Scrubbing -> { cancelScrub(); true }
+                        // Back out of the shelf before Back out of the chrome. Sending
+                        // the ring to the transport is the whole action: the level is
+                        // derived from where it lands, so the bands drop back to a peek
+                        // on their own.
+                        shelfLevel > 0 -> { focusChromeItem("play"); true }
                         mode == Mode.Controls -> { hideControls(); true }
                         else -> false
                     }
@@ -446,6 +523,35 @@ fun TvVideoPlayer(
                         // the controls down. Checked before the keep-alive reveal below,
                         // or the chrome would flash back the instant it was hidden.
                         direction == Direction.Up && scrubFocused() -> { hideControls(); true }
+
+                        /*
+                         * Up out of the shelf, stated rather than left to the engine.
+                         *
+                         * The engine picks vertical targets from what is *visible*, and
+                         * that is the right rule — a move to something an `overflow`
+                         * is painting over lands the ring where nobody can see it, which
+                         * is a bug it was fixed for. But it makes Up here a dead end, in
+                         * two different ways: at the first band the faded control bar is
+                         * no longer above the band, it is underneath it; at any band
+                         * after that the band above has been clipped out of the window
+                         * entirely. Neither is reachable, and both should be.
+                         *
+                         * So the shelf names its own target going up. Down needs none of
+                         * this: the next band is always partly on screen, which is what
+                         * the peek is for.
+                         */
+                        direction == Direction.Up && shelfLevel > 0 -> {
+                            val above = shelfBands().getOrNull(shelfLevel - 2)
+                                ?.querySelector("[$GROUP_ATTR]") as? HTMLElement
+                            val container = refs.container
+                            if (above != null && container != null) {
+                                SpatialNav.focusInGroup(above, container)
+                            } else {
+                                revealControls()
+                                focusChromeItem("play")
+                            }
+                            true
+                        }
 
                         else -> {
                             // Chrome already shown: any press keeps it alive.
@@ -509,6 +615,77 @@ fun TvVideoPlayer(
             layer.dismiss()
         }
     }
+
+    /*
+     * The quality menu is its own input layer for as long as it is open.
+     *
+     * That is what makes it a menu rather than a floating panel. `handleDirection`
+     * scopes the spatial engine to the top layer's root, so with the menu on the stack
+     * every arrow stays inside it and Back closes it — the behaviour every television
+     * platform gives a settings popup, and the thing that was missing when the engine
+     * was free to walk out of the menu into whatever happened to be nearby on screen.
+     *
+     * The ring goes in on open and comes back to the button on close, so the menu never
+     * opens with the cursor still sitting outside it.
+     */
+    DisposableEffect(qualityOpen) {
+        if (!qualityOpen) {
+            onDispose { }
+        } else {
+            val layer = input.push(
+                TvLayer(
+                    key = "tv-quality",
+                    root = { refs.qualityMenu },
+                    onBack = { qualityOpen = false; true },
+                ),
+            )
+            /*
+             * Lands on the rendition that is playing, every time it opens.
+             *
+             * Explicitly, not through `ensureFocused`. That asks focus memory first, and
+             * memory is exactly wrong for this menu: the second open would land on
+             * whatever the ring last passed over rather than on what is actually
+             * selected — and where the group has a memory but the guardian's other
+             * fallbacks do not apply, it lands nowhere at all, which is what happened.
+             * A menu of current settings opens on the current setting.
+             */
+            val land = window.setTimeout({
+                val menu = refs.qualityMenu ?: return@setTimeout
+                val current = menu.querySelector("[$ENTRY_ATTR]") as? HTMLElement
+                if (current != null) {
+                    SpatialNav.focus(current, direction = null, scope = menu)
+                } else {
+                    SpatialNav.ensureFocused(menu)
+                }
+            }, 0)
+            onDispose {
+                window.clearTimeout(land)
+                layer.dismiss()
+                focusChromeItem("quality")
+            }
+        }
+    }
+
+    /*
+     * The shelf follows the ring.
+     *
+     * The engine's own hook, not a DOM `focusin` listener — see the note on
+     * [SpatialNav.onFocusChanged]. The ring also moves for reasons that never reach
+     * `onDirection`: the layer guardian placing it after a recomposition,
+     * `focusChromeItem`, a click. This catches all of them, and the level is a pure
+     * function of where the ring ended up.
+     */
+    DisposableEffect(Unit) {
+        val unsubscribe = SpatialNav.onFocusChanged { item ->
+            val level = shelfBands().indexOfFirst { it.contains(item) } + 1
+            if (level != shelfLevel) shelfLevel = level
+        }
+        onDispose { unsubscribe() }
+    }
+
+    // Runs after the recomposition that `shelfLevel` triggered, so the bands are laid
+    // out at their new sizes before their offsets are read.
+    LaunchedEffect(shelfLevel, mode) { applyShelf(shelfLevel) }
 
     DisposableEffect(Unit) {
         onDispose {
@@ -634,23 +811,6 @@ fun TvVideoPlayer(
             Div({ classes("tv-seek-osd", "mono") }) { Text(it) }
         }
 
-        if (qualityOpen && ordered.size > 1) {
-            Div({
-                classes("tv-q-menu")
-                focusGroup("quality", FocusAxis.Y)
-                actsAsOptionGroup(S.quality)
-            }) {
-                ordered.forEach { label ->
-                    Div({
-                        classNames("tv-q-item", if (label == quality) "on" else null)
-                        focusItem("q-$label", entry = label == quality)
-                        actsAsOption(selected = label == quality)
-                        onClick { qualityOpen = false; onQualitySelected(label) }
-                    }) { Text(label) }
-                }
-            }
-        }
-
         /*
          * The scrubber on top, the buttons in a row beneath it.
          *
@@ -668,7 +828,14 @@ fun TvVideoPlayer(
          * rules were fixed for.
          */
         Div({
-            classNames("tv-ctl", if (mode == Mode.Controls) null else "hide")
+            // Hidden while the ring is down in the shelf, which is the other half of
+            // the progressive reveal: the room the bands move into is the room the
+            // transport was using. `.hide` is opacity, not `visibility`, so the bar
+            // stays focusable and Up out of the first band still finds it.
+            classNames(
+                "tv-ctl",
+                if (mode == Mode.Controls && shelfLevel == 0) null else "hide",
+            )
             focusGroup("player-chrome", FocusAxis.Y)
         }) {
             // Elapsed at the start, total at the end, flanking the bar — YouTube's
@@ -797,6 +964,43 @@ fun TvVideoPlayer(
                 Div({ classes("tv-ctl-end") }) {
                     if (ordered.size > 1) {
                         val shown = quality ?: ordered.first()
+                        /*
+                         * The menu is a child of the cell that holds the button, and is
+                         * placed directly above it in CSS.
+                         *
+                         * It used to be a sibling of the whole control bar, positioned
+                         * off the bottom of the picture — an anchor that was right when
+                         * the chrome was three rows tall and wrong the moment the
+                         * episode rails joined it: the menu then opened over the rails,
+                         * *behind* them (later sibling, no `z-index`), and the spatial
+                         * engine treated it as one more band sitting in the layout, so
+                         * Down from the button reached a rail tile rather than the menu.
+                         * Anchoring it to its own button is what makes all three go
+                         * away at once.
+                         */
+                        if (qualityOpen) {
+                            Div({
+                                classes("tv-q-menu")
+                                focusGroup("quality", FocusAxis.Y)
+                                actsAsOptionGroup(S.quality)
+                                ref { element ->
+                                    refs.qualityMenu = element
+                                    onDispose { refs.qualityMenu = null }
+                                }
+                            }) {
+                                ordered.forEach { label ->
+                                    Div({
+                                        classNames(
+                                            "tv-q-item",
+                                            if (label == quality) "on" else null,
+                                        )
+                                        focusItem("q-$label", entry = label == quality)
+                                        actsAsOption(selected = label == quality)
+                                        onClick { qualityOpen = false; onQualitySelected(label) }
+                                    }) { Text(label) }
+                                }
+                            }
+                        }
                         Div({
                             classNames(
                                 "tv-ctl-btn",
@@ -818,10 +1022,37 @@ fun TvVideoPlayer(
                 }
             }
 
-            // The next/previous rails, when the watch screen supplies them. Rendered
-            // here so they belong to the chrome's `Y` group — the engine walks Down
-            // into them from the buttons — and hide and show with everything else.
-            chromeExtra()
+        }
+
+        /*
+         * The episode shelf.
+         *
+         * A window pinned to the bottom of the picture with a column of bands sliding
+         * inside it, rather than more rows inside the control bar. The bar used to hold
+         * them, and the arithmetic of that was the complaint: bar plus buttons plus two
+         * full rails is 430px of a 540px screen, so pausing an episode replaced it with
+         * a wall of interface and showed both rails whether you wanted them or not.
+         *
+         * What YouTube does instead, and what this now does: at rest only the top slice
+         * of the first band shows, cut off by the bottom edge, saying "there is more
+         * down here" without spending the screen on it. Moving the ring into it hides
+         * the transport and pulls exactly one band into view with the next one peeking,
+         * and each further step down does the same thing one band lower.
+         *
+         * `overflow: hidden` on the window, deliberately not `auto`. The engine's
+         * scroller only adopts an ancestor whose computed overflow is a real scroll
+         * value, so this stays invisible to it and the transform below is the single
+         * thing deciding where the bands sit. Two mechanisms both moving this column
+         * would fight on every press.
+         */
+        Div({ classNames("tv-shelf", if (mode == Mode.Controls) null else "hide") }) {
+            Div({
+                classes("tv-shelf-track")
+                ref { element ->
+                    refs.shelfTrack = element
+                    onDispose { refs.shelfTrack = null }
+                }
+            }) { chromeExtra() }
         }
 
         // Always something to read the position from, exactly when the control bar

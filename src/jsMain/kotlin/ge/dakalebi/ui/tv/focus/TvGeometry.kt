@@ -98,8 +98,23 @@ internal class ClipCache {
  * The viewport clamp at the end is what keeps a band below the fold out of a
  * sideways press: there is nothing to the right of the navigation rail on a screen
  * scrolled past it except things the viewer would have to be shown first.
+ *
+ * [reachableOn] is the exception, and it names the axis the press is travelling
+ * along. A clip only means "the viewer cannot get there" when nothing will move to
+ * reveal it, and a scroll container about to be scrolled *by this very move* is not
+ * that. Down means "the next band", and on a page whose bands are taller than the fold
+ * the next band is entirely below it: measured at 960x540 with the interface size on
+ * its 130% step, the continue rail sat at y 552 in a 540px viewport and Down from the
+ * hero found no candidate at all, so the ring could not leave the hero. Passing
+ * `Axis.Y` for a vertical press keeps every clip that a scroll cannot undo —
+ * `overflow: hidden`, which is how the player's shelf hides the rows it has moved out
+ * of its window — and drops the ones it can.
  */
-internal fun HTMLElement.visibleBox(within: Element, clips: ClipCache): Box? {
+internal fun HTMLElement.visibleBox(
+    within: Element,
+    clips: ClipCache,
+    reachableOn: Axis? = null,
+): Box? {
     if (offsetParent == null) return null
     val rect = getBoundingClientRect()
     var left = rect.left
@@ -110,8 +125,8 @@ internal fun HTMLElement.visibleBox(within: Element, clips: ClipCache): Box? {
 
     var node = parentElement as? HTMLElement
     while (node != null) {
-        val clipsX = node.clipsOn(Axis.X)
-        val clipsY = node.clipsOn(Axis.Y)
+        val clipsX = node.clipsOn(Axis.X) && !node.revealableOn(Axis.X, reachableOn)
+        val clipsY = node.clipsOn(Axis.Y) && !node.revealableOn(Axis.Y, reachableOn)
         if (clipsX || clipsY) {
             val clip = clips.rectOf(node)
             if (clipsX) {
@@ -128,14 +143,26 @@ internal fun HTMLElement.visibleBox(within: Element, clips: ClipCache): Box? {
         node = node.parentElement as? HTMLElement
     }
 
-    if (left < 0.0) left = 0.0
-    if (top < 0.0) top = 0.0
-    right = minOf(right, window.innerWidth.toDouble())
-    bottom = minOf(bottom, window.innerHeight.toDouble())
+    if (reachableOn != Axis.X) {
+        if (left < 0.0) left = 0.0
+        right = minOf(right, window.innerWidth.toDouble())
+    }
+    if (reachableOn != Axis.Y) {
+        if (top < 0.0) top = 0.0
+        bottom = minOf(bottom, window.innerHeight.toDouble())
+    }
     if (right - left < MIN_VISIBLE || bottom - top < MIN_VISIBLE) return null
 
     return Box(this, left, top, right, bottom)
 }
+
+/**
+ * Whether this ancestor's clip on [axis] is one the move about to happen will undo —
+ * true only for the axis the press travels along, and only for a box that genuinely
+ * scrolls. See [visibleBox].
+ */
+private fun HTMLElement.revealableOn(axis: Axis, reachableOn: Axis?): Boolean =
+    axis == reachableOn && scrollsOn(axis)
 
 /**
  * Whether this element's computed `overflow` on [axis] hides what spills past it.

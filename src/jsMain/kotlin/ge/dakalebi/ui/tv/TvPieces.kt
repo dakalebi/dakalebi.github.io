@@ -50,10 +50,12 @@ fun TvTile(episode: Episode, progress: WatchProgress?, entry: Boolean = false) {
         focusItem(episode.id, entry = entry)
     }) {
         Div({ classes("tv-tile-art") }) {
-            // No label inside the art: the badge and the name below already say
-            // which episode this is, and a third copy is just noise.
+            // Nothing on the picture that the caption under it already says. The
+            // episode number used to be stamped here as well as written below, which
+            // is one chip too many on a still this size — see `.tv-tile-dur` in the
+            // sheet. What is left is the two things the caption cannot carry: how long
+            // it runs, and how far through it you are.
             Thumb(episode)
-            Span({ classes("tv-tile-badge", "mono") }) { Text("E${episode.episodeNumber}") }
             if (watched) Span({ classes("tv-tile-seen") }) { Text("✓") }
             formatDuration(episode.durationSeconds)?.let {
                 Span({ classes("tv-tile-dur", "mono") }) { Text(it) }

@@ -34,23 +34,39 @@ import kotlin.math.abs
  */
 internal object SpatialNav {
 
+    private val focusListeners = mutableListOf<(HTMLElement) -> Unit>()
+
     /**
-     * Told about every focus change, after it has happened.
+     * Subscribes to every focus change, after it has happened. Returns the way to stop.
      *
-     * Exactly one hook, at the one place focus can move, so a subscriber cannot miss
-     * a change and there is nowhere else to keep in sync. The navigation rail is the
-     * only subscriber: it has to expand when the ring arrives in it and collapse when
-     * the ring leaves, and neither event is something CSS can see — `:focus-within`
-     * would do it, but the ring is an attribute here precisely because `:focus` is
-     * unreliable when the document is not frontmost.
+     * One hook at the one place focus can move, so a subscriber cannot miss a change and
+     * there is nowhere else to keep in sync. **Not a DOM `focusin` listener**, which is
+     * the obvious alternative and does not work here: this app draws its ring as an
+     * attribute precisely because a television WebView is often not the frontmost
+     * document, and in that state focus events are unreliable — measured, they do not
+     * fire at all in a background page, while `document.activeElement` still moves.
      *
-     * **Keep subscribers cheap and keep them off the tiles.** This runs on the
-     * critical path of every D-pad press. A subscriber that writes Compose state
-     * makes a keypress recompose, which is the cost this whole file exists to avoid;
-     * the rail gets away with it because it recomposes a rail of four items, and only
-     * on the two presses that cross its boundary.
+     * Two subscribers today. The navigation rail expands when the ring arrives in it and
+     * collapses when it leaves; the player's episode shelf slides to whichever band now
+     * holds the ring. Neither is something CSS can see: `:focus-within` would do both if
+     * `:focus` could be trusted, and it cannot.
+     *
+     * **Keep subscribers cheap and keep them off the tiles.** This runs on the critical
+     * path of every D-pad press. A subscriber that writes Compose state makes a keypress
+     * recompose, which is the cost this whole file exists to avoid; both get away with it
+     * because they recompose a handful of elements, and only on the presses that cross a
+     * boundary they care about.
      */
-    var onFocusChanged: ((HTMLElement) -> Unit)? = null
+    fun onFocusChanged(listener: (HTMLElement) -> Unit): () -> Unit {
+        focusListeners += listener
+        return { focusListeners -= listener }
+    }
+
+    /** Copied before iterating, so a subscriber unsubscribing in its own callback — the
+     *  player's does, on the press that unmounts it — cannot mutate the list mid-walk. */
+    private fun notifyFocus(item: HTMLElement) {
+        focusListeners.toList().forEach { it(item) }
+    }
 
     /**
      * Which screen the ring is on, so returning to it can land where it was left.
@@ -151,7 +167,7 @@ internal object SpatialNav {
 
     fun groupOf(item: Element): HTMLElement? = item.closest("[$GROUP_ATTR]") as? HTMLElement
 
-    private fun axisOf(group: HTMLElement): FocusAxis =
+    internal fun axisOf(group: HTMLElement): FocusAxis =
         when (group.getAttribute(AXIS_ATTR)) {
             FocusAxis.X.attr -> FocusAxis.X
             FocusAxis.Grid.attr -> FocusAxis.Grid
@@ -331,7 +347,13 @@ internal object SpatialNav {
                 // Measured as the viewer sees it, not as the element claims. See
                 // [visibleBox]: an item scrolled out of its own rail reports a full
                 // rectangle, and believing it is what sent the ring off screen.
-                val box = element.visibleBox(scope, clips) ?: return@mapNotNull null
+                //
+                // A vertical press is the exception, and it hands `visibleBox` the axis
+                // to forgive: the next band down is often entirely below the fold, and
+                // scrolling it into view is what Down *is*. Sideways keeps the strict
+                // reading, because nothing off screen is ever to the right of the ring.
+                val reachable = if (direction.isHorizontal) null else Axis.Y
+                val box = element.visibleBox(scope, clips, reachable) ?: return@mapNotNull null
                 val distance = along(from, box, direction) ?: return@mapNotNull null
                 Candidate(box, group, distance, cross(from, box, direction))
             }
@@ -423,6 +445,28 @@ internal object SpatialNav {
         val cross: Double,
     )
 
+    /**
+     * Sends the ring into [group], landing where that group was last left.
+     *
+     * For the caller that knows which group it wants and cannot get there by geometry:
+     * the player's shelf, whose bands are clipped out of view one at a time, so Up from
+     * the visible band has nothing on screen above it to aim at. Every other move should
+     * still go through [move] — a screen that names its own targets has stopped being
+     * spatially navigable, and this exists for the one case where the alternative is a
+     * dead end rather than a different route.
+     *
+     * Falls back to the group's declared entry point, then to its first item.
+     */
+    fun focusInGroup(group: HTMLElement, scope: Element): Boolean {
+        val items = itemsOf(group)
+        val target = remembered(group, items)
+            ?: items.firstOrNull { it.hasAttribute(ENTRY_ATTR) }
+            ?: items.firstOrNull()
+            ?: return false
+        focus(target, direction = null, scope = scope)
+        return true
+    }
+
     /** The item this group was left on, if it is still there. */
     private fun remembered(group: HTMLElement, items: List<HTMLElement>): HTMLElement? {
         val groupKey = group.getAttribute(GROUP_ATTR) ?: return null
@@ -439,9 +483,9 @@ internal object SpatialNav {
      * A horizontal move centres the item in its own rail and leaves the page alone —
      * unless the item is not on screen at all, which is the one case where leaving the
      * page alone means leaving the ring invisible. See [centreXRevealY].
-     * A vertical move centres the group when it fits the viewport — so a rail's
-     * heading stays visible above the focused row — and the item when the group is
-     * taller than the viewport, which a full season grid is. See [verticalTarget].
+     * A vertical move centres the group when it is a single row — so a rail's heading
+     * stays visible above the focused row — and the focused item when the group has
+     * several rows, which a season grid does. See [verticalTarget].
      */
     fun focus(item: HTMLElement, direction: Direction?, scope: Element) {
         // Any landing chosen deliberately is final; only the fallback in
@@ -456,12 +500,12 @@ internal object SpatialNav {
             // Y (in the page). `centreAxes` reads both rectangles before either scroll
             // write, so the vertical target is measured before the X write dirties layout
             // — one reflow instead of two. See [verticalTarget]/[centreAxes].
-            group != null -> centreAxes(item, verticalTarget(item, group, scope), scope)
+            group != null -> centreAxes(item, verticalTarget(item, group), scope)
             else -> centre(item, setOf(Axis.X), scope)
         }
 
         // Last, so a subscriber reading geometry sees the settled position.
-        onFocusChanged?.invoke(item)
+        notifyFocus(item)
     }
 
     /**
@@ -529,7 +573,7 @@ internal object SpatialNav {
                 it.isConnected && scope.contains(it) &&
                     it.hasAttribute(ITEM_ATTR) && it.isNavigable()
             }
-            ?.let { mark(it, scope); onFocusChanged?.invoke(it); return it }
+            ?.let { mark(it, scope); notifyFocus(it); return it }
 
         val restored = landingSpot(scope) ?: return null
         focus(restored, direction = null, scope = scope)
