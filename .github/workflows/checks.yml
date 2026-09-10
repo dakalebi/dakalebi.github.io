@@ -1,10 +1,11 @@
 name: Checks
 
-# Everything except main. Pushes to main are covered by the deploy workflow, which
-# runs the same guard against the same build before it publishes anything.
+# Everything except the two branches that publish. Pushes to main and preview are
+# covered by the deploy workflow, which runs the same guard against the same build
+# before it publishes anything.
 on:
   push:
-    branches-ignore: [main]
+    branches-ignore: [main, preview]
   pull_request:
   workflow_dispatch:
 
