@@ -1,0 +1,1255 @@
+/* ============================================================================
+   The phone and desktop stylesheet. Tokens live in tokens.css, which must be
+   linked first. The TV UI does not load this file at all.
+   ========================================================================== */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+}
+
+body {
+  min-height: 100vh;
+  font-family: var(--f-sans);
+  color: var(--tx);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+
+  /* Drops double-tap-to-zoom, which on a phone is mostly a way to zoom the
+     page by mistake while aiming at a control — and takes the ~300ms tap delay
+     that came with it. Panning and a deliberate pinch still work; `none` would
+     have killed scrolling too. Unlike `user-scalable=no` in the viewport tag,
+     iOS Safari does honour this. */
+  touch-action: manipulation;
+
+  /* Stops the long-press callout and the blue flash on tap. On a page whose
+     tiles are all images and links, both read as the browser interrupting. */
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+/* Underlined links read as a 1998 document, not an app. Every anchor here is
+   either a card or a button, so none of them want the default decoration. */
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* Zero-specificity reset so component classes below always win. */
+:where(button) {
+  border: 0;
+  background: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--tx);
+  outline-offset: 2px;
+}
+
+.mono {
+  font-family: var(--f-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "zero" 1;
+  letter-spacing: -0.01em;
+}
+
+/*
+ * Mtavruli (Georgian uppercase) is applied in Kotlin, not here.
+ *
+ * `text-transform: uppercase` deliberately skips the Mkhedruli -> Mtavruli
+ * mapping. Measured in Chrome with Noto Sans Georgian loaded: `ქართული` renders
+ * 210px both plain and with `text-transform: uppercase`, while the literal
+ * `ᲥᲐᲠᲗᲣᲚᲘ` renders 220px. Latin *is* transformed, so leaving the rule on would
+ * have produced "GOOGLE-ით შესვლა" - half shouted, half not.
+ *
+ * See Strings.caps and the `.caps` extension in the i18n package.
+ */
+
+/* ------------------------------------------------------------------ type */
+
+.eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--red);
+  font-weight: 700;
+}
+
+.eyebrow-mut {
+  font-size: 10px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--mut);
+  font-weight: 700;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  text-wrap: balance;
+  letter-spacing: -0.03em;
+  font-weight: 700;
+}
+
+/* --------------------------------------------------------------- buttons */
+/* `.btn`/`.btn--*` (and `.icon-btn`'s replacement, `.btn--ghost .btn--size-icon`)
+   now come from keel/components.css, painted with this app's own colours from
+   keel-theme.css - see the `--radius-md` override there for why they still
+   come out as a capsule and a circle rather than keel's own rounded-rect. */
+
+/* Icon sizing for `.ic` now lives in one rule further down, because `.ic` is down to a
+   single glyph on this shell. See the note beside it. */
+
+/* ------------------------------------------------------------------- nav */
+
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px var(--pad);
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.92), rgba(0, 0, 0, 0));
+}
+
+.nav-solid {
+  background: rgba(0, 0, 0, 0.88);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--line);
+}
+
+/* The logo is a transparent PNG of hand lettering, so it needs no plate and
+   no colour treatment - it sits straight on the black. Height-driven with
+   `width: auto` so the wide mark keeps its proportions at any size. */
+.nav-mark {
+  height: 30px;
+  width: auto;
+  flex: none;
+  display: block;
+}
+
+.login-head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.login-mark {
+  height: 78px;
+  width: auto;
+  align-self: flex-start;
+  display: block;
+  margin-bottom: 6px;
+}
+
+@media (max-width: 720px) {
+  .nav-mark {
+    height: 26px;
+  }
+}
+
+.nav-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(140deg, var(--red), var(--red-dim));
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  flex: none;
+}
+
+/* ------------------------------------------------------------------ hero */
+
+.hero {
+  position: relative;
+  /* `width` must stay explicit. With only `aspect-ratio` and `min-height` set,
+     a narrow viewport makes the browser derive the *width* from the clamped
+     height (340px x 4/3 = 453px on phones), which pushed the whole page into
+     horizontal scroll below ~453px. */
+  width: 100%;
+  min-height: 300px;
+  aspect-ratio: 21 / 9;
+  /* At 21/9 the hero is taller than the viewport on most laptops, so the grid
+     below never appears without scrolling and the page reads as one giant
+     image. Capping the height lets the first row of episodes sit just under
+     the fold, which is the balance Netflix strikes. */
+  max-height: min(62vh, 620px);
+  background: var(--elev);
+  margin-top: -68px;
+  border-radius: 0 0 calc(var(--radius) + 6px) calc(var(--radius) + 6px);
+  overflow: hidden;
+}
+
+.hero-img {
+  position: absolute;
+  inset: 0;
+}
+.hero-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.hero-scrim {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to right, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.72) 34%, rgba(0, 0, 0, 0.08) 76%),
+    linear-gradient(to top, #000 0%, rgba(0, 0, 0, 0.15) 46%, rgba(0, 0, 0, 0.55) 100%);
+}
+
+.hero-body {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  z-index: 2;
+  padding: 0 var(--pad) clamp(24px, 4vw, 44px);
+  max-width: 620px;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+
+.hero-h {
+  font-size: clamp(30px, 6.4vw, 58px);
+  line-height: 0.95;
+}
+
+.hero-sub {
+  font-size: 13px;
+  color: var(--tx-dim);
+}
+
+/* keel's `ProgressBar` at `Large` + `onMedia`, which is this bar's own 4px and its
+   own white-at-0.22 track: keel reads `--primary-foreground`, which is white in
+   every palette. All that is left is how far it may run. */
+.hero-bar {
+  max-width: 340px;
+}
+
+.hero-cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-top: 4px;
+}
+
+/* ----------------------------------------------------------------- rails */
+
+.rails {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(32px, 4vw, 52px);
+  padding: clamp(28px, 4vw, 44px) 0 96px;
+}
+
+.rail-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 0 var(--pad);
+  margin-bottom: 16px;
+}
+.rail-head h2 {
+  font-size: 20px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+.rail-head .count {
+  font-size: 12.5px;
+  color: var(--mut);
+}
+.rail-head .spacer {
+  flex: 1;
+}
+
+.rail {
+  display: flex;
+  gap: var(--rail-gap);
+  overflow-x: auto;
+  padding: 0 var(--pad) 4px;
+  scrollbar-width: none;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+}
+.rail::-webkit-scrollbar {
+  display: none;
+}
+
+/* A row that deliberately does not scroll - see EpisodeRow. */
+.fixedrow {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--rail-gap);
+}
+.fixedrow .tile {
+  width: auto;
+}
+@media (max-width: 900px) {
+  .fixedrow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
+  gap: 28px var(--rail-gap);
+  padding: 0 var(--pad);
+}
+
+/* Season picker — a rail of chips rather than a <select>, so the whole run of
+   18 seasons is scannable and thumb-scrollable on a phone. That rail is keel's
+   `.segmented--rail`, including the chips, the selected fill, the finished-season
+   check and the hidden scrollbar. What is left is where the rail sits on the page:
+   the gutter, which the component cannot know, and the 2px below it so a chip's
+   focus ring is not clipped by the scroll box. */
+.chips {
+  padding: 0 var(--pad) 2px;
+}
+
+/* ----------------------------------------------------------------- tiles */
+
+.tile {
+  position: relative;
+  width: 300px;
+  flex: none;
+  scroll-snap-align: start;
+}
+.grid .tile {
+  width: auto;
+}
+
+/* The whole card is one link; the hover actions sit outside it so we never
+   nest buttons inside an anchor. */
+.tile-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+.tile-img {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: var(--elev);
+  overflow: hidden;
+  border-radius: var(--radius);
+}
+.tile-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.35s ease;
+}
+.tile-link {
+  transition: transform 0.28s var(--ease);
+}
+.tile:hover .tile-link {
+  transform: translateY(-4px);
+}
+.tile:hover .tile-img img {
+  transform: scale(1.05);
+}
+.tile:hover .tile-img {
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55);
+}
+
+/* Deterministic gradient stand-in when Formula has no still for an episode. */
+.tile-fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  text-align: center;
+}
+.tile-fallback .fb-s {
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+}
+.tile-fallback .fb-e {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-top: 4px;
+}
+
+.tile-badge {
+  position: absolute;
+  top: 9px;
+  left: 9px;
+  border-radius: var(--radius-sm);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  background: rgba(0, 0, 0, 0.72);
+  padding: 3px 6px;
+  z-index: 2;
+}
+
+.tile-dur {
+  position: absolute;
+  right: 9px;
+  bottom: 11px;
+  border-radius: var(--radius-sm);
+  font-size: 10.5px;
+  background: rgba(0, 0, 0, 0.8);
+  padding: 2px 5px;
+  z-index: 2;
+}
+
+.tile-seen {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  z-index: 2;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.72);
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  color: var(--ok);
+}
+
+/* keel's `ProgressBar` at `onMedia` + `done`, which carries both of this bar's
+   fills - brand red while watching, white-at-0.7 once finished - and its own 3px.
+   The track moves from 0.24 to keel's 0.22. Placement stays here; a bar riding the
+   bottom edge of a thumbnail is the tile's arrangement, not the bar's. */
+.tile-prog {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+}
+
+.tile-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding-top: 10px;
+}
+.tile-name {
+  font-size: 14.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.tile-side {
+  font-size: 12px;
+  color: var(--mut);
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.tile-actions {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  z-index: 3;
+  display: flex;
+  gap: 5px;
+  opacity: 0;
+  transition: opacity 0.18s;
+}
+.tile:hover .tile-actions,
+.tile:focus-within .tile-actions {
+  opacity: 1;
+}
+@media (hover: none) {
+  .tile-actions {
+    opacity: 1;
+  }
+}
+.tile-act {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.75);
+  font-size: 11px;
+}
+.tile-act:hover {
+  background: rgba(0, 0, 0, 0.92);
+}
+
+/* ---------------------------------------------------------------- player */
+
+.player {
+  position: relative;
+  background: #000;
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  overflow: hidden;
+  border-radius: var(--radius);
+}
+/* Fullscreen fills the display; a rounded corner there would just show the
+   desktop through it. */
+.player:fullscreen,
+.player:-webkit-full-screen {
+  border-radius: 0;
+}
+
+/* Fullscreen, chrome faded out: take the pointer away too.
+
+   In fullscreen the picture is the whole screen, so an arrow left floating over it is the only
+   thing in the room that is not the film. Windowed is deliberately left alone — the page is
+   still around the player there, and a cursor that vanishes over part of an ordinary page reads
+   as a bug rather than as cinema.
+
+   Bound to `.idle`, which the player carries exactly while the control bar is hidden, so the
+   pointer comes back with the bar on the first mouse move and leaves with it when the reveal
+   timer runs out. The hidden bar sets `pointer-events: none`, so the element under the pointer
+   is the player itself and this applies even with the cursor over where the bar was. */
+.player.idle:fullscreen,
+.player.idle:-webkit-full-screen {
+  cursor: none;
+}
+.player video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.player-center {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.32);
+  z-index: 3;
+}
+.player-center .big {
+  width: 78px;
+  height: 78px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.94);
+  color: #000;
+  display: grid;
+  place-items: center;
+  font-size: 26px;
+  transition: transform 0.18s;
+}
+.player-center:hover .big {
+  transform: scale(1.05);
+}
+
+/* Where the buffering ring sits over the video. The ring itself is keel's
+   `Spinner`; this is only the layer that centres it and keeps it out of the
+   pointer's way.
+
+   Still `.loading-ring` rather than `.spinner`: keel/base.css owns that name as
+   the "rotate this icon" utility, and keel's own component avoids it for the same
+   reason - see the note above `.loader` in keel/components.css. */
+.loading-ring {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.ctl {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
+  padding: 0 14px 12px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.92) 0%, rgba(0, 0, 0, 0.3) 42%, transparent 72%);
+  transition: opacity 0.25s;
+}
+.ctl.hide {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* The scrub bar is keel's `.scrub`, and nothing of it is left here. Unlike every
+   other adoption in this file there is no layout half to keep: the whole rule was
+   the component - hit area, rail, buffered layer, position, knob and the invisible
+   range input on top. `.scrub` is also a name keel now owns, so leaving even a
+   trimmed copy behind would be a same-name rule loading after the design system. */
+
+.ctl-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.vol-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.vol {
+  width: 76px;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.3);
+  position: relative;
+  border-radius: 2px;
+}
+.vol > div {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: #fff;
+  border-radius: 2px;
+}
+.vol input {
+  position: absolute;
+  inset: -8px 0;
+  width: 100%;
+  opacity: 0;
+  cursor: pointer;
+  margin: 0;
+}
+
+.time {
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.92);
+}
+.grow {
+  flex: 1;
+}
+
+/* The quality button's label, and nothing else. The translucent fill, its hover, the
+   capsule and the horizontal padding are keel's `ButtonVariant.OnMedia` at
+   `ButtonSize.Small` - and the fill matches byte for byte, because `--on-media-alpha`
+   and its hover value were taken from the rule this replaces. What is left is that the
+   label is small, heavy and letter-spaced, which is type rather than treatment. */
+.q-btn {
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+}
+
+/* The quality menu is keel's `DropdownMenu`: `.dropdown`, `.dropdown--above`,
+   `.dropdown__item` and the selected item's check, none of them restated here. The
+   `right`/`bottom`/`z-index` trio went with them - the menu used to be positioned
+   against `.player` with its `bottom` hand-measured against the control bar's height,
+   and it now hangs off the trigger inside `.dropdown-anchor` instead.
+
+   `.q-btn` above is now keel's too. It was the gap recorded here - an on-media button,
+   a translucent white fill over picture, which none of keel's six variants could paint
+   because each resolves against a palette colour and a video frame is not one. keel
+   grew `ButtonVariant.OnMedia` for it, and this sheet keeps only the label's type. */
+
+/* Always-visible position line — stays when the control bar fades out, in
+   windowed and fullscreen alike. */
+.thinbar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 4;
+  pointer-events: none;
+  transition: opacity 0.25s;
+}
+.thinbar.hide {
+  opacity: 0;
+}
+
+.feedback {
+  position: absolute;
+  left: 50%;
+  top: 18px;
+  transform: translateX(-50%);
+  z-index: 9;
+  background: rgba(0, 0, 0, 0.75);
+  padding: 6px 13px;
+  font-size: 13px;
+  border-radius: 999px;
+  pointer-events: none;
+}
+
+/* -------------------------------------------------------- next-up card */
+
+/* Box from keel's `Surface` at `SurfacePadding.Small`; this keeps the placement over
+   the video, the width cap and the entry animation. */
+.nextcard {
+  position: absolute;
+  right: 14px;
+  bottom: 82px;
+  z-index: 6;
+  width: min(330px, calc(100% - 28px));
+  display: flex;
+  gap: 11px;
+  animation: rise 0.3s ease both;
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+.nextcard-th {
+  width: 96px;
+  aspect-ratio: 16 / 9;
+  flex: none;
+  background: var(--elev);
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+}
+.nextcard-b {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+.nextcard-t {
+  font-size: 13.5px;
+  font-weight: 620;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.nextcard-s {
+  font-size: 11px;
+  color: var(--mut);
+}
+/* keel's `ProgressBar` at `Small` + `onMedia`: the same 2px and the same
+   white-at-0.22 track, and keel's own `width` transition in place of this one. */
+.nextcard-bar {
+  margin-top: 6px;
+}
+.nextcard-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 7px;
+}
+
+/* ------------------------------------------------------------ watch page */
+
+/* Two columns from 1180px up: the episode on the left, what to watch next on
+   the right. Below that they stack, and the side list simply becomes the last
+   block on the page. */
+.watch-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: clamp(28px, 3vw, 44px);
+  padding: clamp(16px, 2.2vw, 26px) var(--pad) 96px;
+  max-width: 1760px;
+  margin: 0 auto;
+}
+@media (min-width: 1180px) {
+  .watch-grid {
+    grid-template-columns: minmax(0, 1fr) 384px;
+    align-items: start;
+  }
+}
+
+.watch-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(20px, 2.4vw, 30px);
+}
+.watch-aside {
+  min-width: 0;
+}
+
+/* Rails and grids inside the columns already sit within the page gutter. */
+.watch-grid .rail-head,
+.watch-grid .rail,
+.watch-grid .grid {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+/* Cap the player by capping its *width*, never its height. `.player` derives
+   height from width through aspect-ratio, so a max-height would clip rather
+   than scale - the same trap that made the hero overflow on phones. */
+.player-frame {
+  width: min(100%, calc(72vh * 16 / 9));
+  margin-inline: auto;
+}
+
+.watch-body {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.watch-h {
+  font-size: clamp(22px, 3.6vw, 34px);
+  line-height: 1.04;
+}
+.watch-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* `.ended` is gone: keel's `Callout` at `CalloutTone.Primary`, with the text side in
+   `CalloutBody` so it takes the room the button does not. The flex row, the 14px gap
+   and the radius are keel's and were already identical.
+
+   Two deliberate changes. The border was neutral and is now the primary colour at 40%,
+   which is what makes the tone read as a tone. And the fill was a left-to-right fade
+   and is now a flat 9% tint - a gradient for one tone and a flat wash for another is
+   not a difference a *tone* should encode, so the callout paints all three the same
+   way. */
+
+/* `.notice` is gone: keel's `Callout` at `CalloutTone.Destructive`. Every number here
+   already matched it - 40% border, ~8% tint, 13px - because keel's callout tokens were
+   taken from this rule. The one change is the ink, which was `#ff9d99` and is now
+   `--foreground`, and that is a fix rather than a swap: measured, red ink on its own
+   red tint reaches 3.0-3.1:1 on a light palette and 4.38-4.47:1 on a dark one, against
+   the 4.5:1 that 13px text needs, while `--foreground` on the same box is 12.1:1 or
+   better everywhere. It also gained `role="alert"`, so a playback failure is spoken
+   when it appears rather than whenever focus happens to reach it. */
+
+.uplist {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.uprow {
+  display: flex;
+  gap: 12px;
+  padding: 8px;
+  border-radius: var(--radius);
+  color: inherit;
+  transition: background 0.2s var(--ease);
+}
+.uprow:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.uprow-th {
+  position: relative;
+  width: 156px;
+  flex: none;
+  aspect-ratio: 16 / 9;
+  background: var(--elev);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.uprow-th img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.uprow-b {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-top: 2px;
+}
+.uprow-t {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.uprow-s {
+  font-size: 12px;
+  color: var(--mut);
+}
+
+/* Stacked below the player, a single tall column of rows is a lot of empty
+   space on the right, so let them flow into however many fit. */
+@media (max-width: 1179px) {
+  .uplist {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
+    gap: 8px 16px;
+  }
+}
+
+/* ----------------------------------------------------------------- login */
+
+.login-wrap {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: var(--pad);
+  position: relative;
+  overflow: hidden;
+}
+.login-bg {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(70% 55% at 50% 0%, rgba(225, 53, 47, 0.16), transparent 70%),
+    #000;
+}
+/* The border, the radius, the fill and the padding are keel's `Surface` now, at
+   `SurfacePadding.Large`. What is left is where the panel sits and how wide it is,
+   which is this page's business rather than the component's. The radius happens to
+   land on the same 18px it had here as `calc(var(--radius) + 4px)`. */
+.login-card {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.login-h {
+  font-size: 25px;
+  line-height: 1.1;
+}
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* The D-pad's grip on a text field, and nothing here. The sign-in screen is shared with
+   the TV UI, where each field sits in a focusable wrapper so a remote can highlight it
+   without the browser entering edit mode (see `dpadField` in `LoginScreen.kt`). On this
+   page the wrapper has no job, so it is removed from the box tree and the field stays a
+   direct flex child of the form — same layout, same gaps, one screen. */
+.auth-field {
+  display: contents;
+}
+
+/* ----------------------------------------------------------------- panel */
+
+/* `.scrim` is keel's, and it is a name keel owns - so this file must not define one.
+   The dim behind the drawer, the dialogs' own overlay and the alpha they share are
+   all in keel/components.css. */
+
+/* The click-catcher this file used to define is keel's, and so is the reasoning that
+   went with it: a dropdown's catcher must change nothing visually and sit one layer
+   *below* its own menu, which is why it cannot be a scrim. keel keeps it at
+   `--z-dropdown-catch`, one below `--z-dropdown`. */
+
+/* `.sheet` is gone entirely: it is keel's `.drawer.drawer--left`, down to the slide,
+   which keel keeps as `keel-slide-in-from-left`. The three classes below are the
+   sheet's *contents* and stay - they are this menu's own arrangement, not a panel. */
+
+.sheet-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+/* The box is keel's `Surface` at `SurfacePadding.Small` and `SurfaceRadius.Small`;
+   what stays is the two type treatments, which is the whole reason this is not a keel
+   `Stat` component - a value over a caption is this app's typography, not a shape. */
+.stat .mono {
+  display: block;
+  font-size: 17px;
+  font-weight: 680;
+}
+.stat span {
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--mut);
+}
+
+.sheet-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.sheet-item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  padding: 12px 14px;
+  text-align: left;
+  font-size: 14.5px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+}
+.sheet-item:hover {
+  background: var(--elev2);
+  border-color: var(--line);
+}
+.sheet-item.danger {
+  color: #ff8a85;
+}
+
+.toggle-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+}
+.toggle-row .lab {
+  flex: 1;
+  min-width: 0;
+}
+/* Element selectors here have to match what Compose actually emits, which is a
+   plain <div> in both places — not the <b>/<i> this block was first written
+   against. Neither rule matched, so the label lost its weight and the switch
+   lost its knob entirely. */
+.toggle-row .lab > div {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.toggle-row .lab span {
+  font-size: 11.5px;
+  color: var(--mut);
+}
+/* `.switch`/`.switch__knob` now come from keel/components.css. `toggle-row`
+   keys the knob off `aria-checked`, not an `.on` class - see MenuSheet.kt. */
+
+/* Settings stack. The rows are separate elements rather than one bordered
+   group, so the spacing has to come from the container — margins between
+   siblings collapse differently depending on which rows are present, and the
+   native-player row only exists on iPhone and iPad. */
+.settings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* A setting whose control is not a switch. Same frame as .toggle-row, but a
+   plain div: here the row itself does nothing, the segments inside it do. */
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+}
+.setting-row .lab > div {
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+/* The track and the chips are keel's `SegmentedControl` (`.segmented*` in
+   keel/components.css). All that is left here is the one thing the row needs and
+   the control cannot know: it must not give up width when the label beside it is
+   long. keel's own `.segmented` is an `inline-flex`, so as a flex item it would
+   default to shrinkable. */
+.seg {
+  flex: none;
+}
+
+/* --------------------------------------------------------------- dialogs */
+/* The overlay and the panel itself are keel's `Dialog` now (`.dialog__overlay`,
+   `.dialog__content` in keel/components.css) - only the button row below is
+   still this app's own. */
+
+.dialog-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+/* The season menu is keel's `DropdownMenu`: `.dropdown`, `.dropdown__item` and the
+   danger tone, none of which is restated here. `.rel` went with it - it was a bare
+   `position: relative` and the menu now says what that element is for by wearing
+   `.dropdown-anchor`. */
+
+/* ---------------------------------------------------------------- toasts */
+
+/* The strip and the notices are keel's `.toast-host` and `.toast`, both of which are
+   names keel owns - so this file defines neither. The tone lives on the left edge
+   there too, which is where this app had already put it. */
+
+/* ------------------------------------------------------------- skeletons */
+
+/* The shimmer is keel's `.skeleton`, whose gradient reads `--muted` and `--accent`
+   — which keel-theme.css sets to this app's own `--elev` and `--elev2`, so the two
+   were already the same two colours. What is left here is only the size of the
+   thing each placeholder stands in for, which is the one thing keel deliberately
+   does not decide: the line's height comes from `SkeletonShape.Line`. */
+.skel-tile {
+  aspect-ratio: 16 / 9;
+}
+.skel-line {
+  margin-top: 8px;
+  width: 62%;
+}
+
+.center-note {
+  min-height: 60vh;
+  display: grid;
+  place-items: center;
+  color: var(--mut);
+  font-size: 14px;
+}
+
+/* `.empty` is gone: it is keel's `EmptyState`. The page gutter it also carried
+   (`margin: 0 var(--pad)`) moved to the wrapper in DashboardStates.kt, because a
+   gutter is the page's decision and the panel is keel's. */
+
+/* ------------------------------------------------------------ responsive */
+
+@media (max-width: 720px) {
+  .hero {
+    aspect-ratio: 4 / 3;
+    min-height: 340px;
+  }
+  .hero-scrim {
+    background: linear-gradient(to top, #000 6%, rgba(0, 0, 0, 0.25) 55%, rgba(0, 0, 0, 0.5) 100%);
+  }
+  .tile {
+    width: 190px;
+  }
+  .grid {
+    grid-template-columns: repeat(auto-fill, minmax(min(150px, 100%), 1fr));
+  }
+  .nextcard {
+    right: 8px;
+    left: 8px;
+    width: auto;
+    bottom: 70px;
+  }
+  .ctl-row {
+    gap: 6px;
+  }
+  .vol-wrap {
+    display: none;
+  }
+
+  /* One action per line, each filling the width. Capsules sized to their own
+     label wrap into a ragged stack on a phone, and the widest target ends up
+     being whichever action happens to have the longest name. `> *` rather than
+     `.btn` because one of these is an <a>. */
+  .watch-acts {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .watch-acts > * {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Inline SVG icon wrapper. */
+.ic {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+  flex: none;
+}
+/* One rule, for one glyph. `.ic` used to wrap every icon this app drew and carried six
+   sizing rules to suit each place - the nav at 20px, the control bar at 24, the centre
+   play button at 34, a tile action at 14, a button at 16. All of those are keel's
+   `Icon` now, sized by `size` at the call site, and `Icons` is down to `back10` and
+   `forward10`, of which this shell renders one: the seek button in the control bar.
+   Five of the six rules had no subject left. `Icons.svg()` hardcodes width="20" and a
+   presentation attribute has zero specificity, so this is what decides. */
+.btn .ic svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* `.icon` is keel's own wrapper rule (keel/components.css), and it was restated
+   here byte for byte. That is how a consumer sheet becomes a fork: keel's fallback
+   for an unsized icon - `width: 1em; height: 1em` - lives in a *second* `.icon`
+   rule, so a copy that carries the first half and not the second would drift apart
+   from it at the next edit to either. `.ic` above is a different wrapper with a
+   different sizing model and stays local. */
+
+/* The play triangle's optical-centring nudge, matching what `.player-center .big
+   .ic svg` gave the old glyph - a triangle sits visually off-centre in a circle
+   without it. */
+.player-glyph-nudge {
+  margin-left: 3px;
+}
+
+/* --------------------------------------------------------- build stamp */
+
+/* Two different facts live in this footer — when the catalog was last pulled
+   and when the app itself was deployed — so they get their own lines rather
+   than running together. */
+.sheet-foot {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--mut);
+}
+.build-stamp {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.build-stamp a {
+  color: var(--mut);
+  transition: color 0.2s var(--ease);
+}
+.build-stamp a:hover {
+  color: var(--tx-dim);
+  text-decoration: underline;
+}
+.build-stamp .mono {
+  font-size: 10.5px;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--tx-dim);
+}
+.build-dev {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  background: rgba(225, 53, 47, 0.18);
+  color: #ff8a85;
+}
