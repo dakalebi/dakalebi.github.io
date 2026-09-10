@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="ka">
+  <head>
+    <meta charset="utf-8" />
+    <!--
+      `user-scalable=no` holds the layout at 1x on Android and in Chrome's
+      device emulation. iOS Safari has ignored both it and `maximum-scale`
+      since iOS 10 and will always allow a deliberate pinch — that is not
+      something a page can take away. What the page *can* stop there is the
+      accidental kind, and that is handled in CSS: `touch-action: manipulation`
+      for double-tap, and 16px form fields so focusing one does not yank the
+      viewport in.
+    -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
+    <title>ჩემი ცოლის დაქალები — სანახავი დაფა</title>
+    <meta
+      name="description"
+      content="ჩემი ცოლის დაქალები — სერიების სანახავი დაფა ფორმულას ოფიციალური წყაროდან"
+    />
+    <meta name="theme-color" content="#0d0c11" />
+    <meta property="og:title" content="ჩემი ცოლის დაქალები — სანახავი დაფა" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://dakalebi.github.io/icon-512.png" />
+
+    <!--
+      The mark is a transparent PNG, so it sits on the black page without a
+      plate behind it. `favicon.ico` is here for the clients that request it
+      blind at the site root regardless of what these tags say.
+    -->
+    <link rel="icon" href="favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" sizes="32x32" href="icon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="icon-16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png" />
+
+    <!--
+      Noto Sans Georgian is loaded rather than merely named. None of the faces
+      the stylesheet used to ask for - Noto, BPG Arial, Sylfaen - are installed
+      on a typical Mac or phone, so every Georgian glyph was coming from an
+      arbitrary system fallback. It also carries Mtavruli (U+1C90-1CBA), which
+      the uppercase treatment depends on.
+
+      JetBrains Mono is for timecodes and counters only.
+
+      `display=swap` keeps text visible if fonts.gstatic.com is slow or blocked;
+      the stack in tokens.css is the fallback in that case.
+    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    />
+    <!--
+      Two links rather than an `@import` chain, which would cost a serialised
+      round trip before first paint. Order matters throughout: tokens first,
+      then this app's own palette for them, then keel's page-level rules and
+      component styles, then this app's own tokens and stylesheet last - so a
+      selector of equal specificity anywhere above (`body`, `.spinner`, ...) is
+      always the one this app wrote, not keel's.
+    -->
+    <link rel="stylesheet" href="keel/tokens.css" />
+    <link rel="stylesheet" href="keel-theme.css" />
+    <link rel="stylesheet" href="keel/base.css" />
+    <link rel="stylesheet" href="keel/components.css" />
+    <link rel="stylesheet" href="tokens.css" />
+    <link rel="stylesheet" href="web.css" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script src="app.js"></script>
+  </body>
+</html>
