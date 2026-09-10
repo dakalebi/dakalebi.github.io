@@ -113,6 +113,16 @@ jobs:
               cp -R "$dist/." site/
               ;;
             preview)
+              # A Pages deployment is keyed by commit SHA, so a preview branch
+              # sitting at the identical commit to main claims main's deployment:
+              # the duplicate is accepted, dropped seconds later, and /preview
+              # goes on serving whatever was there before. The tree written below
+              # is still correct and the next publish from either branch serves
+              # it, so this says so rather than failing.
+              if [ "$(git ls-remote origin refs/heads/main 2>/dev/null | cut -f1)" = "${GITHUB_SHA}" ]; then
+                echo "::warning::preview is at the same commit as main, so this deployment is a duplicate and /preview will not change until the next publish."
+              fi
+
               rm -rf site/preview
               mkdir -p site/preview
               cp -R "$dist/." site/preview/
