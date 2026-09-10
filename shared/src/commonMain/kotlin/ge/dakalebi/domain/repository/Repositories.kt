@@ -147,6 +147,17 @@ interface PreferencesRepository {
     fun language(): String?
     fun setLanguage(tag: String)
 
+    /**
+     * How large the television interface is drawn, as a percentage.
+     *
+     * Per device and deliberately not part of the account's settings, which language and
+     * autoplay both are. Those describe a person; this describes a screen. A phone and a
+     * television signed in to the same account need different answers, and syncing this
+     * would mean choosing a size on one and having it arrive on the other.
+     */
+    fun interfaceScale(): Int
+    fun setInterfaceScale(percent: Int)
+
     /** Whether this episode was left playing or paused, for this session only. */
     fun playIntent(episodeId: String): String?
     fun setPlayIntent(episodeId: String, intent: String)

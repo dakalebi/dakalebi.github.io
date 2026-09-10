@@ -1,5 +1,8 @@
 package ge.dakalebi.ui.tv.focus
 
+import kotlinx.browser.window
+import org.w3c.dom.DOMRect
+import org.w3c.dom.Element
 import org.w3c.dom.HTMLElement
 import kotlin.math.abs
 
@@ -9,14 +12,23 @@ import kotlin.math.abs
  * Every rectangle a move needs is collected before anything is focused or
  * scrolled, because interleaving reads and writes forces a layout flush per
  * element instead of one for the whole pass.
+ *
+ * The edges are constructor parameters rather than a rectangle's own, because
+ * [visibleBox] builds one out of the *clipped* extent rather than the raw
+ * rectangle, and every distance in this file has to be measured against what is
+ * on screen.
  */
-internal class Box(val el: HTMLElement, rect: org.w3c.dom.DOMRect) {
-    val left = rect.left
-    val right = rect.right
-    val top = rect.top
-    val bottom = rect.bottom
-    val centreX = rect.left + rect.width / 2
-    val centreY = rect.top + rect.height / 2
+internal class Box(
+    val el: HTMLElement,
+    val left: Double,
+    val top: Double,
+    val right: Double,
+    val bottom: Double,
+) {
+    constructor(el: HTMLElement, rect: DOMRect) : this(el, rect.left, rect.top, rect.right, rect.bottom)
+
+    val centreX = left + (right - left) / 2
+    val centreY = top + (bottom - top) / 2
 }
 
 /**
@@ -49,6 +61,112 @@ internal fun HTMLElement.navigableBox(): Box? {
     if (rect.width <= 0.0 || rect.height <= 0.0) return null
     return Box(this, rect)
 }
+
+/**
+ * Rectangles of the clipping ancestors met during one pass, read once each.
+ *
+ * Every tile in a rail shares that rail, and every band shares the page scroller, so
+ * a cross-band move that measures sixty items would otherwise read the same three or
+ * four rectangles sixty times over.
+ */
+internal class ClipCache {
+    private val rects = mutableMapOf<HTMLElement, DOMRect>()
+
+    fun rectOf(el: HTMLElement): DOMRect = rects.getOrPut(el) { el.getBoundingClientRect() }
+}
+
+/**
+ * The part of this element that is actually on screen, or null when none of it is.
+ *
+ * **This is the difference between what an element claims and what a viewer can
+ * see, and getting it wrong is the whole of two reported bugs.** A season chip
+ * scrolled out of its strip still reports a full rectangle: `getBoundingClientRect`
+ * describes where the box *is*, not whether an ancestor's `overflow` is painting it.
+ * So a chip parked twenty pixels off the left of its rail measured as the nearest
+ * thing to the navigation rail, won the cross-band contest against every visible
+ * band, and took the ring somewhere the viewer could not see it. Measured on the
+ * fixture: Right out of the rail landed on `season-3` at y=628 in a 540px viewport,
+ * and Left from a continue tile landed on the season strip instead of the rail.
+ *
+ * Clipping rather than merely rejecting is deliberate. A half-visible chip is still
+ * a legitimate destination, but the honest distance to it is the distance to the
+ * sliver on screen — not to the edge hiding behind the scroller. Clamping the box to
+ * the visible region gives every band at the same content edge the same distance,
+ * which is what lets the caller break the tie on something meaningful instead of on
+ * document order.
+ *
+ * The viewport clamp at the end is what keeps a band below the fold out of a
+ * sideways press: there is nothing to the right of the navigation rail on a screen
+ * scrolled past it except things the viewer would have to be shown first.
+ */
+internal fun HTMLElement.visibleBox(within: Element, clips: ClipCache): Box? {
+    if (offsetParent == null) return null
+    val rect = getBoundingClientRect()
+    var left = rect.left
+    var top = rect.top
+    var right = rect.right
+    var bottom = rect.bottom
+    if (right - left <= 0.0 || bottom - top <= 0.0) return null
+
+    var node = parentElement as? HTMLElement
+    while (node != null) {
+        val clipsX = node.clipsOn(Axis.X)
+        val clipsY = node.clipsOn(Axis.Y)
+        if (clipsX || clipsY) {
+            val clip = clips.rectOf(node)
+            if (clipsX) {
+                if (clip.left > left) left = clip.left
+                if (clip.right < right) right = clip.right
+            }
+            if (clipsY) {
+                if (clip.top > top) top = clip.top
+                if (clip.bottom < bottom) bottom = clip.bottom
+            }
+            if (right - left < MIN_VISIBLE || bottom - top < MIN_VISIBLE) return null
+        }
+        if (node == within) break
+        node = node.parentElement as? HTMLElement
+    }
+
+    if (left < 0.0) left = 0.0
+    if (top < 0.0) top = 0.0
+    right = minOf(right, window.innerWidth.toDouble())
+    bottom = minOf(bottom, window.innerHeight.toDouble())
+    if (right - left < MIN_VISIBLE || bottom - top < MIN_VISIBLE) return null
+
+    return Box(this, left, top, right, bottom)
+}
+
+/**
+ * Whether this element's computed `overflow` on [axis] hides what spills past it.
+ *
+ * Memoised on the node for the same reason [scrollsOn] is: `getComputedStyle` forces
+ * a style recalc, this is asked once per ancestor per measured item, and `tv.css`
+ * sets each container's `overflow` once by class with nothing toggling it at runtime.
+ *
+ * `hidden`, `clip`, `auto` and `scroll` all clip; only `visible` does not. Note that
+ * a box with one axis `visible` and the other not computes the `visible` one to
+ * `auto`, so a rail declaring only `overflow-x` clips on both — which is correct,
+ * and is why this asks the computed value rather than the declared one.
+ */
+private fun HTMLElement.clipsOn(axis: Axis): Boolean {
+    val key = if (axis == Axis.X) "__tvClipsX" else "__tvClipsY"
+    (asDynamic()[key] as? Boolean)?.let { return it }
+    val property = if (axis == Axis.X) "overflow-x" else "overflow-y"
+    val value = window.getComputedStyle(this).getPropertyValue(property).trim()
+    val result = value.isNotEmpty() && value != "visible"
+    asDynamic()[key] = result
+    return result
+}
+
+/**
+ * How much of an item has to survive clipping for it to count as on screen.
+ *
+ * A sliver is not a destination: landing on two pixels of a chip reads as the ring
+ * vanishing. Four pixels is below anything deliberate and above the sub-pixel noise
+ * that fractional device ratios produce.
+ */
+private const val MIN_VISIBLE = 4.0
 
 /**
  * Distance travelled in [direction] to reach [to], or null if it is not in that

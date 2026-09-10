@@ -91,6 +91,50 @@ internal fun centreAxes(xItem: HTMLElement, yItem: HTMLElement, within: Element)
 }
 
 /**
+ * Centres [item] horizontally in its rail and, only if it is off screen, brings it
+ * into view vertically.
+ *
+ * The rule a sideways press has always followed is "move the rail, leave the page
+ * alone", and it is right up to the moment the ring lands somewhere the page is not
+ * showing. Escaping the navigation rail rightward does exactly that: the rail is
+ * fixed chrome that spans the panel, so the band the ring arrives in may be far below
+ * the fold, and centring on X alone left the ring at y=628 in a 540px viewport with
+ * nothing visibly focused at all. That is the reported "nothing lights up".
+ *
+ * Conditional, not unconditional, and that is the whole design of this function. A
+ * horizontal move that centred the page vertically as well would make the screen bob
+ * on every step along a shelf, which is the bug [centre] was split per axis to avoid.
+ * Acting only when the item is not fully inside its scroller costs one press — the one
+ * that arrives — and nothing afterwards, because by then the band is on screen.
+ *
+ * Both rectangles are read before either write, so this still costs one reflow.
+ */
+internal fun centreXRevealY(item: HTMLElement, within: Element) {
+    val xScroller = scrollableAncestor(item, Axis.X, within)
+    val yScroller = scrollableAncestor(item, Axis.Y, within)
+    if (xScroller == null && yScroller == null) return
+
+    val itemRect = item.getBoundingClientRect()
+    val left = xScroller?.let {
+        val viewRect = it.getBoundingClientRect()
+        (it.scrollLeft + (itemRect.left - viewRect.left) - (it.clientWidth - itemRect.width) / 2)
+            .coerceAtLeast(0.0)
+    }
+    val top = yScroller?.let {
+        val viewRect = it.getBoundingClientRect()
+        // Fully inside already: leave the page exactly where the viewer put it.
+        if (itemRect.top >= viewRect.top - 1 && itemRect.bottom <= viewRect.bottom + 1) {
+            null
+        } else {
+            (it.scrollTop + (itemRect.top - viewRect.top) - (it.clientHeight - itemRect.height) / 2)
+                .coerceAtLeast(0.0)
+        }
+    }
+    if (left != null) xScroller.scrollLeft = left
+    if (top != null) yScroller.scrollTop = top
+}
+
+/**
  * Which element a vertical move should bring into view: the whole [group] when it fits
  * its scroller, otherwise the [item] itself. Decides *what* to centre; the caller
  * ([centreAxes]) does the scrolling.
@@ -139,19 +183,45 @@ internal fun verticalTarget(item: HTMLElement, group: HTMLElement, within: Eleme
  *
  * The scrollbar itself is suppressed with `scrollbar-width: none`, so "styled to
  * scroll" costs nothing visually; see `tv.css`.
+ *
+ * **The walk also stops at fixed chrome**, because scrolling a page cannot move
+ * something pinned to the viewport. The navigation rail is `position: fixed`, so
+ * without this the walk sailed past it to `.tv-root` and centring a rail item
+ * scrolled the *content* to put a stationary icon in the middle of the screen —
+ * measured: landing on the rail dragged the page from 590 to 430 and the shelf the
+ * viewer had been reading slid away under them. There is nothing to fix by scrolling
+ * here: a fixed element is always exactly where it will be.
  */
 internal fun scrollableAncestor(from: HTMLElement, axis: Axis, within: Element): HTMLElement? {
+    if (from.isFixed()) return null
     var node: HTMLElement? = from.parentElement as? HTMLElement
     while (node != null) {
         val overflows = when (axis) {
             Axis.X -> node.scrollWidth > node.clientWidth + 1
             Axis.Y -> node.scrollHeight > node.clientHeight + 1
         }
+        // Asked before the fixed test, so a fixed box that genuinely scrolls its own
+        // children still serves as their scroller.
         if (overflows && node.scrollsOn(axis)) return node
+        if (node.isFixed()) return null
         if (node == within) return null
         node = node.parentElement as? HTMLElement
     }
     return null
+}
+
+/**
+ * Whether this element is pinned to the viewport rather than carried by the page.
+ *
+ * Memoised like [scrollsOn], and for the same reason: `tv.css` sets `position` by
+ * class and nothing toggles it at runtime — the rail animates its *width* when the
+ * ring arrives, never how it is positioned.
+ */
+internal fun HTMLElement.isFixed(): Boolean {
+    (asDynamic()["__tvFixed"] as? Boolean)?.let { return it }
+    val result = window.getComputedStyle(this).getPropertyValue("position").trim() == "fixed"
+    asDynamic()["__tvFixed"] = result
+    return result
 }
 
 /**

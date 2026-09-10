@@ -120,6 +120,14 @@ interface Strings {
 
     val language: String
 
+    /**
+     * The television-only control for how large the interface is drawn.
+     *
+     * Absent from the web shell, which is sized by the browser's own zoom and by a
+     * window the viewer can resize. A television has neither.
+     */
+    val interfaceSize: String
+
     /** A setting changed here but could not be recorded for other devices. */
     val settingNotSynced: String
 
@@ -134,6 +142,17 @@ interface Strings {
 
     /** The control at the foot of the season grid that jumps the ring back to the top. */
     val backToTop: String
+
+    /**
+     * Shown when Back is pressed at the very top of the TV app and there is no host
+     * to close the page. Without it the press has nothing to show for itself and a
+     * working remote reads as a broken one.
+     *
+     * It says where you are rather than offering a second press, because this only
+     * ever appears where exiting is impossible: a host that can close the app does so
+     * on the first press and never reaches this.
+     */
+    val backAtStart: String
 
     fun season(number: Int): String
     fun episode(number: Int): String

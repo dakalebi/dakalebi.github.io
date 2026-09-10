@@ -84,6 +84,7 @@ object Ka : Strings {
         "iPhone-სა და iPad-ზე Apple-ის ფლეიერი გამოიყენება. გამორთე, თუ გინდა " +
             "იგივე ფლეიერი, რაც კომპიუტერზეა."
     override val language = "ენა"
+    override val interfaceSize = "ინტერფეისის ზომა"
     override val settingNotSynced = "პარამეტრი შეიცვალა მხოლოდ ამ მოწყობილობაზე"
     override val refreshEpisodes = "სერიების განახლება"
     override val downloadEpisodes = "სერიების ჩამოტვირთვა"
@@ -94,6 +95,7 @@ object Ka : Strings {
     override val loadFailedEyebrow = "ჩატვირთვა ვერ მოხერხდა"
     override val resetAllProgress = "მთლიანი პროგრესის წაშლა"
     override val backToTop = "ზემოთ დაბრუნება"
+    override val backAtStart = "დასაბრუნებელი აღარაფერია"
 
     override fun season(number: Int) = "სეზონი $number"
     override fun episode(number: Int) = "სერია $number"

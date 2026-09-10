@@ -44,11 +44,34 @@ import org.jetbrains.compose.web.dom.Text
  * The mark and the way to Settings used to sit in a top bar here. Both now live in
  * [TvNavRail], which is why this function starts at the content.
  */
+/**
+ * The season this screen was last showing, kept across the screen being unmounted.
+ *
+ * A `remember` cannot do this job: opening an episode replaces the browse screen with
+ * the player, so the state is discarded and coming back rebuilds the default season.
+ * That is not only a content reset. The grid's focus group is keyed by season, so a
+ * grid that returns as season 3 has no memory of where you were in season 5 — it is a
+ * different group — and the ring falls back to the top of the page. Fixing where focus
+ * lands is therefore not enough on its own; the screen has to come back as the screen
+ * you left.
+ *
+ * File-level rather than a store because nothing outside this screen has any use for
+ * it, and it is cleared with focus memory on sign-out for the same reason focus memory
+ * is: one account's place is not another's.
+ */
+internal object BrowseState {
+    var season: Int? = null
+
+    fun clear() {
+        season = null
+    }
+}
+
 @Composable
 fun TvBrowseScreen() {
     val catalog = catalog()
 
-    var season by remember { mutableStateOf<Int?>(null) }
+    var season by remember { mutableStateOf(BrowseState.season) }
     val seasons = catalog.seasons
     val current = season ?: catalog.defaultSeason ?: seasons.firstOrNull()
 
@@ -69,7 +92,7 @@ fun TvBrowseScreen() {
                 episodes = catalog.inProgress(TvConfig.RAIL_COUNT),
                 progress = catalog.progress,
             )
-            TvSeasonRail(seasons, current) { season = it }
+            TvSeasonRail(seasons, current) { season = it; BrowseState.season = it }
             current?.let {
                 TvGrid(
                     key = "season-$it",

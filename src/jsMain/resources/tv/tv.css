@@ -54,7 +54,26 @@ html {
    * against this rule. The `vw`/`vh` and `px` it does use are fine, since none of them
    * depend on this font size.
    */
-  font-size: max(11px, min(1.667vw, 2.963vh));
+  --tv-unit: min(1.667vw, 2.963vh);
+
+  /*
+   * The viewer's own size preference, written here by the shell and multiplied into
+   * the root font size — so one number moves the entire interface, because every
+   * length in this sheet is already a `rem` off that root.
+   *
+   * A setting is needed because the formula above cannot be right for everyone. It
+   * knows the panel's CSS pixels and nothing else: not its diagonal, not how far away
+   * the sofa is. A small set in a bedroom and a large one across a living room both
+   * report 960x540 and want different sizes, and no measurement available to a web
+   * page tells them apart. See `domain/model/InterfaceScale.kt`.
+   *
+   * The default is written as `1` here rather than left to `var()`'s fallback so the
+   * declaration is visible to anyone reading the sheet; the shell overwrites it on the
+   * root element before the first paint.
+   */
+  --tv-scale: 1;
+
+  font-size: max(11px, calc(var(--tv-unit) * var(--tv-scale)));
 }
 
 :root {
@@ -74,9 +93,18 @@ html {
      ones (24 / 27 / 28dp) on a single page; 58/28 is the pair that actually adds up
      against their 12-column grid, and 48/27 is the legacy overscan figure. These sit
      between the two claims, so the safe area is never tighter than the smaller one.
-     YouTube itself is more generous still, at roughly 8% left. */
-  --safe-x: 3rem;   /* 48px at the reference canvas */
-  --safe-y: 1.75rem;
+     YouTube itself is more generous still, at roughly 8% left.
+
+     Measured against the *unscaled* unit, so these two are the one pair of lengths in
+     this sheet that the viewer's size preference does not move. Overscan is a property
+     of the panel — roughly 5% of its edge, cropped in hardware — not of how large the
+     interface is drawn, so scaling the margin with the interface would be wrong in both
+     directions: at the largest step it would surrender a third more of a screen that is
+     already fuller, and at the smallest it would pull content into the strip the panel
+     physically crops. The floor is repeated here because `--tv-unit` carries none of its
+     own; the safe area must not collapse in a small window either. */
+  --safe-x: calc(max(11px, var(--tv-unit)) * 3); /* 48px at the reference canvas */
+  --safe-y: calc(max(11px, var(--tv-unit)) * 1.75);
 
   /* keel's toast strip measures its edge inset from the viewport, which on a
      television is the wrong edge: `--toast-inset`'s 1rem would put a notice inside
@@ -90,11 +118,30 @@ html {
      is not a notice. */
   --toast-font-size: var(--t-meta);
 
+  /* Same leak, same fix, one component along. The season chips and the language picker
+     are keel's segmented control, which sizes its label from these two tokens: 0.75rem
+     plain and 0.8125rem on the rail treatment, the latter measuring 26px at 1920x1080 -
+     under both published floors, and the smallest text anywhere on this surface.
+
+     Set as tokens rather than as a `.tv-chip` rule, and that is not a style preference.
+     keel's own `.segmented--rail .segmented__label` is two classes; a `.tv-chip` rule is
+     one, loses the cascade outright, and changes nothing. The tokens are keel's declared
+     contract for exactly this, which is why the toast above is written the same way. */
+  --segmented-font-size: var(--t-label);
+  --segmented-rail-font-size: var(--t-label);
+
   /* Type scale, in sixteenths of the reference body size:
-     14 / 16 / 20 / 28 / 40px at 960x540.
+     15 / 16 / 20 / 28 / 40px at 960x540.
      YouTube's smallest text anywhere is 14px on a 1280 canvas, about 10.5px at this
-     reference, so the smallest step here is already the more conservative of the two. */
-  --t-label: 0.875rem;
+     reference, so the smallest step here is already the more conservative of the two.
+
+     `--t-label` is 15/16 rather than 14/16 to clear the two published floors at the
+     same time: measured at 1920x1080 the old value rendered 28px, which meets Fire
+     TV's ~28px and misses Xbox's ~30px. 0.9375rem renders 30px and meets both. The
+     interface-size setting can still take it below that, which is intended - it is a
+     deliberate override by someone sitting closer, and the floors describe the
+     default. */
+  --t-label: 0.9375rem;
   --t-meta: 1rem;
   --t-body: 1.25rem;
   --t-title: 1.75rem;
@@ -141,10 +188,13 @@ html {
   --rail-w: 3.5rem;        /* 56px at the reference canvas */
   --rail-w-open: 16.25rem; /* 260px */
 
-  /* What the content is inset by: the rail, plus its own breathing room. YouTube's
-     104px left inset decomposes exactly this way — a 56px rail plus 48px of
-     padding. */
-  --content-x: calc(var(--rail-w) + var(--safe-x));
+  /* What the content is inset by: the safe area the rail now starts at, the rail
+     itself, then its own breathing room. YouTube's 104px left inset decomposes as a
+     56px rail plus 48px of padding, and that relationship is kept - the whole pair has
+     simply moved inside the overscan margin, which is where `TV-OV` says anything
+     that must stay visible belongs. The rail used to sit at x=0 with its pills 8px
+     from the panel edge, which is the first thing a cropping television cuts. */
+  --content-x: calc(var(--safe-x) + var(--rail-w) + var(--safe-x));
 
   /* How much clearance a scroller has to leave so a ring is not clipped. Derived,
      not typed twice: the ring's own gap plus its stroke, plus a little slack.
@@ -387,7 +437,10 @@ body {
 
 /* Pushed aside while the rail is expanded. */
 .tv-root.rail-open {
-  padding-left: calc(var(--rail-w-open) + var(--safe-x));
+  /* Matches `--content-x`'s shape: the rail's own inset, its expanded width, then the
+     content's breathing room. Without the leading `--safe-x` the expanded rail would
+     overlap the content it is supposed to push aside. */
+  padding-left: calc(var(--safe-x) + var(--rail-w-open) + var(--safe-x));
 }
 
 .tv-root::-webkit-scrollbar {
@@ -590,7 +643,10 @@ body {
    No `:hover` anywhere: expansion is driven by focus, which the engine reports. */
 .tv-rail-nav {
   position: fixed;
-  left: 0;
+  /* Inside the overscan margin, not against the panel edge. `--safe-x` is outside the
+     interface-size multiplier on purpose: overscan is a property of the television,
+     not of how large the viewer wants the interface. */
+  left: var(--safe-x);
   top: 0;
   bottom: 0;
   z-index: 3;
@@ -723,7 +779,8 @@ body {
  * The full-bleed episode still behind the masthead.
  *
  * Escapes the root's padding to reach the screen edges — the root insets content by
- * `--content-x` on the left (rail plus padding) and the safe area elsewhere, and a
+ * `--content-x` on the left (overscan, rail, then padding) and the safe area
+ * elsewhere, and a
  * backdrop that stopped at those insets would read as a framed panel rather than a
  * mainstage. `bottom: 0` ends it exactly at the masthead's box, so the still covers
  * the text and nothing below it.

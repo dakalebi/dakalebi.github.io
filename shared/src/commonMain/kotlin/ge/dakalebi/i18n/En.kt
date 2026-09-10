@@ -84,6 +84,7 @@ object En : Strings {
         "iPhone and iPad use Apple's own player. Turn this off for the same " +
             "player the desktop site uses."
     override val language = "Language"
+    override val interfaceSize = "Interface size"
     override val settingNotSynced = "Changed on this device only"
     override val refreshEpisodes = "Refresh episodes"
     override val downloadEpisodes = "Download episodes"
@@ -94,6 +95,7 @@ object En : Strings {
     override val loadFailedEyebrow = "Could not load"
     override val resetAllProgress = "Clear all progress"
     override val backToTop = "Back to top"
+    override val backAtStart = "Nothing to go back to"
 
     override fun season(number: Int) = "Season $number"
     override fun episode(number: Int) = "Episode $number"

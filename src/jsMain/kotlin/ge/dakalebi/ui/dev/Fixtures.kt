@@ -57,14 +57,28 @@ internal fun fixtureGraph(): AppGraph {
 }
 
 /**
- * Three seasons of eight, which is enough to exercise every shape: a rail that
+ * How many seasons the fixture catalog has.
+ *
+ * **Twelve, and the count is load-bearing rather than arbitrary.** This was three,
+ * with a comment claiming it gave "season chips that scroll" — and it did not: three
+ * chips fit the reference canvas with room to spare, so the strip never overflowed
+ * and every bug that needs a *scrolled* strip was invisible here. Two reported focus
+ * failures lived in exactly that blind spot and could only be reproduced by forcing
+ * the overflow by hand. The real catalog has eighteen seasons; twelve is enough to
+ * overflow the strip at every size this app is designed for while keeping the
+ * fixture small enough to reason about.
+ */
+private const val FIXTURE_SEASONS = 12
+
+/**
+ * Twelve seasons of eight, which is enough to exercise every shape: a rail that
  * overflows, a grid that wraps, and season chips that scroll.
  *
  * Thumbnails are deliberately null so the deterministic gradient stands in, which
  * keeps the fixture from depending on the network.
  */
 private fun fixtureEpisodes(): List<Episode> = buildList {
-    for (season in 1..3) {
+    for (season in 1..FIXTURE_SEASONS) {
         for (number in 1..8) {
             val id = "${season}0$number"
             add(
@@ -95,25 +109,44 @@ private fun fixtureEpisodes(): List<Episode> = buildList {
  * Enough history for the hero and the continue rail to have something to show:
  * one part-watched episode recently, two finished before it, and one barely
  * started — which is the row the five-second floor is supposed to ignore.
+ *
+ * The tail of older part-watched episodes is there to make the continue rail
+ * **overflow**, for the same reason the season count went up: a rail that fits its
+ * width cannot be scrolled, and a rail that is never scrolled cannot show what goes
+ * wrong when a press is measured against an item hidden behind the scroller. Every
+ * one of them is stamped older than the head above, so the masthead still resumes
+ * the episode this fixture has always resumed.
  */
 private fun fixtureProgress(episodes: List<Episode>): Map<String, WatchProgress> {
     fun at(season: Int, number: Int) = episodes.first { it.seasonNumber == season && it.episodeNumber == number }
     val second = 1_000.0
-    return listOf(
+    val recent = listOf(
         WatchProgress(at(2, 4).id, 620, at(2, 4).durationSeconds, false, 1_700_000_000 * second),
         WatchProgress(at(2, 3).id, 1_500, at(2, 3).durationSeconds, true, 1_699_000_000 * second),
         WatchProgress(at(2, 2).id, 1_500, at(2, 2).durationSeconds, true, 1_698_000_000 * second),
         WatchProgress(at(3, 1).id, 3, at(3, 1).durationSeconds, false, 1_700_500_000 * second),
-    ).associateBy { it.episodeId }
+    )
+    val older = listOf(1 to 2, 1 to 5, 1 to 7, 2 to 6, 3 to 4, 4 to 2, 5 to 3, 6 to 1, 7 to 5)
+        .mapIndexed { index, (season, number) ->
+            val episode = at(season, number)
+            WatchProgress(
+                episode.id,
+                400 + index * 60,
+                episode.durationSeconds,
+                false,
+                (1_697_000_000 - index * 100_000) * second,
+            )
+        }
+    return (recent + older).associateBy { it.episodeId }
 }
 
 private class FixtureCatalogRepository(private val episodes: List<Episode>) : CatalogRepository {
-    override suspend fun load() = Catalog(episodes, CatalogMeta(1_700_000_000_000.0, 3, episodes.size))
+    override suspend fun load() = Catalog(episodes, CatalogMeta(1_700_000_000_000.0, FIXTURE_SEASONS, episodes.size))
     override suspend fun listEpisodes() = episodes
-    override suspend fun getMeta() = CatalogMeta(1_700_000_000_000.0, 3, episodes.size)
+    override suspend fun getMeta() = CatalogMeta(1_700_000_000_000.0, FIXTURE_SEASONS, episodes.size)
 
     override suspend fun refresh(nowMillis: Double, onProgress: (Int, Int) -> Unit) =
-        RefreshResult(3, episodes.size, 0, 0, episodes)
+        RefreshResult(FIXTURE_SEASONS, episodes.size, 0, 0, episodes)
 
     override suspend fun resolveVideo(episode: Episode) = episode
     override suspend fun recordDuration(episodeId: String, durationSeconds: Int) = Unit

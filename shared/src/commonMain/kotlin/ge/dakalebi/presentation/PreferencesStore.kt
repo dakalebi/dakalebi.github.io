@@ -3,6 +3,7 @@ package ge.dakalebi.presentation
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import ge.dakalebi.domain.model.InterfaceScale
 import ge.dakalebi.domain.repository.PreferencesRepository
 
 /**
@@ -23,12 +24,23 @@ class PreferencesStore(private val prefs: PreferencesRepository) {
     var preferredQuality: String? by mutableStateOf(prefs.preferredQuality())
         private set
 
+    /**
+     * How large the television interface is drawn, as a percentage.
+     *
+     * Compose state so the chosen chip renders as chosen. The size itself is not applied
+     * from here — it is one CSS custom property on the document element, written by the
+     * shell, because a `rem` cannot be changed from inside a composition.
+     */
+    var interfaceScale: Int by mutableStateOf(prefs.interfaceScale())
+        private set
+
     /** Keeps several tabs of the app in agreement. */
     fun start() {
         prefs.onExternalChange {
             autoplayNext = prefs.autoplayNext()
             useNativePlayer = prefs.useNativePlayer()
             preferredQuality = prefs.preferredQuality()
+            interfaceScale = prefs.interfaceScale()
         }
     }
 
@@ -45,6 +57,12 @@ class PreferencesStore(private val prefs: PreferencesRepository) {
     fun setPreferredQuality(label: String?) {
         preferredQuality = label
         prefs.setPreferredQuality(label)
+    }
+
+    fun setInterfaceScale(percent: Int) {
+        val value = InterfaceScale.normalise(percent)
+        interfaceScale = value
+        prefs.setInterfaceScale(value)
     }
 
     fun playIntent(episodeId: String): String? = prefs.playIntent(episodeId)

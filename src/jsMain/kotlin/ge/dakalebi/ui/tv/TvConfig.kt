@@ -40,6 +40,12 @@ internal object TvConfig {
      */
     const val UP_NEXT_WINDOW_SECONDS = 180
 
-    /** How long "press Back again to exit" stays armed, at the top of the stack. */
-    const val BACK_TO_EXIT_WINDOW_MS = 2_000
+    /**
+     * How long the top-of-app Back hint suppresses a repeat of itself.
+     *
+     * Only a debounce now. It was the arming window for a press-twice-to-exit protocol,
+     * which a host bridge made unnecessary: a host that can close the app does so on the
+     * first press, and where there is no host a second press has nothing to do either.
+     */
+    const val TOP_LEVEL_HINT_MS = 2_000
 }

@@ -25,9 +25,16 @@ class HashRouter : Router {
         if (window.location.hash != next) window.location.hash = next else current = route
     }
 
+    /**
+     * Carries the entry's existing state across rather than clearing it, because the
+     * state on a history entry is not this router's to throw away: the TV shell marks
+     * every entry it has been on so it can tell a real backwards traversal from the
+     * browser announcing a forward one, and replacing the URL is not a reason for an
+     * entry to forget it has been visited. See `TvInput.install`.
+     */
     override fun replace(route: Route) {
         val url = window.location.pathname + window.location.search + Router.href(route)
-        window.history.replaceState(null, "", url)
+        window.history.replaceState(window.history.state, "", url)
         current = route
     }
 

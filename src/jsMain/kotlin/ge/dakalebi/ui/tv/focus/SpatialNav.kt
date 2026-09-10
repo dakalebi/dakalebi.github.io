@@ -53,6 +53,20 @@ internal object SpatialNav {
     var onFocusChanged: ((HTMLElement) -> Unit)? = null
 
     /**
+     * Which screen the ring is on, so returning to it can land where it was left.
+     *
+     * Set by the shell, not read from the router: nothing in this package names a route
+     * type, and keeping it that way is what lets the focus engine be reasoned about on
+     * its own. A null disables screen memory rather than guessing a key.
+     *
+     * It must identify a screen, not a URL. Two episodes are two routes and one screen,
+     * so keying by route string would give the player a fresh memory per episode and,
+     * worse, let the browse screen inherit a key it never wrote. The shell derives it
+     * from the route's *shape*.
+     */
+    var screenKey: String? = null
+
+    /**
      * The content item the ring left when it last stepped into a side rail (the nav).
      *
      * A rail is an excursion, not a destination: Left opens it, and the natural thing on
@@ -64,6 +78,49 @@ internal object SpatialNav {
      * returns to it, and because [focus] re-centres it, so does the scroll.
      */
     private var railReturn: HTMLElement? = null
+
+    /**
+     * Records the content item to come back to when the ring next leaves a side rail.
+     *
+     * [move] sets this itself when a press walks into the rail, but a press is not the
+     * only way in: Back jumps to the rail's active destination from anywhere, and that
+     * path had no seat to leave, so the Right that followed fell through to geometry and
+     * landed in whichever band the page happened to show. Handing the seat over here
+     * makes Back-then-Right a round trip, which is what the two presses read as.
+     */
+    fun seatRailReturn(item: HTMLElement?) {
+        railReturn = item?.takeIf { it.hasAttribute(ITEM_ATTR) }
+    }
+
+    /**
+     * Whether the ring is parked on a landing chosen before the screen had anything to
+     * land on.
+     *
+     * The browse screen mounts with only the navigation rail in the DOM: the catalog is
+     * still loading, so there is no masthead, no shelf and no entry point. The focus
+     * guardian will not leave the ring nowhere, so it lands in the only group there is —
+     * and then never moved again, which is why arriving at the app showed an open rail
+     * with Home lit and the first press appeared to do nothing. Marking that landing as
+     * provisional lets [settleProvisional] finish the job once the content exists.
+     */
+    private var provisional = false
+
+    /**
+     * The element the ring is on, so a recomposition that wipes it can be undone.
+     *
+     * Compose HTML applies an element's attributes by clearing what is there and
+     * re-applying its own, and the ring is not one of its own: it and the roving
+     * `tabindex` are written here, imperatively, precisely so a keypress does not
+     * recompose. So a recomposition of the *focused* control strips both from a node
+     * that is otherwise untouched — measured on the settings screen, pressing a size
+     * chip left the ring nowhere and the browser's focus on `<body>`, from a node that
+     * was still the same node.
+     *
+     * Every other way the ring is lost destroys the element, and [landingSpot] is the
+     * right answer for those. This one does not, and landing somewhere sensible would
+     * be the wrong answer twice over: nothing moved, so the ring should not either.
+     */
+    private var lastFocused: HTMLElement? = null
 
     /** Every group inside [scope], in DOM order. */
     fun groupsIn(scope: Element): List<HTMLElement> =
@@ -138,12 +195,47 @@ internal object SpatialNav {
      * The asymmetry costs nothing on the right, where the teleport bug actually lived.
      * See [leaveGroup] for why a leftward escape also has to drop the row-overlap
      * requirement that every other horizontal move keeps.
+     *
+     * This answers the question for a group's *axis* only. [mayLeaveChrome] answers it
+     * for a group's *position*, and both have to say yes.
      */
     private fun mayLeave(axis: FocusAxis, direction: Direction): Boolean = when {
         !direction.isHorizontal -> true
         axis == FocusAxis.Y -> true
         else -> direction == Direction.Left
     }
+
+    /**
+     * Whether a press may leave chrome — in this app, the navigation rail.
+     *
+     * [mayLeave] reasons about axes, which is enough for a group that scrolls with the
+     * page. Chrome is `position: fixed`, so it does not: the content slides behind it
+     * while it stays put, and every one of its edges therefore borders whatever happens
+     * to be scrolled there at that moment. That is why the rail's boundaries were not
+     * merely wrong but *intermittent* — the same press left the rail or did not,
+     * depending on where the page behind it sat.
+     *
+     * Two walls, and each mirrors a rule that already existed on the other side:
+     *
+     * - **Vertically, never.** A rail sits *beside* the page, not in its vertical
+     *   stack, so Up from the first item and Down from the last are ends of a list.
+     *   [leaveGroup] already refuses to *land* a vertical press on chrome; without this
+     *   the same press could still *depart* from it, which is the identical mistake
+     *   read backwards.
+     * - **Leftward, never.** [mayLeave]'s whole leftward argument is that the rail lies
+     *   to the left of everything. From inside the rail that argument is spent: there is
+     *   nothing further left, and letting the press through sent the ring back to the
+     *   content it had just come from. Rightward still leaves, which is how you get out.
+     *
+     * Chrome is found by asking the layout ([isChrome]), not by naming the rail, so a
+     * second pinned surface gets the same treatment without editing this.
+     *
+     * The leftward wall assumes the rail is on the left edge, which is true of this
+     * app's one rail and is the same assumption [mayLeave] already makes. A right-hand
+     * rail would need this to ask which edge the group is flush against instead.
+     */
+    private fun mayLeaveChrome(group: HTMLElement, direction: Direction): Boolean =
+        !isChrome(group) || direction == Direction.Right
 
     /**
      * The element focus should move to, or null if the press goes nowhere.
@@ -159,6 +251,7 @@ internal object SpatialNav {
             bestCandidate(fromBox, navigableBoxesOf(group), direction)?.let { return it }
         }
         if (!mayLeave(axis, direction)) return null
+        if (!mayLeaveChrome(group, direction)) return null
 
         // Leaving a side rail (a `Y` group) horizontally: go back to the seat the ring
         // left when it stepped in, not to wherever geometry lands. See [railReturn].
@@ -221,15 +314,26 @@ internal object SpatialNav {
         direction: Direction,
         scope: Element,
     ): HTMLElement? {
+        val clips = ClipCache()
         val candidates = scope.querySelectorAll("[$ITEM_ATTR]").asList()
             .filterIsInstance<HTMLElement>()
             .mapNotNull { element ->
-                if (groupOf(element) == current) return@mapNotNull null
                 val group = groupOf(element) ?: return@mapNotNull null
-                // One rectangle read per item, folding in the visibility gate.
-                val box = element.navigableBox() ?: return@mapNotNull null
+                if (group == current) return@mapNotNull null
+                // Chrome is beside the page, never below it. The navigation rail is
+                // fixed and spans the panel's full height, so its lower item sits under
+                // the last row of any screen and a plain geometric Down walked straight
+                // into it — measured on settings: Down from the sign-out button left the
+                // screen entirely and opened the rail. Down means the next band of this
+                // screen, and when there is none it means a wall. Horizontal presses are
+                // untouched, because sideways *is* how the rail is reached.
+                if (!direction.isHorizontal && isChrome(group)) return@mapNotNull null
+                // Measured as the viewer sees it, not as the element claims. See
+                // [visibleBox]: an item scrolled out of its own rail reports a full
+                // rectangle, and believing it is what sent the ring off screen.
+                val box = element.visibleBox(scope, clips) ?: return@mapNotNull null
                 val distance = along(from, box, direction) ?: return@mapNotNull null
-                Candidate(box, group, distance)
+                Candidate(box, group, distance, cross(from, box, direction))
             }
         if (candidates.isEmpty()) return null
 
@@ -240,31 +344,84 @@ internal object SpatialNav {
         // browse screen, Down from the hero's right-hand button skipped the continue
         // rail *and* the season chips to land on a grid tile that happened to sit
         // underneath it. Down means "the next band", and no weighting expresses that.
+        //
+        // Ties are then broken by how far off the travel line the band sits, and that
+        // second key is not a refinement — it is the answer to a question the first key
+        // cannot express. Every content band on this screen starts at the same left
+        // edge, so a sideways press out of the navigation rail finds *every* band at an
+        // identical distance. Document order used to settle it, which meant leaving the
+        // rail always landed in the topmost band no matter where on the page the viewer
+        // was. Vertical closeness settles it correctly instead: the ring comes out of
+        // the rail beside what it was next to.
+        val nearestAlong = candidates.minOf { it.along }
         val nearest = candidates
+            .filter { it.along <= nearestAlong + BAND_TIE }
             .groupBy { it.group }
-            .minByOrNull { (_, group) -> group.minOf { it.along } }
+            .minByOrNull { (_, items) -> items.minOf { it.cross } }
             ?.key
             ?: return null
 
-        remembered(nearest, itemsOf(nearest))?.let { return it }
+        val items = itemsOf(nearest)
 
-        // A group may name the item to land on when the ring arrives fresh, with no
-        // memory yet — the true "next" episode at the head of the up-next rail, the
-        // episode just watched at the tail of the previous rail, the current season on
-        // the season strip. It carries [ENTRY_ATTR], and it is preferred here over the
-        // geometric guess, which otherwise lands wherever happens to sit under the
-        // cursor: mid-rail, when the press came from a centred button. Memory still wins
-        // over it, so this only steers the *first* arrival.
-        itemsOf(nearest).firstOrNull { it.hasAttribute(ENTRY_ATTR) }?.let { return it }
+        // Stepping vertically into a stacked list is the one arrival that means
+        // something precise: **the next row**. Nothing else can express it. Memory
+        // cannot — a `Y` band the ring is stepping into from a control nested inside it
+        // was never "left", so recalling where it was last skips whatever sits between.
+        // A declared entry cannot either, for the same reason. And the cross-axis
+        // measure below actively gets it wrong here, because rows in a settings list are
+        // different widths: measured, Down from the language segment picked the wide
+        // sign-out button over the narrow autoplay switch directly beneath it, purely
+        // because a wide button's centre is nearer. So a stacked arrival is decided by
+        // distance travelled, and every other arrival keeps the rules it had.
+        val stacked = !direction.isHorizontal && axisOf(nearest) == FocusAxis.Y
+        if (!stacked) {
+            // A group may name the item to land on when the ring arrives fresh, with no
+            // memory yet — the true "next" episode at the head of the up-next rail, the
+            // episode just watched at the tail of the previous rail, the current season
+            // on the season strip. It carries [ENTRY_ATTR], and it is preferred below
+            // over the geometric guess, which otherwise lands wherever happens to sit
+            // under the cursor: mid-rail, when the press came from a centred button.
+            val entry = items.firstOrNull { it.hasAttribute(ENTRY_ATTR) }
+
+            // Chrome inverts the usual order, and only chrome does. A shelf is something
+            // you were reading, so returning to it should resume where you stopped, and
+            // memory has to win. The navigation rail is not read: it is a menu, and its
+            // declared entry is the destination you are currently on. Landing anywhere
+            // else means one stray Enter changes screen — and with memory in charge it
+            // would keep landing on the last place you visited, so a trip to Settings
+            // would poison every arrival afterwards.
+            if (isChrome(nearest)) entry?.let { return it }
+
+            remembered(nearest, items)?.let { return it }
+
+            // Memory still wins for everything else, so this only steers the *first*
+            // arrival.
+            entry?.let { return it }
+        }
 
         return candidates
             .filter { it.group == nearest }
-            .minByOrNull { cross(from, it.box, direction) }
+            .minByOrNull { if (stacked) it.along else it.cross }
             ?.box?.el
     }
 
+    /**
+     * How close two bands' distances have to be to count as the same distance.
+     *
+     * Bands that share a content edge tie exactly in principle and by a fraction of a
+     * pixel in practice, because `clamp()` sizing and fractional device ratios round
+     * differently per element. Eight pixels is wide enough to absorb that and far
+     * narrower than the gap between two stacked bands, which is measured in tens.
+     */
+    private const val BAND_TIE = 8.0
+
     /** One reachable item, with the band that owns it and how far away it is. */
-    private class Candidate(val box: Box, val group: HTMLElement, val along: Double)
+    private class Candidate(
+        val box: Box,
+        val group: HTMLElement,
+        val along: Double,
+        val cross: Double,
+    )
 
     /** The item this group was left on, if it is still there. */
     private fun remembered(group: HTMLElement, items: List<HTMLElement>): HTMLElement? {
@@ -279,33 +436,22 @@ internal object SpatialNav {
      * Roving `tabindex`: the arriving item is the only one at `0`, so a paired
      * keyboard's Tab leaves the page instead of walking sixty tiles.
      *
-     * A horizontal move centres the item in its own rail and leaves the page alone.
+     * A horizontal move centres the item in its own rail and leaves the page alone —
+     * unless the item is not on screen at all, which is the one case where leaving the
+     * page alone means leaving the ring invisible. See [centreXRevealY].
      * A vertical move centres the group when it fits the viewport — so a rail's
      * heading stays visible above the focused row — and the item when the group is
      * taller than the viewport, which a full season grid is. See [verticalTarget].
      */
     fun focus(item: HTMLElement, direction: Direction?, scope: Element) {
-        (document.activeElement as? HTMLElement)
-            ?.takeIf { it.hasAttribute(ITEM_ATTR) }
-            ?.let { it.tabIndex = -1 }
-        // The ring does not depend on the document being frontmost. See FOCUS_ATTR.
-        scope.querySelectorAll("[$FOCUS_ATTR]").asList()
-            .filterIsInstance<HTMLElement>()
-            .forEach { it.removeAttribute(FOCUS_ATTR) }
-        item.setAttribute(FOCUS_ATTR, "")
-        item.tabIndex = 0
-        item.focusWithoutScrolling()
-
-        val group = groupOf(item)
-        if (group != null) {
-            val groupKey = group.getAttribute(GROUP_ATTR)
-            val itemKey = item.getAttribute(ITEM_ATTR)
-            if (groupKey != null && itemKey != null) FocusMemory.remember(groupKey, itemKey)
-        }
+        // Any landing chosen deliberately is final; only the fallback in
+        // [ensureFocused] marks itself provisional, and it does so after calling this.
+        provisional = false
+        val group = mark(item, scope)
 
         when {
             direction == null -> centre(item, setOf(Axis.X, Axis.Y), scope)
-            direction.isHorizontal -> centre(item, setOf(Axis.X), scope)
+            direction.isHorizontal -> centreXRevealY(item, scope)
             // A vertical move centres the item on X (in its rail) and the band-or-item on
             // Y (in the page). `centreAxes` reads both rectangles before either scroll
             // write, so the vertical target is measured before the X write dirties layout
@@ -316,6 +462,51 @@ internal object SpatialNav {
 
         // Last, so a subscriber reading geometry sees the settled position.
         onFocusChanged?.invoke(item)
+    }
+
+    /**
+     * Puts the ring and the roving `tabindex` on [item] and records where it is,
+     * without scrolling anything. Returns the item's group, which the caller needs
+     * anyway and which is one `closest()` call.
+     */
+    private fun mark(item: HTMLElement, scope: Element): HTMLElement? {
+        (document.activeElement as? HTMLElement)
+            ?.takeIf { it.hasAttribute(ITEM_ATTR) }
+            ?.let { it.tabIndex = -1 }
+        // The ring does not depend on the document being frontmost. See FOCUS_ATTR.
+        scope.querySelectorAll("[$FOCUS_ATTR]").asList()
+            .filterIsInstance<HTMLElement>()
+            .forEach { it.removeAttribute(FOCUS_ATTR) }
+        item.setAttribute(FOCUS_ATTR, "")
+        item.tabIndex = 0
+        item.focusWithoutScrolling()
+        lastFocused = item
+
+        val group = groupOf(item)
+        if (group != null) {
+            val groupKey = group.getAttribute(GROUP_ATTR)
+            val itemKey = item.getAttribute(ITEM_ATTR)
+            if (groupKey != null && itemKey != null) {
+                FocusMemory.remember(groupKey, itemKey)
+
+                /*
+                 * Per-group memory alone cannot answer "where was I on this screen".
+                 * Every group on the browse screen remembers its own last item quite
+                 * happily; what was missing is which of them the ring was actually in,
+                 * so coming back from an episode consulted the hero's memory and landed
+                 * on the hero. Recording the group as well is what makes the return trip
+                 * land on the tile you launched from.
+                 *
+                 * Chrome is skipped deliberately. The navigation rail is not part of any
+                 * screen — it is the same rail on all of them — so letting it write here
+                 * would mean a screen last touched through the rail remembered the rail
+                 * as its own last place, and returning to it would open on the menu.
+                 */
+                screenKey?.takeIf { !isChrome(group) }
+                    ?.let { FocusMemory.rememberScreen(it, groupKey, itemKey) }
+            }
+        }
+        return group
     }
 
     /**
@@ -330,14 +521,75 @@ internal object SpatialNav {
         val active = document.activeElement as? HTMLElement
         if (active != null && active.hasAttribute(ITEM_ATTR) && scope.contains(active)) return active
 
-        val restored = entryPoint(scope) ?: groupsIn(scope).firstNotNullOfOrNull { group ->
-            val items = itemsOf(group)
-            if (items.isEmpty()) null else remembered(group, items) ?: items.first()
-        } ?: return null
+        // The element is still there and still navigable, so nothing was lost but the
+        // two attributes a recomposition cleared off it. Put them back where they were
+        // rather than choosing a new home for the ring. See [lastFocused].
+        lastFocused
+            ?.takeIf {
+                it.isConnected && scope.contains(it) &&
+                    it.hasAttribute(ITEM_ATTR) && it.isNavigable()
+            }
+            ?.let { mark(it, scope); onFocusChanged?.invoke(it); return it }
 
+        val restored = landingSpot(scope) ?: return null
         focus(restored, direction = null, scope = scope)
+        // Set after focusing, which clears the flag: a landing in the chrome is a
+        // placeholder for content that has not arrived, not a decision.
+        provisional = isChrome(groupOf(restored))
         return restored
     }
+
+    /**
+     * Moves a provisional landing onto the real one, once the screen has one.
+     *
+     * Called from the focus guardian on every DOM change, and a no-op in every case but
+     * the one it exists for, so the cost is a flag read per batch. Returns whether it
+     * moved the ring.
+     */
+    fun settleProvisional(scope: Element): Boolean {
+        if (!provisional) return false
+        val target = landingSpot(scope) ?: return false
+        if (isChrome(groupOf(target))) return false
+        provisional = false
+        if (target == document.activeElement) return false
+        focus(target, direction = null, scope = scope)
+        return true
+    }
+
+    /**
+     * Where the ring belongs when it has none: the screen's declared entry point, else
+     * the best remembered or first item of a group — **content before chrome**.
+     *
+     * The preference is the whole point. Groups are searched in document order, and the
+     * navigation rail is written first so that one Left press reaches it from anywhere,
+     * which meant a plain document-order scan handed it the ring by default. The rail is
+     * a way to somewhere else, never a destination: a viewer arriving at the app wants
+     * the show, and a viewer whose focus was stranded by a re-render wants the shelf they
+     * were reading. Chrome is only the answer when there is genuinely nothing else, which
+     * on this app means the catalog has not loaded yet — and [settleProvisional] then
+     * comes back for it.
+     */
+    private fun landingSpot(scope: Element): HTMLElement? {
+        screenSpot(scope)?.let { return it }
+        entryPoint(scope)?.let { return it }
+        val groups = groupsIn(scope)
+        fun pick(group: HTMLElement): HTMLElement? {
+            val items = itemsOf(group)
+            return if (items.isEmpty()) null else remembered(group, items) ?: items.first()
+        }
+        return groups.filterNot { isChrome(it) }.firstNotNullOfOrNull(::pick)
+            ?: groups.firstNotNullOfOrNull(::pick)
+    }
+
+    /**
+     * Whether a group is chrome pinned over the page rather than part of it.
+     *
+     * `position: fixed` is the honest test and not a proxy for "is it the nav rail":
+     * anything pinned to the viewport is by construction a thing that sits *beside* the
+     * content, since it does not travel with it. Asking the layout keeps this from
+     * becoming a list of group keys to keep in step with the screens.
+     */
+    private fun isChrome(group: HTMLElement?): Boolean = group?.isFixed() == true
 
     /**
      * Jumps the ring to the screen's declared entry point, ignoring memory.
@@ -349,8 +601,7 @@ internal object SpatialNav {
      * the page up to it.
      */
     fun focusEntry(scope: Element): Boolean {
-        val entry = scope.querySelector("[$ENTRY_ATTR]") as? HTMLElement ?: return false
-        if (!entry.isNavigable()) return false
+        val entry = screenEntry(scope) ?: return false
         focus(entry, direction = null, scope = scope)
         // "Back to top" means the very top, not the masthead merely centred. `focus`
         // above centres the entry, which leaves a sliver of scroll above it; pin the
@@ -366,9 +617,52 @@ internal object SpatialNav {
      * episode should land on the tile you left rather than resetting to the hero.
      */
     private fun entryPoint(scope: Element): HTMLElement? {
-        val entry = scope.querySelector("[$ENTRY_ATTR]") as? HTMLElement ?: return null
-        if (!entry.isNavigable()) return null
+        val entry = screenEntry(scope) ?: return null
         val group = groupOf(entry) ?: return entry
         return if (remembered(group, itemsOf(group)) != null) null else entry
     }
+
+    /**
+     * Where this screen was when the ring last left it, if it is still there.
+     *
+     * Tried before the declared entry point, and that order is the entire fix for
+     * "coming back from an episode throws you to the top of the page". The entry point
+     * only steps aside when *its own* group has a memory, so returning to browse from
+     * the player asked the hero — which had one — and landed on the hero's play button
+     * with the page scrolled to the top. The grid's memory was intact the whole time and
+     * simply never consulted, because nothing recorded which group the screen was in.
+     *
+     * Both halves are verified against the live DOM rather than trusted: a season change
+     * rebuilds the grid, and a remembered tile can be gone. When either is missing this
+     * returns null and the older path runs, so the worst case is the behaviour that was
+     * there before.
+     */
+    private fun screenSpot(scope: Element): HTMLElement? {
+        val (groupKey, itemKey) = screenKey?.let(FocusMemory::recallScreen) ?: return null
+        val group = groupsIn(scope)
+            .firstOrNull { it.getAttribute(GROUP_ATTR) == groupKey } ?: return null
+        return itemsOf(group).firstOrNull { it.getAttribute(ITEM_ATTR) == itemKey }
+    }
+
+    /**
+     * The screen's own entry marker, ignoring any that chrome declares.
+     *
+     * [ENTRY_ATTR] answers two different questions, and the difference is the whole
+     * reason this exists. Asked of a *group* — in [leaveGroup] — it means "land here
+     * when the ring arrives fresh", and the navigation rail wants that: arriving at it
+     * should put the ring on the destination you are actually on. Asked of a *screen* —
+     * here, for [entryPoint] and [focusEntry] — it means "this is where the screen
+     * begins", and the rail must never answer that. A plain `querySelector` cannot tell
+     * the two apart: it takes the first match in document order, and `TvApp` renders the
+     * rail before the screen, so the rail would win both. A cold load would open on the
+     * navigation rail instead of the hero, and Back-to-top would jump sideways into it.
+     *
+     * Skipping chrome is not a special case bolted on for the rail. It is the rule
+     * [landingSpot] already states in prose — the rail is a way to somewhere else, never
+     * a destination — applied to the one lookup that was still ignoring it.
+     */
+    private fun screenEntry(scope: Element): HTMLElement? =
+        scope.querySelectorAll("[$ENTRY_ATTR]").asList()
+            .filterIsInstance<HTMLElement>()
+            .firstOrNull { !isChrome(groupOf(it)) && it.isNavigable() }
 }

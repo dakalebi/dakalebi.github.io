@@ -166,3 +166,35 @@ reason. A rail's *container* spans the screen height but its items do not, so no
 rail item shares a row with a shelf in the middle of the screen; requiring overlap
 made the rail unenterable and unleaveable. `mayLeave` already guards the case
 overlap was protecting, so it was belt over braces.
+
+## Two things the ring cannot be trusted to survive on its own
+
+The ring is a DOM attribute written outside the composition, which is what makes a
+keypress cost no recomposition. The price is that two ordinary events take it away,
+and neither is a navigation. `TvInput`'s focus guardian exists for both.
+
+- **A recomposition of the focused control.** Compose HTML re-applies an element's
+  attributes by clearing what is there first, so `data-tv-focus` and the roving
+  `tabindex` go with the clear — from a node that is otherwise the same node.
+  Nothing is added or removed, so a `childList` watch cannot see it; the guardian
+  watches `data-tv-focus` itself as well, and `SpatialNav.lastFocused` is what lets
+  it put the ring back where it was rather than choosing a new home for it.
+- **A forward route change.** A same-document fragment navigation fires `popstate`
+  before `hashchange`, so "an unexplained popstate is a Back press" was false for
+  every forward move the app made. `TvInput` marks each history entry it stands on,
+  and only a traversal onto a marked entry is Back; `HashRouter.replace` carries an
+  entry's existing state across for the same reason.
+
+## Interface size is a CSS custom property, not state
+
+`tv.css` is written entirely in `rem` off one root font size, so the only way to
+resize the whole television interface is to change what a `rem` is — and the root
+element is outside the composition. `ui/tv/TvScale.kt` writes `--tv-scale` onto
+`document.documentElement` and the browser relays every length that hangs off it,
+which is cheap enough to apply on each press while the viewer is choosing.
+
+It is the one preference that is deliberately **not** account-synced. Language and
+autoplay describe a person and should follow them to every device; a comfortable
+size describes a screen, so syncing it would make choosing on the phone wrong on the
+television. Hence `PreferencesRepository`, not `SettingsStore`. `--safe-x` and
+`--safe-y` are excluded from the multiplier: overscan is a property of the panel.

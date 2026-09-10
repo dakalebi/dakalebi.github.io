@@ -11,6 +11,7 @@ import ge.dakalebi.ui.Shell
 import ge.dakalebi.ui.dev.fixtureGraph
 import ge.dakalebi.ui.shell
 import ge.dakalebi.ui.tv.TvApp
+import ge.dakalebi.ui.tv.applyInterfaceScale
 import ge.dakalebi.ui.useFixtures
 import kotlinx.browser.document
 import kotlinx.coroutines.MainScope
@@ -50,6 +51,11 @@ fun main() {
     // chose English. The account's copy arrives later and wins if it disagrees;
     // this is only what the device last saw.
     graph.settings.applyCachedLanguage()
+    // And for the same reason, before the same paint: the television interface's size is
+    // a per-device choice held in one CSS custom property, and applying it after the
+    // first frame would draw the whole screen at the designed size and then resize it.
+    // Web only ever renders at the designed size, so this is asked of the TV shell alone.
+    if (shell == Shell.Tv) applyInterfaceScale(graph.preferences.interfaceScale)
     // Seeded to cover the frames before the first composition; from then on App
     // owns both of these and keeps them following the language.
     document.title = S.documentTitle

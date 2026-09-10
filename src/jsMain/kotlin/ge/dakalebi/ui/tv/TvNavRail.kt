@@ -102,7 +102,12 @@ private fun NavItem(
 ) {
     A(href = Router.href(route), attrs = {
         classNames("tv-nav-item", if (active) "on" else null)
-        focusItem(key)
+        // The active destination is also the rail's entry point, so arriving from a
+        // shelf lands on where you already are rather than on whichever item happens to
+        // be nearest the press. Exactly one item carries it, and it moves with the
+        // route. `SpatialNav` prefers it over focus memory here, which it does for no
+        // other group: a shelf is resumed, a menu is not.
+        focusItem(key, entry = active)
     }) {
         // `size = null` on purpose, and it is the whole reason keel's `Icon` can serve a
         // 10-foot surface at all: an inline `px` written at the call site is the one

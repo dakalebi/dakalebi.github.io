@@ -10,8 +10,10 @@ import ge.dakalebi.di.catalog
 import ge.dakalebi.di.router
 import ge.dakalebi.di.session
 import ge.dakalebi.di.settings
+import ge.dakalebi.di.toasts
 import ge.dakalebi.i18n.S
 import ge.dakalebi.presentation.Route
+import ge.dakalebi.presentation.Router
 import ge.dakalebi.ui.LoginScreen
 import ge.dakalebi.ui.ToastHost
 import ge.dakalebi.ui.tv.focus.FocusMemory
@@ -56,10 +58,20 @@ fun TvApp() {
     val session = session()
     val catalog = catalog()
     val settings = settings()
+    val toasts = toasts()
     val scope = rememberCoroutineScope()
 
     val route = router.current
     val account = session.account
+
+    /*
+     * Assigned here rather than in an effect, and read straight off `route`. Focus
+     * memory is written on a keypress, which does not wait for the frame clock, so a
+     * key that arrives before a `LaunchedEffect` has run would be filed under the screen
+     * you just left. Composition is where the route is already known, and the assignment
+     * is idempotent.
+     */
+    SpatialNav.screenKey = screenKeyOf(route)
 
     // Watching, not browsing: the rail is chrome over content, and there is no content
     // behind a full-screen video for it to sit beside.
@@ -68,12 +80,24 @@ fun TvApp() {
     DisposableEffect(Unit) {
         val removeListeners = input.install()
 
-        // Closing the app is the host's job: a web page cannot end an Activity.
-        // `TvInput.back` calls this at the top of its Back ladder (the
-        // press-twice-to-exit rung). The Android TV shell injects an `AndroidTvHost`
-        // object whose `exit()` finishes the Activity; in a plain browser there is no
-        // such object and this is a no-op.
-        input.onExitRequested = { window.asDynamic().AndroidTvHost?.exit(); Unit }
+        /*
+         * Closing the app is the host's job: a web page cannot end an Activity. The
+         * Android TV shell injects an `AndroidTvHost` object whose `exit()` finishes it.
+         *
+         * Assigned only when that object is actually present, which matters more than it
+         * looks: `TvInput.back` reads this being null as "there is nothing to exit to",
+         * and branches on it. A lambda set unconditionally would be non-null in a plain
+         * browser too, quietly do nothing when called, and take the Back ladder down a
+         * path that ends the press with no exit and no hint.
+         */
+        val tvHost = window.asDynamic().AndroidTvHost
+        if (tvHost != null && tvHost.exit != null) {
+            input.onExitRequested = { tvHost.exit(); Unit }
+        }
+
+        // No host to close the page, so Back at the very top says so instead. The input
+        // layer decides *when*; the wording is the shell's to choose.
+        input.onTopLevelBack = { toasts.show(S.backAtStart) }
 
         val layer = input.push(
             TvLayer(
@@ -124,7 +148,28 @@ fun TvApp() {
                             router.replace(Route.Dashboard)
                             true
                         }
-                        // Already in the rail: let the exit protocol run.
+                        /*
+                         * In the rail, but not on the top-level screen. The ladder is
+                         * not finished: there is still a screen to come out of, and
+                         * only then is this the top. Without this rung Back on Settings
+                         * fell straight through to the exit protocol, so the one screen
+                         * you can only reach through the rail was the one screen Back
+                         * could not leave.
+                         *
+                         * `replace`, matching the player rung above: Back must not grow
+                         * the history it is walking back out of.
+                         */
+                        inRail && router.current != Route.Dashboard -> {
+                            router.replace(Route.Dashboard)
+                            // Aimed at the destination by name, not at whichever item is
+                            // marked active: that mark moves during the recomposition
+                            // this route change triggers, so reading it now would find
+                            // the screen being left.
+                            focusRailItemFor(root, Route.Dashboard)
+                            true
+                        }
+                        // In the rail, on the top-level screen: genuinely the top of the
+                        // ladder. Let the exit protocol run.
                         inRail -> false
                         // Settings is a destination, not a modal, so Back from it goes
                         // to the rail like anywhere else. The rail's active item is
@@ -181,8 +226,10 @@ fun TvApp() {
         if (uid == null) {
             catalog.reset()
             settings.stop()
-            // One account's place in a rail is not another's.
+            // One account's place in a rail is not another's, and neither is the
+            // season they were part-way through.
             FocusMemory.clear()
+            BrowseState.clear()
         } else {
             settings.start(scope, uid)
             session.refreshAdminRights()
@@ -229,15 +276,61 @@ fun TvApp() {
 }
 
 /**
+ * A screen's identity for focus memory, which is deliberately not its route.
+ *
+ * `#/watch/302` and `#/watch/304` are two routes and one screen. Keyed by the route
+ * string the player would start from scratch on every episode, and — the part that
+ * actually broke things — the key the browse screen wrote would never be a key any
+ * later visit read back, so its memory would be write-only. Keyed by the route's shape,
+ * each screen keeps one place for as long as the app is open.
+ */
+private fun screenKeyOf(route: Route): String = when (route) {
+    Route.Dashboard -> "dashboard"
+    Route.Settings -> "settings"
+    Route.Login -> "login"
+    is Route.Watch -> "watch"
+}
+
+/**
  * Moves the ring to the rail's active destination.
  *
  * Returns whether it found one, so an unhandled Back can fall through to the exit
  * protocol rather than silently doing nothing.
+ *
+ * The item Back is leaving is handed to the engine as the rail's return seat first.
+ * Without it, Back into the rail and Right straight back out were not a round trip:
+ * the way out had nothing to aim at and fell through to geometry, which on a page
+ * scrolled deep into a season put the ring in the masthead far above the fold.
  */
 private fun focusRailActiveItem(root: Element): Boolean {
     val rail = root.querySelector("[data-tv-group=\"$NAV_GROUP\"]") ?: return false
     val target = rail.querySelector(".tv-nav-item.on") as? HTMLElement
         ?: rail.querySelector("[$ITEM_ATTR]") as? HTMLElement
+        ?: return false
+    SpatialNav.seatRailReturn(document.activeElement as? HTMLElement)
+    SpatialNav.focus(target, direction = null, scope = root)
+    return true
+}
+
+/**
+ * Moves the ring to the rail item for [route], whatever is marked active right now.
+ *
+ * [focusRailActiveItem] reads `.tv-nav-item.on`, which is right whenever the active
+ * screen is not changing, and wrong on the one path that changes it: a Back that leaves
+ * a secondary screen. The class marking the active destination moves during the
+ * recomposition that route change triggers, and recomposition runs on the frame clock,
+ * so a lookup made while handling the press finds the screen being left and parks the
+ * ring there. The `href` is already in the DOM and answers the same question with no
+ * wait — which also keeps this off the frame clock, like the rest of the focus path.
+ *
+ * No return seat is handed over, unlike the sibling above. This caller is already inside
+ * the rail, so the item it would offer is a rail item, and [SpatialNav.move] refuses a
+ * seat in the group it is leaving: recording one would overwrite the real content seat
+ * with a value that can never be used.
+ */
+private fun focusRailItemFor(root: Element, route: Route): Boolean {
+    val rail = root.querySelector("[data-tv-group=\"$NAV_GROUP\"]") ?: return false
+    val target = rail.querySelector("[href=\"${Router.href(route)}\"]") as? HTMLElement
         ?: return false
     SpatialNav.focus(target, direction = null, scope = root)
     return true

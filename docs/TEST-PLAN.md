@@ -291,7 +291,9 @@ window.dispatchEvent(e);
 | N13 | any vertical move | the page scrolls, and the focused band's heading stays visible |
 | N14 | `Enter` | clicks the focused element, so `<a href>` and `onClick` behave as with a mouse |
 | N15 | after any move | exactly **one** element has `tabIndex === 0`, and it is the focused one |
+| N15b | `Enter` on a control that changes what it shows — a language chip, an interface-size chip, the autoplay switch | the ring is **still on the pressed control**. Compose HTML re-applies an element's attributes by clearing them first, and the ring and the roving `tabindex` are written outside Compose, so a recomposition of the focused control strips both off a node that is otherwise untouched. Nothing is added or removed, so the guardian's `childList` watch never saw it. Measured: pressing a size chip left `[data-tv-focus]` matching nothing at all |
 | N16 | `Backspace`, `Escape`, keyCode 10009, keyCode 461 | all reach Back; none move the ring |
+| N16b | `location.hash = '#/settings'` from the browse screen, with the ring on content | the ring lands on the **new screen's entry point** and the rail stays shut. A same-document fragment navigation fires `popstate` ahead of `hashchange`, and reading any `popstate` as a Back press ran the Back ladder on every forward move: measured, the ring was thrown into the rail while the browse screen was still mounted, and the settings screen then arrived under a ring already placed. Only a traversal onto an entry the app has marked is Back |
 | N17 | legacy `Up`/`Down` names, and keyCode 37-40 with no `key` | move as the arrows do |
 | N18 | `Cmd`/`Ctrl`/`Alt` + arrow | ignored, so browser history and OS shortcuts still work |
 | N19 | any `[data-tv-item]` with the ring | computes a **4px solid `#f1f1f1`** outline at a 4px offset, **even when `document.hasFocus()` is false** |
@@ -341,7 +343,10 @@ Not scriptable, and still device-only:
 | N27 | `Enter` on a tile | `location.hash` becomes `#/watch/<id>` |
 | N28 | settings, on arrival | ring on the currently selected language |
 | N29 | settings, language | `ქართული` renders in Mtavruli and `English` is left alone, each cased by its own language |
-| N30 | settings, `Down` from the language row | escapes the nested segment to autoplay, then sign-out, then walls |
+| N29b | settings, interface size | five chips — 75, 90, 100, 115, 130 percent — with the stored one selected. `Enter` applies it **immediately**, because the only honest way to pick a size is to look at the result rather than at a number |
+| N29c | interface size, after `Enter` | `document.documentElement`'s computed `font-size` moves with it (16px → 12px at 75%, → 20.8px at 130% on a 960×540 panel) and `--safe-x` stays at 48px. Overscan is a property of the panel, not of the interface, so it must **not** scale |
+| N29d | interface size, after a reload | the choice survives, and is applied **before the first paint** — the screen must never be drawn at the designed size and then resized. It is per-device and deliberately not synced to the account: a phone and a television signed in together need different answers |
+| N30 | settings, `Down` from the language row | escapes the nested segment to the interface-size row, then autoplay, then sign-out, then walls. It must **not** fall through into the navigation rail: the rail is fixed and spans the panel's height, so a plain geometric `Down` from the last row walked straight into it |
 | N31 | settings footer | build number, short commit and publish time as `dd.MM.yyyy, HH:mm`, plus the catalog's last-refresh line |
 | N32 | sign-in | the web screen, unchanged: email and password, sign-up toggle, forgot-password. There is no Google button anywhere in the app |
 | N33 | `/#/settings` on the **web** | falls through to the dashboard. The route is inert there by design |

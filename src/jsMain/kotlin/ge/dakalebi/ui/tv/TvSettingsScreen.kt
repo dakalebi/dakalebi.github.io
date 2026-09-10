@@ -8,7 +8,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import ge.dakalebi.core.BuildInfo
 import ge.dakalebi.core.formatDateTime
+import ge.dakalebi.domain.model.InterfaceScale
 import ge.dakalebi.di.catalog
+import ge.dakalebi.di.preferences
 import ge.dakalebi.di.session
 import ge.dakalebi.di.settings
 import ge.dakalebi.di.toasts
@@ -34,7 +36,7 @@ import org.jetbrains.compose.web.dom.Span
 import org.jetbrains.compose.web.dom.Text
 
 /**
- * Language, autoplay, who is signed in, and which build this is.
+ * Language, interface size, autoplay, who is signed in, and which build this is.
  *
  * A screen rather than the web app's bottom sheet. A sheet on a television wastes
  * most of the panel and puts a scrim between the viewer and everything else, and
@@ -49,6 +51,7 @@ import org.jetbrains.compose.web.dom.Text
 @Composable
 fun TvSettingsScreen() {
     val settings = settings()
+    val prefs = preferences()
     val session = session()
     val catalog = catalog()
     val toasts = toasts()
@@ -104,6 +107,44 @@ fun TvSettingsScreen() {
                             // Cased by its own language, so "ქართული" is Mtavruli while
                             // "English" is left alone.
                         }) { Text(language.caps(language.endonym)) }
+                    }
+                }
+            }
+        }
+
+        // Interface size. Reads from PreferencesStore, not SettingsStore, and that is
+        // the whole distinction between this row and the two around it: language and
+        // autoplay describe a person and follow the account to every device, while this
+        // describes a screen. A phone and a television signed in to the same account
+        // need different answers, so syncing it would make choosing on one wrong on the
+        // other. See `domain/model/InterfaceScale.kt`.
+        //
+        // Same construction as the language row above, for the same reasons. The change
+        // applies on the press rather than on leaving the row, so the viewer is choosing
+        // by looking at the result instead of at a number — which is the only honest way
+        // to pick a size, since the whole point is that no measurement the page can take
+        // predicts what is comfortable.
+        Div({ classes("tv-row") }) {
+            Span({ classes("tv-row-label") }) { Text(S.interfaceSize.caps) }
+            Div({
+                classNames("tv-seg", segmentedClasses(SegmentedStyle.Rail))
+                focusGroup("scale", FocusAxis.X)
+                actsAsOptionGroup(S.interfaceSize)
+            }) {
+                InterfaceScale.steps.forEach { step ->
+                    val selected = step == prefs.interfaceScale
+                    Div({ classNames(segmentedItemClasses()) }) {
+                        Div({
+                            classNames("tv-seg-item", "mono", segmentedLabelClasses())
+                            focusItem("scale-$step", entry = selected)
+                            actsAsOption(selected)
+                            onClick {
+                                if (!selected) {
+                                    prefs.setInterfaceScale(step)
+                                    applyInterfaceScale(step)
+                                }
+                            }
+                        }) { Text("$step%") }
                     }
                 }
             }

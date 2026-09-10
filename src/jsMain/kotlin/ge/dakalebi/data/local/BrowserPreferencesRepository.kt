@@ -1,6 +1,7 @@
 package ge.dakalebi.data.local
 
 import ge.dakalebi.core.Log
+import ge.dakalebi.domain.model.InterfaceScale
 import ge.dakalebi.domain.repository.PreferencesRepository
 import kotlinx.browser.localStorage
 import kotlinx.browser.sessionStorage
@@ -39,6 +40,18 @@ class BrowserPreferencesRepository : PreferencesRepository {
     override fun language(): String? = read(LANGUAGE_KEY)
 
     override fun setLanguage(tag: String) = write(LANGUAGE_KEY, tag)
+
+    /**
+     * Normalised on the way out rather than trusted, because this is the one preference
+     * whose stored value can be wrong in a way that matters: it is multiplied into the
+     * root font size, so a stray string would either be ignored silently or, if it
+     * parsed to something absurd, draw an interface nobody can use to fix it. See
+     * [InterfaceScale.normalise].
+     */
+    override fun interfaceScale(): Int = InterfaceScale.normalise(read(SCALE_KEY)?.toIntOrNull())
+
+    override fun setInterfaceScale(percent: Int) =
+        write(SCALE_KEY, InterfaceScale.normalise(percent).toString())
 
     /**
      * Whether this episode was left playing or paused, remembered for the
@@ -87,6 +100,7 @@ class BrowserPreferencesRepository : PreferencesRepository {
         const val QUALITY_KEY = "preferred_quality"
         const val NATIVE_PLAYER_KEY = "use_native_player"
         const val LANGUAGE_KEY = "language"
+        const val SCALE_KEY = "tv_interface_scale"
         const val INTENT_PREFIX = "watch-player-intent:"
     }
 }
