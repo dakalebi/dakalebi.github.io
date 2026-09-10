@@ -1,28 +1,71 @@
 name: Deploy to GitHub Pages
 
+# Two branches, two endpoints, one site:
+#
+#   main      https://dakalebi.github.io/          and /tv/
+#   preview   https://dakalebi.github.io/preview/  and /preview/tv/
+#
+# ------------------------------------------------------- why there are two parts --
+#
+# A Pages deploy uploads an artifact that IS the site: every deploy replaces all of
+# it, and there is no way to write only part of one. Two workflows publishing two
+# halves therefore cannot coexist, because whichever finishes last erases the other.
+#
+# Rebuilding both halves on every deploy is the obvious fix and the wrong one, and
+# this repository has already been round that loop: the /preview endpoint added in
+# 66c0fc8 kept both halves alive by rebuilding both every time, which meant a
+# preview branch that failed to build blocked production too. It was retired in
+# f6eb023.
+#
+# So the site is kept on the `gh-pages` branch, and each push rewrites only its own
+# directory there before the whole tree is deployed. The branch is the state; the
+# artifact is still what Pages serves. That buys three things: a push only builds
+# its own half, a broken preview cannot hold up production, and what is live is a
+# real git tree, so a bad deploy is a revert rather than a hunt for what built it.
+#
+# ------------------------------------------------- what makes /preview work at all --
+#
+# Two properties of the app, and both need to stay true. Every asset path is
+# relative - the TV shell reaches the shared sheets as `../keel/tokens.css`, which
+# stays correct under any prefix - so a copy under /preview finds its own files
+# rather than the root's. And routing is hash-based, so a deep link is
+# /preview/#/watch, one real file, which is all Pages can serve without rewrite
+# rules.
+#
+# Note that /preview talks to the SAME Firebase project as production, because the
+# config is compiled in. It is a staging surface for the interface, not an isolated
+# environment: anything done there is real data.
+
 on:
   push:
-    branches: [main]
+    branches: [main, preview]
   workflow_dispatch:
 
 permissions:
-  contents: read
+  # The publish branch.
+  contents: write
+  # The deployment itself, unchanged from when this workflow deployed a single
+  # build straight from the runner.
   pages: write
   id-token: write
 
-# Never run two deploys at once; always let the newest push win.
+# One publish at a time, and queued rather than cancelled. Two runs racing would
+# both try to push the same branch, and cancelling one midway through its commit is
+# a worse failure than making it wait.
 concurrency:
-  group: pages
-  cancel-in-progress: true
+  group: pages-publish
+  cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      # keel is a submodule, and `includeBuild("keel")` in settings.gradle.kts points
-      # straight at its directory. Without this the checkout leaves that directory
-      # empty and Gradle fails at configuration time, before any task runs.
-      - uses: actions/checkout@v5
+      # keel is a submodule, and `includeBuild("keel")` in settings.gradle.kts
+      # points straight at its directory. Without this the checkout leaves that
+      # directory empty and Gradle fails at configuration time, before any task
+      # runs.
+      - name: Check out the branch being published
+        uses: actions/checkout@v5
         with:
           submodules: true
 
@@ -36,22 +79,108 @@ jobs:
       - name: Build Kotlin/JS bundle
         run: ./gradlew jsBrowserDistribution
 
-      # Blocks the deploy rather than only the merge. The bug this guards against -
-      # a shared composable emitting classes one shell has no rules for - is
-      # invisible in a build log and reaches users as an unstyled screen.
+      # Blocks the publish rather than only the merge. The bug this guards against
+      # - a shared composable emitting classes one shell has no rules for - is
+      # invisible in a build log and reaches users as an unstyled screen. It reads
+      # the built stylesheets, so it has to follow the build.
       - name: Every emitted CSS class is styleable on the shell that draws it
         run: python3 tools/check-css-classes.py
 
-      # GitHub Pages runs Jekyll by default, which drops files beginning with
-      # an underscore. Kotlin/JS + webpack can emit those.
-      - name: Disable Jekyll
-        run: touch build/dist/js/productionExecutable/.nojekyll
+      # On the very first run the branch does not exist yet and is started here as
+      # an orphan, which is why this is a clone rather than actions/checkout.
+      - name: Check out the published site
+        env:
+          REMOTE: https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git
+        run: |
+          set -eu
+          if ! git clone --depth 1 --branch gh-pages "$REMOTE" site 2>/dev/null; then
+            echo "gh-pages does not exist yet; starting it."
+            git init -q -b gh-pages site
+            git -C site remote add origin "$REMOTE"
+          fi
+
+      - name: Put this branch's build in its own directory
+        run: |
+          set -eu
+          dist=build/dist/js/productionExecutable
+
+          case "${GITHUB_REF_NAME}" in
+            main)
+              # Production owns the root. `preview` is the one name it must not
+              # touch, because the other branch owns that directory.
+              find site -mindepth 1 -maxdepth 1 \
+                ! -name .git ! -name preview -exec rm -rf {} +
+              cp -R "$dist/." site/
+              ;;
+            preview)
+              rm -rf site/preview
+              mkdir -p site/preview
+              cp -R "$dist/." site/preview/
+              ;;
+            *)
+              echo "::error::${GITHUB_REF_NAME} has no endpoint to publish to."
+              exit 1
+              ;;
+          esac
+
+          # Both files belong to the site rather than to either build, so they are
+          # rewritten on every publish and cannot be lost when the root is
+          # replaced. Pages runs Jekyll by default, and Jekyll drops files whose
+          # names begin with an underscore, which Kotlin/JS and webpack emit.
+          touch site/.nojekyll
+          # /preview is a copy of production on the same host, so leaving it
+          # indexable would have the two competing for the same search results.
+          printf 'User-agent: *\nDisallow: /preview/\n' > site/robots.txt
+
+      # Recording the tree before it is served, so what is live is always something
+      # with a commit behind it.
+      - name: Record the site
+        run: |
+          set -eu
+          cd site
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+
+          if git diff --cached --quiet; then
+            echo "The built output is identical to what is already published."
+            exit 0
+          fi
+
+          git commit -q -m "Publish ${GITHUB_REF_NAME} at ${GITHUB_SHA}"
+
+          # The concurrency group above makes a race unlikely rather than
+          # impossible: a manual dispatch can still land beside a push. Rebasing
+          # is safe because the two branches only ever write disjoint directories.
+          for attempt in 1 2 3; do
+            if git push origin gh-pages; then
+              exit 0
+            fi
+            echo "Push rejected on attempt ${attempt}; rebasing onto the newest site."
+            # A rebase needs the merge base, and the shallow clone above has it:
+            # whatever rejected us was pushed on top of the tip we cloned. The
+            # case where that is untrue is a rewritten gh-pages, and failing is
+            # the right answer there rather than rebasing onto an unrelated tree.
+            git pull --rebase origin gh-pages
+          done
+
+          echo "::error::Could not publish after three attempts."
+          exit 1
+
+      # Copied rather than uploaded in place: the artifact is served verbatim, and
+      # `site/.git` is the entire history of the site, which has no business being
+      # fetchable over HTTP.
+      - name: Stage the site for upload
+        run: |
+          set -eu
+          cp -R site _site
+          rm -rf _site/.git
 
       - uses: actions/configure-pages@v5
 
       - uses: actions/upload-pages-artifact@v4
         with:
-          path: build/dist/js/productionExecutable
+          path: _site
 
   deploy:
     needs: build
