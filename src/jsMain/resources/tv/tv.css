@@ -168,6 +168,20 @@ html {
      `WholeTileFocusRing` variant. */
   --focus-plate: rgba(255, 255, 255, 0.1);
 
+  /* ------------------------------------------------------- ink on video
+     What every piece of text drawn over the picture wears. A scrim cannot do this
+     job alone: it darkens a fixed band, and the frame underneath is whatever the
+     episode happens to be showing — a white hospital corridor one second, night the
+     next. A shadow travels with the glyphs, so the contrast is there wherever they
+     land.
+
+     Soft and wide rather than a tight drop: 8px of blur at 75% black reads as the
+     letters being lit from behind, which is invisible over dark footage and decisive
+     over bright. The 1px offset is the only hard edge, and it is what keeps the text
+     from looking like it is floating. Both numbers are the player title's, which
+     already carried exactly this treatment while nothing else did. */
+  --ink-shadow: 0 0.0625rem 0.5rem rgba(0, 0, 0, 0.75);
+
   /* ------------------------------------------------------------ motion
      Both zero, deliberately. These were 150ms (focus) and 300ms (travel), measured
      off YouTube — good on capable hardware. But a low-end built-in-TV WebView repaints
@@ -573,7 +587,13 @@ body {
   width: var(--tile-w);
   display: flex;
   flex-direction: column;
-  gap: 0.625rem;
+  gap: 0.75rem;
+  /* Bottom only, so the still stays full-bleed across the tile and only the caption
+     gains room. Without it the caption's last line is the tile's own bottom edge, which
+     is where the focus plate stops and where the ring is drawn — so the text sat welded
+     to both. The plate and the ring grow with this, which is the whole point: the
+     caption ends up sitting *inside* a box rather than along its rim. */
+  padding-bottom: 0.625rem;
   text-decoration: none;
   color: var(--tx);
   border-radius: var(--radius);
@@ -652,7 +672,12 @@ body {
   /* `--t-meta`, not `--t-label`. This is the tile's title now that the badge is gone
      from the artwork, and a title set at the caption size reads as a footnote. */
   font-size: var(--t-meta);
-  color: #aaa;
+  /* On the token scale rather than a literal `#aaa`, which was both off the scale and
+     dimmer than anything else on the screen — and dimmest exactly where it matters
+     most, since the player draws these captions straight onto the picture. */
+  color: var(--tx-dim);
+  /* Under the still it captions, not ranged off to one side of it. */
+  text-align: center;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1119,14 +1144,48 @@ body {
   font-size: var(--t-title);
   font-weight: 600;
   color: var(--tx);
-  text-shadow: 0 0.0625rem 0.5rem rgba(0, 0, 0, 0.75);
 }
 
 .tv-player-title-sub {
   margin-top: 0.25rem;
   font-size: var(--t-meta);
   color: var(--tx-dim);
-  text-shadow: 0 0.0625rem 0.5rem rgba(0, 0, 0, 0.75);
+}
+
+/*
+ * Everything the player draws over the picture, in one place.
+ *
+ * The title carried this on its own and nothing else did, which is why the times, the
+ * autoplay label, the shelf headings and the tile captions all vanished against a
+ * bright frame while the title stayed readable over the same one. It is a property of
+ * *where the text is*, not of what the text says, so it belongs to the stage rather
+ * than to each label — and stated once, a control added later gets it without anyone
+ * remembering to ask.
+ *
+ * The two chips on a still are deliberately exempt below: they already sit on 66%
+ * black of their own, and a shadow under a plate is only mud around the edges.
+ */
+.tv-player {
+  text-shadow: var(--ink-shadow);
+}
+
+.tv-player .tv-tile-dur,
+.tv-player .tv-tile-seen {
+  text-shadow: none;
+}
+
+/*
+ * Text over video is held to a higher floor than text over the app's own background.
+ *
+ * `--tx-dim` is a hierarchy signal, and it works on a page whose background this sheet
+ * controls. Over an episode it stops being hierarchy and becomes a legibility problem:
+ * the "contrast" it was chosen against is a frame that changes every second. So the
+ * player's secondary text comes up to full strength and lets the shadow, the size and
+ * the weight carry the hierarchy instead.
+ */
+.tv-player .tv-sub,
+.tv-player .tv-ctl-times {
+  color: var(--tx);
 }
 
 /* The control bar and the thin line are the only two states, and exactly one of
@@ -1172,6 +1231,26 @@ body {
 .tv-shelf.hide {
   opacity: 0;
   pointer-events: none;
+}
+
+/*
+ * A scrim, but only from the moment the shelf is what the viewer is looking at.
+ *
+ * The shelf is the one part of the chrome with no background of its own: `.tv-ctl`
+ * carries a gradient, and the shelf below it sits directly on the picture. Giving it a
+ * permanent one is wrong — at rest it is a 72px peek under an episode someone is
+ * watching, and dimming a third of the frame to caption two thumbnails is a bad trade.
+ *
+ * Raised, the trade reverses completely. The transport has faded, the viewer is
+ * reading rows rather than watching, and the video behind is now just texture. So the
+ * scrim arrives with the promotion and leaves with it.
+ *
+ * Bottom-up, matching `.tv-ctl`'s own gradient, so the two read as one darkening rather
+ * than as a panel with an edge. It fades out at the top because the rail directly above
+ * the ring is the one the viewer is on, and the rows behind it should recede.
+ */
+.tv-shelf.raised {
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.86) 55%, rgba(0, 0, 0, 0));
 }
 
 /* The sliding column. `transform` is written from Kotlin against measured band

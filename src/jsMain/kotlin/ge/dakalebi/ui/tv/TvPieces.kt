@@ -69,8 +69,13 @@ fun TvTile(episode: Episode, progress: WatchProgress?, entry: Boolean = false) {
                 }
             }
         }
+        // `caps` in Kotlin rather than `text-transform` in the sheet: Georgian's capital
+        // forms are a separate set of characters (Mtavruli), not a case mapping CSS
+        // knows how to perform, so the sheet would silently do nothing. This is the
+        // tile's title now that the badge is off the picture, and every other label on
+        // the screen — the masthead's own heading, every shelf heading — is set this way.
         Span({ classes("tv-tile-name") }) {
-            Text(S.seasonAndEpisode(episode.seasonNumber, episode.episodeNumber))
+            Text(S.seasonAndEpisode(episode.seasonNumber, episode.episodeNumber).caps)
         }
     }
 }

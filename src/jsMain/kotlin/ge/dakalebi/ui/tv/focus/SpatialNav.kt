@@ -118,6 +118,17 @@ internal object SpatialNav {
      * and then never moved again, which is why arriving at the app showed an open rail
      * with Home lit and the first press appeared to do nothing. Marking that landing as
      * provisional lets [settleProvisional] finish the job once the content exists.
+     *
+     * It stays set across a settle, because a screen does not necessarily arrive all at
+     * once and one correction is not enough. Browse draws its masthead only when there
+     * is something to continue, and the watch progress that decides it resolves after
+     * the episode list: measured, the screen exists for a beat as a season strip and a
+     * grid with no masthead at all, the settle moved the ring to the season chip — the
+     * only entry marker on the page — and cleared this flag, so the masthead arriving a
+     * moment later found nothing left armed to claim the ring. Right then stepped along
+     * the season strip, which is the reported "it focused the season chooser". Only
+     * [focus] clears this, so the arming ends the instant the viewer moves the ring
+     * themselves and never overrides a deliberate press.
      */
     private var provisional = false
 
@@ -589,14 +600,25 @@ internal object SpatialNav {
      * Called from the focus guardian on every DOM change, and a no-op in every case but
      * the one it exists for, so the cost is a flag read per batch. Returns whether it
      * moved the ring.
+     *
+     * The target is the screen's *declared* entry marker rather than a full
+     * [landingSpot], and that is not a shortcut — it is what makes a second settle
+     * possible at all. [mark] writes every landing into screen memory, including one
+     * this function made, so `landingSpot` consults [screenSpot] and hands straight back
+     * the season chip the ring is already sitting on. An automatic landing is not
+     * somewhere the viewer *was*, so the memory it leaves has no business outranking the
+     * entry point the screen declares. [screenEntry] also excludes chrome by
+     * construction, which is why no check for it is needed here.
+     *
+     * The flag is left armed afterwards; see [provisional] for why one correction is not
+     * enough.
      */
     fun settleProvisional(scope: Element): Boolean {
         if (!provisional) return false
-        val target = landingSpot(scope) ?: return false
-        if (isChrome(groupOf(target))) return false
-        provisional = false
+        val target = screenEntry(scope) ?: return false
         if (target == document.activeElement) return false
         focus(target, direction = null, scope = scope)
+        provisional = true
         return true
     }
 

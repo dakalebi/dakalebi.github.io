@@ -1045,7 +1045,16 @@ fun TvVideoPlayer(
          * thing deciding where the bands sit. Two mechanisms both moving this column
          * would fight on every press.
          */
-        Div({ classNames("tv-shelf", if (mode == Mode.Controls) null else "hide") }) {
+        // `raised` is what earns the shelf its own scrim: at level 0 it is a peek over
+        // an episode the viewer is watching and must not dim it, and from level 1 it is
+        // what they are actually reading. See `.tv-shelf.raised` in the sheet.
+        Div({
+            classNames(
+                "tv-shelf",
+                if (mode == Mode.Controls) null else "hide",
+                if (shelfLevel > 0) "raised" else null,
+            )
+        }) {
             Div({
                 classes("tv-shelf-track")
                 ref { element ->
