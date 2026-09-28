@@ -1,0 +1,15 @@
+<!-- The preview build's icon: the main placeholder in amber instead of red. Google TV's
+     app row shows the icon, not the banner, so without this the two apps look the same
+     there. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <path
+        android:fillColor="#e8a317"
+        android:pathData="M0,0h48v48h-48z" />
+    <path
+        android:fillColor="#ffffff"
+        android:pathData="M19,14 L35,24 L19,34 Z" />
+</vector>

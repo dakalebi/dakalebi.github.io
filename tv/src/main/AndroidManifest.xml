@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- The shell loads a remote page, so it needs the network and needs to know
          when the network comes back (to auto-reload the error screen). -->
@@ -18,14 +19,28 @@
         android:name="android.hardware.touchscreen"
         android:required="false" />
 
+    <!-- Backup is off because the WebView's storage holds the Firebase refresh token,
+         and a backup would copy it off the device. allowBackup covers Android 8 to 11
+         entirely, and cloud backup after that; from Android 12 an app targeting 31+
+         is copied to a new device regardless, which dataExtractionRules turns off.
+         fullBackupContent repeats the rule for 8 to 11 in case allowBackup changes.
+
+         enableOnBackInvokedCallback makes Back one path on Android 13+: the callback
+         MainActivity registers (the key-up that still follows it arrives cancelled).
+         Android 16 does that anyway for an app targeting API 36; opting in gives
+         Android 13 to 15 the same behaviour instead of a second, different one. -->
     <application
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:banner="@drawable/banner"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:enableOnBackInvokedCallback="true"
+        android:fullBackupContent="@xml/full_backup_content"
         android:hardwareAccelerated="true"
         android:icon="@drawable/ic_launcher"
         android:label="@string/app_name"
         android:largeHeap="true"
-        android:theme="@style/Theme.DakalebiTv">
+        android:theme="@style/Theme.DakalebiTv"
+        tools:targetApi="tiramisu">
 
         <!-- The app loads one known site, so Google's per-navigation Safe Browsing
              check is pure overhead here (a network round-trip and a background service

@@ -42,6 +42,26 @@ Output lands in `build/dist/js/productionExecutable/`.
 Kotlin — no Compose HTML, no Firebase, no DOM — which is what makes that
 possible.
 
+## TV app
+
+`tv/` is the Android TV / Google TV shell: a full-screen WebView on `/tv/` that
+bundles no web code, so every deploy is live on the television. It is built only
+when an Android SDK is visible (`local.properties` or `ANDROID_HOME`).
+
+```bash
+./gradlew :tv:assembleDebug :tv:assemblePreview
+```
+
+```bash
+adb install -r tv/build/outputs/apk/debug/tv-debug.apk
+```
+
+`tv-preview.apk` opens `/preview/tv/` and installs beside the real app. Both
+builds can be inspected from `chrome://inspect`. In iCloud Drive, build with JDK
+17 and run `./gradlew :tv:clean` if the build trips over `"… 2"` duplicate
+files. How the remote reaches the page, and what was verified:
+[`docs/TV-NATIVE-APP.md`](docs/TV-NATIVE-APP.md).
+
 ## Layout
 
 Two Gradle modules. The root is the web app; `:shared` is everything that is not

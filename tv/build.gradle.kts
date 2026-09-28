@@ -32,6 +32,14 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
+
+        // What the WebView opens. The `preview` build type below points it at the
+        // preview deploy instead.
+        buildConfigField("String", "HOME_URL", "\"https://dakalebi.github.io/tv/\"")
+    }
+
+    buildFeatures {
+        buildConfig = true
     }
 
     buildTypes {
@@ -56,6 +64,18 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+        }
+        // The same shell on `https://dakalebi.github.io/preview/tv/`, so a preview
+        // deploy can be tried on the television before it reaches `main` - the app has
+        // no copy of the site, so a broken production deploy is a broken TV app. A
+        // separate application id, so it installs beside the real one, and a debug
+        // build underneath, so it signs with the debug key and can be inspected from
+        // chrome://inspect. `src/preview/res` gives it its own name, banner and icon.
+        create("preview") {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".preview"
+            versionNameSuffix = "-preview"
+            buildConfigField("String", "HOME_URL", "\"https://dakalebi.github.io/preview/tv/\"")
         }
     }
 
