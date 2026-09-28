@@ -1,0 +1,14 @@
+<!-- The preview build's banner: the main placeholder in amber instead of red, so the
+     two apps are told apart on the home row before either is focused. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="320dp"
+    android:height="180dp"
+    android:viewportWidth="320"
+    android:viewportHeight="180">
+    <path
+        android:fillColor="#e8a317"
+        android:pathData="M0,0h320v180h-320z" />
+    <path
+        android:fillColor="#ffffff"
+        android:pathData="M138,64 L184,90 L138,116 Z" />
+</vector>

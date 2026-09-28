@@ -8,6 +8,8 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.util.TypedValue
 import android.view.Gravity
@@ -31,6 +33,7 @@ import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.window.OnBackInvokedDispatcher
 
 /**
  * The whole Android TV app: a full-screen [WebView] showing the live web UI at
@@ -39,14 +42,22 @@ import android.widget.TextView
  * The point of the shell is auto-update. It bundles no HTML or JavaScript; it loads
  * the deployed site, so every publish to the web is live on the television with no
  * reinstall. Its only real work is the handful of things a browser tab cannot do on a
- * ten-foot screen:
+ * ten-foot screen.
+ *
+ * The rule for input is that **every remote key reaches the page as the `keydown` a
+ * browser would produce**, aimed at the focused element, so the page has one input
+ * path and the browser TV version is a faithful test of it. D-pad and OK get that from
+ * Chromium for free. Three things do not, and the shell makes them up:
  *
  *  - **Back.** `KEYCODE_BACK` never reaches a WebView's JavaScript, so the shell
- *    forwards it into the page's own Back ladder (`window.__tvShell.onBack`, which the
- *    web input layer publishes). The page owns every level of Back; the shell only
- *    closes the app when the page asks it to, through [AndroidTvHost.exit].
- *  - **Media keys.** Also invisible to the page, so each is translated into the
- *    synthetic `keydown` the web key map already understands.
+ *    presses `GoBack` in the page ([pressKey]). The page owns every level of Back,
+ *    including leaving a text field; the shell only closes the app when the page asks
+ *    it to, through [AndroidTvHost.exit], or when there is no page to ask.
+ *  - **Media keys.** Also invisible to the page, so each is pressed as the `Media*`
+ *    key the web key map already understands, held keys included.
+ *  - **Held D-pad keys.** Chromium delivers the repeats, but with `repeat` false, and
+ *    the player tells a tap from a hold by that flag. The shell presses the repeats
+ *    itself, flagged.
  *  - **Offline.** A native retry screen instead of Chromium's error page, and an
  *    auto-reload when the network returns.
  *  - **A dead renderer.** [WebViewClient.onRenderProcessGone] must be handled or the
@@ -58,9 +69,20 @@ import android.widget.TextView
 class MainActivity : Activity() {
 
     private companion object {
-        /** The deployed TV UI. `/tv/` serves the ten-foot shell by itself (see the
-         *  web app's shell selection), so no query parameter is needed. */
-        const val HOME_URL = "https://dakalebi.github.io/tv/"
+        /** The deployed TV UI, set per build type in `build.gradle.kts`: `/tv/` for
+         *  the real app, `/preview/tv/` for the preview one. Either path serves the
+         *  ten-foot shell by itself (see the web app's shell selection), so no query
+         *  parameter is needed. */
+        const val HOME_URL = BuildConfig.HOME_URL
+
+        /** The one site the main frame may show. Everything the app navigates to is a
+         *  hash route on it, and email-and-password sign-in is a `fetch`, not a
+         *  navigation, so nothing legitimate ever leaves it. */
+        val HOME_HOST: String? = Uri.parse(HOME_URL).host
+
+        /** Pressed in the page for `KEYCODE_BACK`. The web key map reads it as Back,
+         *  and it is the UI Events name for exactly this key. */
+        const val BACK_KEY = "GoBack"
 
         /** A product token appended to — never replacing — the stock user agent.
          *  Firebase and Google endpoints sniff the UA, so a wholesale replacement
@@ -126,31 +148,59 @@ class MainActivity : Activity() {
             networkCallback,
         )
 
+        // Android 13+ delivers Back here instead of as a key (see [dispatchKeyEvent]).
+        // Registering is also what stops the system from closing the app on its own.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            onBackInvokedDispatcher.registerOnBackInvokedCallback(
+                OnBackInvokedDispatcher.PRIORITY_DEFAULT,
+            ) { handleBack() }
+        }
+
         loadHome()
     }
 
     // ---------------------------------------------------------------- input
 
     /**
-     * Back and media keys, caught before they reach the WebView.
+     * Back, media keys and D-pad repeats, caught before they reach the WebView.
      *
-     * `dispatchKeyEvent`, not `onKeyDown` or the deprecated `onBackPressed`: it is the
-     * one Activity seam that always sees the key regardless of which view holds focus,
-     * and it lets Back be consumed so the Activity never finishes on its own — exit is
-     * the page's decision, delivered through [AndroidTvHost.exit].
+     * `dispatchKeyEvent`, not `onKeyDown`: it is the one Activity seam that always sees
+     * the key regardless of which view holds focus, and it lets a key be consumed.
+     *
+     * **Back is acted on here only below Android 13.** From 13 the manifest opts into
+     * `OnBackInvokedCallback`, so the system sends Back to the callback registered in
+     * [onCreate]. That is not optional: an app targeting API 36 gets the callback path
+     * on Android 16 whether it opts in or not, and this method used to be the only Back
+     * handler, so on Android 16 every Back closed the app from any screen. Both routes
+     * end in [handleBack].
+     *
+     * The key still arrives here after the callback has run: the system forwards its
+     * key-up marked cancelled, so that later stages drop their own Back handling. The
+     * `isCanceled` check is what keeps one press from being handled twice; without it
+     * Back skipped a rung of the page's ladder, and exited one press early.
+     *
+     * Lint's `GestureBackNavigation` asks for callbacks only, which is right from 13
+     * up and impossible below it: Android 8 to 12 have no callback to register, and
+     * the key is the only Back they send.
      */
+    @SuppressLint("GestureBackNavigation")
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         if (event.keyCode == KeyEvent.KEYCODE_BACK) {
-            if (event.action == KeyEvent.ACTION_UP) handleBack()
+            if (event.action == KeyEvent.ACTION_UP && !event.isCanceled) handleBack()
             return true
         }
-        if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
-            mediaJsKey(event.keyCode)?.let { key ->
-                // `key` is from the fixed allowlist below, so inlining it is safe.
-                webView.evaluateJavascript(
-                    "window.dispatchEvent(new KeyboardEvent('keydown',{key:'$key',bubbles:true}));",
-                    null,
-                )
+        val down = event.action == KeyEvent.ACTION_DOWN
+        mediaJsKey(event.keyCode)?.let { key ->
+            // Every event, not only the first key-down: a repeat or a key-up let through
+            // reaches the page a second time, natively, as a separate press.
+            if (down) pressKey(key, repeat = event.repeatCount > 0)
+            return true
+        }
+        // The first press and the key-up stay native, so only the repeats are ours. Only
+        // while the page has focus; on the error screen the D-pad drives the Retry button.
+        if (down && event.repeatCount > 0 && webView.hasFocus()) {
+            dpadJsKey(event.keyCode)?.let { key ->
+                pressKey(key, repeat = true)
                 return true
             }
         }
@@ -158,17 +208,54 @@ class MainActivity : Activity() {
         return super.dispatchKeyEvent(event)
     }
 
-    /** The error screen has no page to hand Back to, so there Back exits; everywhere
-     *  else it goes to the page's Back ladder. */
+    /**
+     * Back goes to the page as a key press, so it takes the same path a browser's
+     * Escape does. That matters in a text field: the page reads Back there as "leave
+     * the field", which a direct call into its Back ladder skips, and on the sign-in
+     * screen the ladder's next rung is exit. While the on-screen keyboard is open, it
+     * takes the first Back to close itself, as in any Android app, and the page gets
+     * the next one.
+     *
+     * The app closes by itself only when there is no page to ask: the error screen, or
+     * a page whose input layer is not up yet (a slow or stuck load), where Back would
+     * otherwise do nothing at all.
+     */
     private fun handleBack() {
         if (hasMainFrameError) {
             finish()
             return
         }
+        pressKey(BACK_KEY) { delivered -> if (!delivered) finish() }
+    }
+
+    /**
+     * Presses [key] in the page the way a browser does: a `keydown` on the focused
+     * element, bubbling up to the window the web input layer listens on.
+     *
+     * Only once that layer is installed (`window.__tvShell` is its marker), and
+     * [onResult] says whether it was. [key] always comes from the fixed tables in this
+     * file, so inlining it into the script is safe.
+     *
+     * A synthetic key has no default action, so a repeat pressed into a text field
+     * whose keyboard is closed does not move the caret. The on-screen keyboard takes
+     * the D-pad itself while it is open, which is nearly always.
+     */
+    private fun pressKey(key: String, repeat: Boolean = false, onResult: ((Boolean) -> Unit)? = null) {
         webView.evaluateJavascript(
-            "window.__tvShell && window.__tvShell.onBack && window.__tvShell.onBack();",
-            null,
-        )
+            "(function(){if(!window.__tvShell)return false;" +
+                "var t=document.activeElement||document.body;" +
+                "t.dispatchEvent(new KeyboardEvent('keydown'," +
+                "{key:'$key',repeat:$repeat,bubbles:true,cancelable:true}));" +
+                "return true})()",
+        ) { result -> onResult?.invoke(result == "true") }
+    }
+
+    private fun dpadJsKey(keyCode: Int): String? = when (keyCode) {
+        KeyEvent.KEYCODE_DPAD_UP -> "ArrowUp"
+        KeyEvent.KEYCODE_DPAD_DOWN -> "ArrowDown"
+        KeyEvent.KEYCODE_DPAD_LEFT -> "ArrowLeft"
+        KeyEvent.KEYCODE_DPAD_RIGHT -> "ArrowRight"
+        else -> null
     }
 
     private fun mediaJsKey(keyCode: Int): String? = when (keyCode) {
@@ -183,8 +270,8 @@ class MainActivity : Activity() {
         else -> null
     }
 
-    /** The page → shell channel. The web input layer calls this from its top-level
-     *  "press Back again to exit" rung, wired through `TvInput.onExitRequested`. */
+    /** The page → shell channel. The web input layer calls this when Back reaches the
+     *  top of its ladder, wired through `TvInput.onExitRequested`. */
     private inner class AndroidTvHost {
         @JavascriptInterface
         fun exit() {
@@ -208,15 +295,21 @@ class MainActivity : Activity() {
             javaScriptEnabled = true
             // localStorage and the store Firebase Auth persists its session to.
             domStorageEnabled = true
-            // Auto-update: serve from cache but revalidate against the page's
-            // ETag/Last-Modified, so a new deploy is picked up on the next launch
-            // while unchanged assets still come back 304. Not LOAD_NO_CACHE, which
-            // would re-download the whole bundle every launch.
+            // Auto-update: ordinary HTTP caching. GitHub Pages sends max-age=600, so a
+            // new deploy is picked up by the first launch after a cached copy is ten
+            // minutes old, and after that unchanged assets come back 304. Not
+            // LOAD_NO_CACHE, which would re-download the whole bundle every launch.
             cacheMode = WebSettings.LOAD_DEFAULT
             // The site is HTTPS end to end; block any stray insecure subresource.
             mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
             // A remote cannot produce the user gesture browsers require to autoplay.
             mediaPlaybackRequiresUserGesture = false
+            // The system font size would otherwise scale the page's root font, and the
+            // TV layout is sized in rem, so the whole interface grows on top of the
+            // app's own interface-size setting: 130% there and a 1.3 system font makes
+            // 169%, past anything the layout was built for. The in-app setting is the
+            // one size control, as it is in a browser.
+            textZoom = 100
             userAgentString += UA_APP_TOKEN
         }
 
@@ -272,11 +365,17 @@ class MainActivity : Activity() {
             return true
         }
 
-        // Every URL, including the Firebase auth redirects, stays in this WebView.
+        // The main frame stays on the app's own site. Anywhere else would still have
+        // the host bridge attached, and a television has no browser to hand a link to,
+        // so an off-site navigation is simply dropped. Frames are left alone.
         override fun shouldOverrideUrlLoading(
             view: WebView,
             request: WebResourceRequest,
-        ): Boolean = false
+        ): Boolean {
+            if (!request.isForMainFrame) return false
+            val url = request.url
+            return !(url.scheme == "https" && url.host == HOME_HOST)
+        }
     }
 
     /**
@@ -284,6 +383,15 @@ class MainActivity : Activity() {
      * the WebView's box.
      */
     private inner class FullscreenVideoChromeClient : WebChromeClient() {
+
+        /** Transparent, so a `<video>` with no `poster` shows the black under it until
+         *  its first frame. Returning null here makes the WebView draw its own default:
+         *  a grey panel with a large play glyph, which a browser never shows. */
+        private val blankPoster: Bitmap by lazy {
+            Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
+        }
+
+        override fun getDefaultVideoPoster(): Bitmap = blankPoster
 
         override fun onShowCustomView(view: View, callback: CustomViewCallback) {
             if (customView != null) {
