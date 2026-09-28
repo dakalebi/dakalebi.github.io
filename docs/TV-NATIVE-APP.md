@@ -69,7 +69,7 @@ evidence.
 | G4 | Chromium delivers held D-pad repeats with `repeat: false`, so the player could not tell a hold from taps | Fixed: the first press stays native; repeats are pressed with `repeat: true`, only while the page has focus |
 | G5 | Home during playback | **Not a bug.** The WebView pauses media on `onPause`. Dropped |
 | G6 | WebView-only visuals | Grey default poster: fixed (`getDefaultVideoPoster()` returns a transparent bitmap). System font scale enlarging the rem layout: fixed (`textZoom = 100`). Default focus highlight: **not visible**, dropped |
-| G7 | Hardening | Main frame limited to `https://` on the app's host. No backup and no device-to-device transfer, because the WebView storage holds the Firebase refresh token: `allowBackup="false"`, plus `dataExtractionRules` that exclude every domain, since on Android 12+ an app targeting 31+ is transferred whatever `allowBackup` says (found in review), and a matching `fullBackupContent` for 8 to 11. Remote debugging needed no code: the WebView exposes its DevTools socket by itself in the debuggable builds (debug, preview), as seen on the emulator |
+| G7 | Hardening | Main frame limited to `https://` on the app's host. No backup and no device-to-device transfer, because the WebView storage holds the Firebase refresh token: `allowBackup="false"`, plus `dataExtractionRules` that exclude every domain, since on Android 12+ an app targeting 31+ is transferred whatever `allowBackup` says (found in review), and a matching `fullBackupContent` for 8 to 11. The `AndroidTvHost` bridge is injected into every frame, cross-origin ones included, so `exit()` is honoured only while a Back press is being delivered to the page, which is the only time the page calls it (found in review). Remote debugging needed no code: the WebView exposes its DevTools socket by itself in the debuggable builds (debug, preview), as seen on the emulator |
 
 Also done: the `HOME_URL` comment now says Pages sends `Cache-Control: max-age=600`, so a
 deploy can take up to 10 minutes to reach the app.
@@ -135,6 +135,7 @@ to the production site.
 | T13 | Idle on browse | Screen timeout recorded for D3 | Not measured. The screensaver started as soon as the app closed, which fits keep-screen-on holding it off while open |
 | — | Navigation allowlist | Off-site and `http:` blocked | Pass: both stay on the page; same-host `https` loads |
 | — | Preview build | Beside the real app, on `/preview/tv/` | Pass: loads, bridge and UA token present, Back exits |
+| — | `AndroidTvHost.exit()` called outside a Back press, directly and from a timer | Ignored | Pass: the app stays open. Back at the top of sign-in and of browse still exits |
 | — | Device-to-device transfer (`LocalTransport` with `is_device_transfer=true`: back up, `pm clear`, restore) | Nothing leaves the device | Pass. Before the fix, 4.4 MB went out and all 46 files came back, IndexedDB included. After it, every domain is excluded, the backup is 0 bytes and nothing comes back |
 
 Also checked: an offline launch within 10 minutes of the last one shows the cached page

@@ -52,7 +52,8 @@ import android.window.OnBackInvokedDispatcher
  *  - **Back.** `KEYCODE_BACK` never reaches a WebView's JavaScript, so the shell
  *    presses `GoBack` in the page ([pressKey]). The page owns every level of Back,
  *    including leaving a text field; the shell only closes the app when the page asks
- *    it to, through [AndroidTvHost.exit], or when there is no page to ask.
+ *    it to while handling that press, through [AndroidTvHost.exit], or when there is
+ *    no page to ask.
  *  - **Media keys.** Also invisible to the page, so each is pressed as the `Media*`
  *    key the web key map already understands, held keys included.
  *  - **Held D-pad keys.** Chromium delivers the repeats, but with `repeat` false, and
@@ -104,6 +105,14 @@ class MainActivity : Activity() {
     /** True while the main frame is showing a failed load. Gates the network-return
      *  auto-reload so a flapping connection never reloads a good page. */
     private var hasMainFrameError = false
+
+    /** Back presses sent to the page ([handleBack]) whose script has not finished yet.
+     *  [AndroidTvHost.exit] is honoured only while this is above zero: the bridge is
+     *  injected into every frame, cross-origin ones included, and the page only asks to
+     *  exit from inside its handling of such a press. Written on the UI thread, read on
+     *  the JavaBridge thread. */
+    @Volatile
+    private var backPressesInFlight = 0
 
     // Fullscreen HTML5 <video> hosting.
     private var customView: View? = null
@@ -225,7 +234,12 @@ class MainActivity : Activity() {
             finish()
             return
         }
-        pressKey(BACK_KEY) { delivered -> if (!delivered) finish() }
+        // The page's exit call runs inside this script, so it lands before the result.
+        backPressesInFlight++
+        pressKey(BACK_KEY) { delivered ->
+            backPressesInFlight--
+            if (!delivered) finish()
+        }
     }
 
     /**
@@ -271,10 +285,12 @@ class MainActivity : Activity() {
     }
 
     /** The page → shell channel. The web input layer calls this when Back reaches the
-     *  top of its ladder, wired through `TvInput.onExitRequested`. */
+     *  top of its ladder, wired through `TvInput.onExitRequested`. Any frame can call
+     *  it, so a call outside a Back press is ignored ([backPressesInFlight]). */
     private inner class AndroidTvHost {
         @JavascriptInterface
         fun exit() {
+            if (backPressesInFlight <= 0) return
             // Called on a JS binder thread; the Activity must be touched on the UI one.
             runOnUiThread { finish() }
         }
