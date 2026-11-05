@@ -2,6 +2,7 @@ package ge.dakalebi.data.firebase
 
 import ge.dakalebi.core.Log
 import ge.dakalebi.domain.Clock
+import ge.dakalebi.domain.model.Setting
 import ge.dakalebi.domain.model.SettingsLoad
 import ge.dakalebi.domain.model.UserSettings
 import ge.dakalebi.domain.repository.SettingsRepository
@@ -32,9 +33,9 @@ class FirestoreSettingsRepository(private val clock: Clock) : SettingsRepository
         val payload = jsObject()
         // Only what was actually set. Writing a null would clear a field the
         // caller has no opinion about — the language picker knows nothing
-        // about autoplay, and two devices must not undo each other.
-        settings.language?.let { payload.language = it }
-        settings.autoplayNext?.let { payload.autoplayNext = it }
+        // about autoplay, and two devices must not undo each other. Every
+        // setting's value is a JS primitive already, and the rules check types.
+        for (setting in settings.present) payload[setting.key] = settings.valueOf(setting)
         payload.updatedAtMillis = clock.nowMillis()
         return runCatching {
             // merge: this document will gain fields later, and a settings write
@@ -62,12 +63,14 @@ class FirestoreSettingsRepository(private val clock: Clock) : SettingsRepository
 
     private fun read(snapshot: DocumentSnapshot): UserSettings {
         val data = snapshot.data()
-        return UserSettings(
-            language = dynString(data.language),
-            // Absent must stay absent: `dynBool` would turn "never set" into
-            // an explicit false and switch autoplay off on a fresh account.
-            autoplayNext = dynBoolOrNull(data.autoplayNext),
-        )
+        return Setting.all.fold(UserSettings()) { values, setting ->
+            when (setting) {
+                // Absent must stay absent: `dynBool` would turn "never set" into
+                // an explicit false and switch autoplay off on a fresh account.
+                is Setting.Flag -> dynBoolOrNull(data[setting.key])?.let { values.with(setting, it) }
+                is Setting.Text -> dynString(data[setting.key])?.let { values.with(setting, it) }
+            } ?: values
+        }
     }
 
     private companion object {

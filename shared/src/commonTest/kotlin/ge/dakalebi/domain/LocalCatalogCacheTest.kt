@@ -8,28 +8,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/** In-memory storage, optionally one that refuses, which real devices do. */
-private class FakeKeyValueStore(
-    private val readsFail: Boolean = false,
-    private val writesFail: Boolean = false,
-) : KeyValueStore {
-    val entries = mutableMapOf<String, String>()
-
-    override fun get(key: String): String? {
-        if (readsFail) throw IllegalStateException("storage blocked")
-        return entries[key]
-    }
-
-    override fun set(key: String, value: String) {
-        if (writesFail) throw IllegalStateException("quota exceeded")
-        entries[key] = value
-    }
-
-    override fun remove(key: String) {
-        entries.remove(key)
-    }
-}
-
 /**
  * The cache is what stands between a page load and 932 Firestore reads, and the
  * stamp comparison is the whole of its correctness. These cover that rule and the

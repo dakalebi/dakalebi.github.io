@@ -87,6 +87,11 @@ Paths below are in `:shared` unless they say root.
 - **A new thing to store** → a method on an interface in
   `domain/repository/Repositories.kt`, an implementation in root `data/`, and one
   line in root `di/AppGraph.kt`.
+- **A new setting** → one line in the `Setting` registry in
+  `domain/model/UserSettings.kt`, which makes it sync across devices with no other
+  code, plus its key and type in the `users/{uid}` allowlist in
+  `firebase/firestore.rules` (publish the rules first). Only a preference that
+  describes a screen rather than a person goes on `PreferencesRepository` instead.
 - **A new rule about existing data** → a use case in `domain/usecase/`, with a
   test. This is the case worth being strict about: rules that live in a
   repository or a composable can only be checked by running the app.
@@ -193,8 +198,8 @@ element is outside the composition. `ui/tv/TvScale.kt` writes `--tv-scale` onto
 `document.documentElement` and the browser relays every length that hangs off it,
 which is cheap enough to apply on each press while the viewer is choosing.
 
-It is the one preference that is deliberately **not** account-synced. Language and
-autoplay describe a person and should follow them to every device; a comfortable
+It is deliberately **not** account-synced. Language, autoplay, System player and
+preferred quality follow the account to every device; a comfortable
 size describes a screen, so syncing it would make choosing on the phone wrong on the
 television. Hence `PreferencesRepository`, not `SettingsStore`. `--safe-x` and
 `--safe-y` are excluded from the multiplier: overscan is a property of the panel.

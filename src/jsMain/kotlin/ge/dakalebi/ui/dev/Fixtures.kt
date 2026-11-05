@@ -1,12 +1,15 @@
 package ge.dakalebi.ui.dev
 
+import ge.dakalebi.data.local.BrowserKeyValueStore
 import ge.dakalebi.data.local.BrowserPreferencesRepository
+import ge.dakalebi.data.local.LocalSettingsCache
 import ge.dakalebi.di.AppGraph
 import ge.dakalebi.domain.model.Account
 import ge.dakalebi.domain.model.Catalog
 import ge.dakalebi.domain.model.CatalogMeta
 import ge.dakalebi.domain.model.Episode
 import ge.dakalebi.domain.model.RefreshResult
+import ge.dakalebi.domain.model.Setting
 import ge.dakalebi.domain.model.SettingsLoad
 import ge.dakalebi.domain.model.UserSettings
 import ge.dakalebi.domain.model.WatchProgress
@@ -49,10 +52,12 @@ internal fun fixtureGraph(): AppGraph {
         // first paint and can be driven like every other screen.
         accountRepository = FixtureAccountRepository(startSignedOut = fixtureSignedOut()),
         adminRepository = FixtureAdminRepository,
-        // The real one: per-device preferences are `localStorage`, which the
-        // fixture has as much right to as the app does, and it makes the
-        // autoplay switch behave like the real thing across a reload.
+        // The real ones: per-device preferences and the device's copy of the
+        // account settings are `localStorage`, which the fixture has as much
+        // right to as the app does, and it makes every switch behave like the
+        // real thing across a reload.
         preferencesRepository = BrowserPreferencesRepository(),
+        settingsCache = LocalSettingsCache(BrowserKeyValueStore()),
     )
 }
 
@@ -185,17 +190,20 @@ private class FixtureProgressRepository(initial: Map<String, WatchProgress>) : P
     override suspend fun deleteAll(uid: String) = stored.clear()
 }
 
-/** In memory, so flipping a switch sticks for the session and syncs nowhere. */
+/**
+ * In memory, so flipping a switch sticks for the session and syncs nowhere.
+ *
+ * Merges a write over what is stored, exactly as the Firestore document does, so
+ * every [Setting] behaves here with no change to this class. Autoplay starts on so
+ * the account visibly wins over a fresh device on the first paint.
+ */
 private class FixtureSettingsRepository : SettingsRepository {
-    private var stored = UserSettings(language = null, autoplayNext = true)
+    private var stored = UserSettings().with(Setting.AutoplayNext, true)
 
     override suspend fun load(uid: String): SettingsLoad = SettingsLoad.Found(stored)
 
     override suspend fun save(uid: String, settings: UserSettings): Boolean {
-        stored = UserSettings(
-            language = settings.language ?: stored.language,
-            autoplayNext = settings.autoplayNext ?: stored.autoplayNext,
-        )
+        stored += settings
         return true
     }
 

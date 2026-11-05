@@ -13,12 +13,12 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import ge.dakalebi.core.Log
 import ge.dakalebi.di.LocalResolveEpisodeVideo
 import ge.dakalebi.di.catalog
-import ge.dakalebi.di.preferences
 import ge.dakalebi.di.router
 import ge.dakalebi.di.session
 import ge.dakalebi.di.settings
 import ge.dakalebi.di.toasts
 import ge.dakalebi.domain.model.Episode
+import ge.dakalebi.domain.model.Setting
 import ge.dakalebi.domain.service.orderedQualityLabels
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
@@ -75,7 +75,6 @@ fun TvWatchScreen(episodeId: String) {
     val session = session()
     val router = router()
     val settings = settings()
-    val prefs = preferences()
     val toasts = toasts()
     val input = LocalTvInput.current
     val resolveVideo = LocalResolveEpisodeVideo.current
@@ -95,6 +94,9 @@ fun TvWatchScreen(episodeId: String) {
     var resolvedUrl by remember(episodeId) { mutableStateOf<String?>(null) }
     var resolvedSources by remember(episodeId) { mutableStateOf<Map<String, String>>(emptyMap()) }
     var pickedQuality by remember(episodeId) { mutableStateOf<String?>(null) }
+    // Read once per episode. The preference syncs, and a pick made on another device
+    // must not relabel, or restart, the stream already playing here.
+    val preferredQuality = remember(episodeId) { settings[Setting.PreferredQuality] }
 
     val uid = session.uid
     val episode = catalog.byId(episodeId)
@@ -112,7 +114,7 @@ fun TvWatchScreen(episodeId: String) {
     // about which rendition is best — the defect that shipped on the web once.
     val sources = resolvedSources.ifEmpty { episode?.sources ?: emptyMap() }
     val quality = pickedQuality
-        ?: prefs.preferredQuality?.takeIf { sources.containsKey(it) }
+        ?: preferredQuality.takeIf { sources.containsKey(it) }
         ?: orderedQualityLabels(sources).firstOrNull()
     val videoUrl = resolvedUrl ?: quality?.let { sources[it] } ?: episode?.videoUrl
 
@@ -122,7 +124,7 @@ fun TvWatchScreen(episodeId: String) {
         val resolved = resolveVideo(current)
         if (resolved !== current) catalog.putEpisode(resolved)
         resolvedSources = resolved.sources.ifEmpty { current.sources }
-        val preferred = prefs.preferredQuality?.takeIf { resolvedSources.containsKey(it) }
+        val preferred = preferredQuality.takeIf { resolvedSources.containsKey(it) }
         resolvedUrl = preferred?.let { resolvedSources[it] }
             ?: resolved.videoUrl
             ?: orderedQualityLabels(resolvedSources).firstOrNull()?.let { resolvedSources[it] }
@@ -198,7 +200,7 @@ fun TvWatchScreen(episodeId: String) {
         onPause = { persist() },
         onEnded = {
             persist(isWatched = true)
-            if (settings.autoplayNext && nextEpisode != null) goToNext()
+            if (settings[Setting.AutoplayNext] && nextEpisode != null) goToNext()
         },
         onError = {
             Log.e("player", "media error for ${episode.id} (src=$videoUrl)")
@@ -228,7 +230,7 @@ fun TvWatchScreen(episodeId: String) {
                 quality = quality,
                 onQualitySelected = { label ->
                     pickedQuality = label
-                    prefs.setPreferredQuality(label)
+                    settings.set(scope, Setting.PreferredQuality, label) { toasts.error(S.settingNotSynced) }
                     sources[label]?.let { resolvedUrl = it }
                 },
                 input = input,
@@ -237,11 +239,9 @@ fun TvWatchScreen(episodeId: String) {
                 subtitle = S.seriesTitle,
                 // The same account-synced setting the drawer shows, flipped from the
                 // control row so it is reachable mid-episode.
-                autoplayNext = settings.autoplayNext,
+                autoplayNext = settings[Setting.AutoplayNext],
                 onToggleAutoplay = {
-                    settings.setAutoplayNext(scope, !settings.autoplayNext) {
-                        toasts.error(S.settingNotSynced)
-                    }
+                    settings.toggle(scope, Setting.AutoplayNext) { toasts.error(S.settingNotSynced) }
                 },
                 chromeExtra = {
                     if (upcoming.isNotEmpty() || earlier.isNotEmpty()) {
