@@ -5,7 +5,7 @@ import kotlinx.browser.window
 import org.w3c.dom.url.URLSearchParams
 
 /** Which front end this page is. */
-enum class Shell { Web, Tv }
+enum class Shell { Web, Tv, Drive }
 
 /**
  * Read from the document, not sniffed from the user agent.
@@ -22,10 +22,18 @@ enum class Shell { Web, Tv }
  * *not* start with `tv`, so `/?ui=demo` is the web UI on fixtures. Note that `/?ui=tv` draws
  * the TV UI against `web.css`, because the stylesheet is chosen by the document —
  * useful for driving focus, not for judging the design.
+ *
+ * `drive/index.html` declares `drive` the same way, and `?ui=drive-demo` is its fixture
+ * spelling, following the same prefix rule.
  */
 val shell: Shell by lazy {
     val requested = runCatching { URLSearchParams(window.location.search).get("ui") }.getOrNull()
-    if ((requested ?: declaredShell)?.startsWith("tv") == true) Shell.Tv else Shell.Web
+    val name = requested ?: declaredShell
+    when {
+        name?.startsWith("tv") == true -> Shell.Tv
+        name?.startsWith("drive") == true -> Shell.Drive
+        else -> Shell.Web
+    }
 }
 
 /** What the document itself says it is, ignoring any `?ui=` override. */
@@ -50,7 +58,7 @@ val useFixtures: Boolean by lazy {
     runCatching { URLSearchParams(window.location.search).get("ui") }.getOrNull() in FIXTURE_UI
 }
 
-private val FIXTURE_UI = setOf("demo", "tv-demo")
+private val FIXTURE_UI = setOf("demo", "tv-demo", "drive-demo")
 
 /**
  * Prefix for the images that sit at the site root.
@@ -63,4 +71,7 @@ private val FIXTURE_UI = setOf("demo", "tv-demo")
  * root path, where a `../` would point outside the site — so the override must
  * change which UI draws without changing where the images are.
  */
-val assetBase: String get() = if (declaredShell?.startsWith("tv") == true) "../" else ""
+val assetBase: String get() = if (declaredShell in SUBFOLDER_SHELLS) "../" else ""
+
+/** The shells whose page lives one folder below the site root: `/tv/` and `/drive/`. */
+private val SUBFOLDER_SHELLS = setOf("tv", "drive")

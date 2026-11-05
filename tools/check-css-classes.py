@@ -19,8 +19,10 @@ Two checks:
   1. Every class emitted anywhere is defined in at least one stylesheet. Catches a
      typo, and catches deleting a rule while the markup still asks for it.
 
-  2. Every class emitted by a composable that *both* shells render is defined in both
-     shells' linked stylesheets. This is the one above.
+  2. Every class emitted by a composable that two or more shells render is defined in
+     the linked stylesheets of each shell that renders it. This is the one above.
+     There are three shells now: web at `/`, TV at `/tv/` and driving mode at
+     `/drive/`, all on the same bundle.
 
 The unit here is the top-level declaration, not the file, and that distinction is
 load-bearing. `Components.kt` holds nine composables; TV renders exactly one of them
@@ -57,10 +59,14 @@ KOTLIN = ROOT / "src/jsMain/kotlin"
 DIST = ROOT / "build/dist/js/productionExecutable"
 
 # Each shell is its own page with its own stylesheet set, which is the whole point.
-SHELL_PAGES = {"/": DIST / "index.html", "/tv/": DIST / "tv/index.html"}
+SHELL_PAGES = {
+    "/": DIST / "index.html",
+    "/tv/": DIST / "tv/index.html",
+    "/drive/": DIST / "drive/index.html",
+}
 
 # Where each page starts drawing.
-SHELL_ROOTS = {"/": "App", "/tv/": "TvApp"}
+SHELL_ROOTS = {"/": "App", "/tv/": "TvApp", "/drive/": "DriveApp"}
 
 DECLARATION = re.compile(
     r"^(?:public |internal |private )*"
@@ -252,8 +258,11 @@ def main() -> int:
         print(f"\n{len(failures)} problem(s). Why this check exists: see the top of {Path(__file__).name}.")
         return 1
 
-    shared = len(reach["/"] & reach["/tv/"])
-    print(f"OK: {len(decls)} declarations in {len(files)} files, {shared} on both shells, every class accounted for.")
+    shared = sum(1 for decl in decls if sum(decl in seen for seen in reach.values()) >= 2)
+    print(
+        f"OK: {len(decls)} declarations in {len(files)} files, {shared} on two or more of "
+        f"{len(reach)} shells, every class accounted for."
+    )
     return 0
 
 

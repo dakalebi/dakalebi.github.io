@@ -203,6 +203,8 @@ class CatalogStore(
 
     val continueWatching: Episode? get() = CatalogQueries.continueWatching(episodes, progress)
 
+    val nextToPlay: Episode? get() = CatalogQueries.nextToPlay(episodes, progress)
+
     val defaultSeason: Int? get() = CatalogQueries.defaultSeason(episodes, progress)
 
     fun season(number: Int): List<Episode> = CatalogQueries.season(episodes, number)

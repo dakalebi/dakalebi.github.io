@@ -197,4 +197,12 @@ object Ka : Strings {
     override fun volumeFeedback(percent: Int) = "ხმა: $percent%"
     override fun seekForward(seconds: Int) = "$seconds წმ ▸"
     override fun seekBackward(seconds: Int) = "◂ $seconds წმ"
+
+    // ------------------------------------------------------- driving mode
+    override val driveMode = "მანქანის რეჟიმი"
+    override val driveExit = "მანქანის რეჟიმიდან გასვლა"
+
+    override fun minutesRemaining(minutes: Int) = "დარჩა $minutes წუთი"
+    override fun skipBack(seconds: Int) = "$seconds წამით უკან"
+    override fun skipForward(seconds: Int) = "$seconds წამით წინ"
 }

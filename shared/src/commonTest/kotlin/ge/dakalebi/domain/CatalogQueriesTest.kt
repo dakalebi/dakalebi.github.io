@@ -80,6 +80,36 @@ class CatalogQueriesTest {
         assertEquals("s1e2", CatalogQueries.continueWatching(catalog, progress)?.id)
     }
 
+    // ------------------------------------------------------------ next to play
+
+    @Test
+    fun next_to_play_resumes_an_unfinished_episode() {
+        val progress = mapOf("s2e1" to progress("s2e1", seconds = 400, at = 200.0))
+        assertEquals("s2e1", CatalogQueries.nextToPlay(catalog, progress)?.id)
+    }
+
+    @Test
+    fun next_to_play_moves_past_a_finished_episode_across_a_season() {
+        val progress = mapOf("s1e3" to progress("s1e3", seconds = 1_500, watched = true, at = 100.0))
+        assertEquals("s2e1", CatalogQueries.nextToPlay(catalog, progress)?.id)
+    }
+
+    @Test
+    fun next_to_play_stays_on_the_last_episode_when_it_is_finished() {
+        val progress = mapOf("s3e1" to progress("s3e1", seconds = 1_500, watched = true, at = 100.0))
+        assertEquals("s3e1", CatalogQueries.nextToPlay(catalog, progress)?.id)
+    }
+
+    @Test
+    fun next_to_play_starts_a_new_account_at_the_first_episode() {
+        assertEquals("s1e1", CatalogQueries.nextToPlay(catalog, emptyMap())?.id)
+    }
+
+    @Test
+    fun next_to_play_is_null_for_an_empty_catalog() {
+        assertNull(CatalogQueries.nextToPlay(emptyList(), emptyMap()))
+    }
+
     @Test
     fun continue_watching_falls_back_to_the_latest_activity_when_all_are_finished() {
         val progress = mapOf(

@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 # Two kinds of publisher, one site:
 #
-#   main          https://dakalebi.github.io/              and /tv/
+#   main          https://dakalebi.github.io/              /tv/  /drive/
 #   pull request  https://dakalebi.github.io/pr/<number>/  (checks.yml)
 #
 # Each one builds only itself and owns one folder of the site; publish.yml holds
@@ -10,6 +10,9 @@ name: Deploy to GitHub Pages
 # every deploy was tried before and retired in f6eb023: a branch that failed to
 # build blocked production too. To try something on the real site before it
 # reaches main, open a pull request (a draft is fine).
+#
+# Each shell (/tv/, /drive/) is a folder inside the one distribution, so a new
+# shell is published with its folder and needs no step of its own.
 #
 # ------------------------------------------------- what makes the folders work at all --
 #

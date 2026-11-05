@@ -256,6 +256,18 @@ interface Strings {
     fun volumeFeedback(percent: Int): String
     fun seekForward(seconds: Int): String
     fun seekBackward(seconds: Int): String
+
+    // ------------------------------------------------------- driving mode
+
+    /** The name of the `/drive/` page, and the menu entry that opens it. */
+    val driveMode: String
+    val driveExit: String
+
+    fun minutesRemaining(minutes: Int): String
+
+    /** Spoken labels for the skip buttons, whose visible text is only the arrow and number. */
+    fun skipBack(seconds: Int): String
+    fun skipForward(seconds: Int): String
 }
 
 /**
