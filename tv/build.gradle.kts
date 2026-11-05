@@ -18,6 +18,12 @@ plugins {
     id("com.android.application")
 }
 
+// The pull request the `preview` build opens: `-PpreviewPr=42` points it at
+// `https://dakalebi.github.io/pr/42/tv/`. Read at configuration, but required only
+// when a preview build actually runs (see the end of this file), so debug, release
+// and an IDE sync never need it.
+val previewPr: Provider<String> = providers.gradleProperty("previewPr")
+
 android {
     namespace = "ge.dakalebi.tv"
     compileSdk = 36
@@ -33,8 +39,8 @@ android {
         versionCode = 1
         versionName = "1.0"
 
-        // What the WebView opens. The `preview` build type below points it at the
-        // preview deploy instead.
+        // What the WebView opens. The `preview` build type below points it at one
+        // pull request's preview instead.
         buildConfigField("String", "HOME_URL", "\"https://dakalebi.github.io/tv/\"")
     }
 
@@ -65,22 +71,43 @@ android {
                 "proguard-rules.pro",
             )
         }
-        // The same shell on `https://dakalebi.github.io/preview/tv/`, so a preview
-        // deploy can be tried on the television before it reaches `main` - the app has
-        // no copy of the site, so a broken production deploy is a broken TV app. A
-        // separate application id, so it installs beside the real one, and a debug
-        // build underneath, so it signs with the debug key and can be inspected from
-        // chrome://inspect. `src/preview/res` gives it its own name, banner and icon.
+        // The same shell on a pull request's `https://dakalebi.github.io/pr/<n>/tv/`,
+        // so a change can be tried on the television before it reaches `main` - the
+        // app has no copy of the site, so a broken production deploy is a broken TV
+        // app. A separate application id, so it installs beside the real one, and a
+        // debug build underneath, so it signs with the debug key and can be inspected
+        // from chrome://inspect. `src/preview/res` gives it its own name, banner and
+        // icon.
         create("preview") {
             initWith(getByName("debug"))
             applicationIdSuffix = ".preview"
             versionNameSuffix = "-preview"
-            buildConfigField("String", "HOME_URL", "\"https://dakalebi.github.io/preview/tv/\"")
+            buildConfigField(
+                "String",
+                "HOME_URL",
+                "\"https://dakalebi.github.io/pr/${previewPr.getOrElse("unset")}/tv/\"",
+            )
         }
     }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+    }
+}
+
+// A preview build without a pull request would install an app that opens a 404, so
+// it stops before writing BuildConfig. Captures only the provider, which keeps the
+// configuration cache usable.
+tasks.matching { it.name == "generatePreviewBuildConfig" }.configureEach {
+    val pr = previewPr
+    doFirst {
+        val number = pr.orNull
+        if (number == null || !number.matches(Regex("[1-9][0-9]*"))) {
+            throw GradleException(
+                "The preview build opens one pull request's preview. Say which: " +
+                    "./gradlew :tv:assemblePreview -PpreviewPr=<number>",
+            )
+        }
     }
 }

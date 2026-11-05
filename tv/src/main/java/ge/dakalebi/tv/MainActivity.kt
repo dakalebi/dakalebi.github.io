@@ -71,9 +71,9 @@ class MainActivity : Activity() {
 
     private companion object {
         /** The deployed TV UI, set per build type in `build.gradle.kts`: `/tv/` for
-         *  the real app, `/preview/tv/` for the preview one. Either path serves the
-         *  ten-foot shell by itself (see the web app's shell selection), so no query
-         *  parameter is needed. */
+         *  the real app, a pull request's `/pr/<n>/tv/` for the preview one. Either
+         *  path serves the ten-foot shell by itself (see the web app's shell
+         *  selection), so no query parameter is needed. */
         const val HOME_URL = BuildConfig.HOME_URL
 
         /** The one site the main frame may show. Everything the app navigates to is a

@@ -5,6 +5,7 @@ import ge.dakalebi.domain.model.Catalog
 import ge.dakalebi.domain.model.CatalogMeta
 import ge.dakalebi.domain.model.Episode
 import ge.dakalebi.domain.model.RefreshResult
+import ge.dakalebi.domain.model.Setting
 import ge.dakalebi.domain.model.SettingsLoad
 import ge.dakalebi.domain.model.UserSettings
 import ge.dakalebi.domain.model.WatchProgress
@@ -77,12 +78,12 @@ interface SettingsRepository {
     suspend fun load(uid: String): SettingsLoad
 
     /**
-     * Writes the fields that are set and leaves the rest alone.
+     * Writes the settings [settings] holds and leaves the rest alone.
      *
-     * A null field means "no opinion", not "clear it" — two devices changing
-     * two different settings must not overwrite each other, and the language
-     * picker knows nothing about autoplay. Returns false when the write was
-     * rejected: offline, or the rules said no.
+     * A setting with no value means "no opinion", not "clear it" — two devices
+     * changing two different settings must not overwrite each other, and the
+     * language picker knows nothing about autoplay. Returns false when the write
+     * was rejected: the rules said no, or the network failed it.
      */
     suspend fun save(uid: String, settings: UserSettings): Boolean
 
@@ -143,22 +144,41 @@ interface CatalogCache {
 }
 
 /**
- * Per-device preferences. Synchronous by design — these are read during
- * composition and a suspending call would make every screen wait on storage.
+ * This device's copy of the account settings.
+ *
+ * It renders the first frame with the right values instead of flashing defaults
+ * while the network answers, and it is the only copy that works offline. It also
+ * remembers which of this device's changes the account has not confirmed yet,
+ * per account, so a change made offline survives a reload and is uploaded on
+ * the next sync instead of being overwritten. See
+ * [ge.dakalebi.domain.service.SettingsSync].
+ *
+ * Synchronous for the same reason as [PreferencesRepository]: the first frame
+ * reads it.
+ */
+interface SettingsCache {
+    /** What this device last knew, holding only settings that were actually set. */
+    fun read(): UserSettings
+
+    /** Stores the settings [settings] holds and leaves the rest alone. */
+    fun write(settings: UserSettings)
+
+    /** This device's changes for [uid] that the account has not confirmed. */
+    fun unsynced(uid: String): Set<Setting<*>>
+
+    fun markUnsynced(uid: String, setting: Setting<*>)
+
+    fun markSynced(uid: String, settings: Set<Setting<*>>)
+}
+
+/**
+ * Per-device preferences: what describes this screen rather than the person
+ * watching it. Anything that describes the person is a [Setting] and syncs.
+ *
+ * Synchronous by design — these are read during composition and a suspending
+ * call would make every screen wait on storage.
  */
 interface PreferencesRepository {
-    fun autoplayNext(): Boolean
-    fun setAutoplayNext(value: Boolean)
-
-    fun useNativePlayer(): Boolean
-    fun setUseNativePlayer(value: Boolean)
-
-    fun preferredQuality(): String?
-    fun setPreferredQuality(label: String?)
-
-    fun language(): String?
-    fun setLanguage(tag: String)
-
     /**
      * How large the television interface is drawn, as a percentage.
      *

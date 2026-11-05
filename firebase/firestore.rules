@@ -65,14 +65,23 @@ service cloud.firestore {
     // why admin rights live in their own write-denied collection above.
     //
     // hasOnly permits a subset, so a write that touches only one setting passes
-    // and leaves the other alone.
+    // and leaves the others alone.
+    //
+    // One entry per `Setting` in shared/.../domain/model/UserSettings.kt, by key
+    // and by type. A new setting is added there and here in the same change, and
+    // these rules are published BEFORE the bundle that writes it ships: until
+    // then the app's writes of that key are rejected and it says "not synced".
     match /users/{userId} {
       allow read: if isSignedIn() && request.auth.uid == userId;
       allow write: if isSignedIn() && request.auth.uid == userId
         && request.resource.data.keys()
-          .hasOnly(['language', 'autoplayNext', 'updatedAtMillis'])
+          .hasOnly(['language', 'autoplayNext', 'useNativePlayer', 'preferredQuality', 'updatedAtMillis'])
         && (!('autoplayNext' in request.resource.data)
           || request.resource.data.autoplayNext is bool)
+        && (!('useNativePlayer' in request.resource.data)
+          || request.resource.data.useNativePlayer is bool)
+        && (!('preferredQuality' in request.resource.data)
+          || request.resource.data.preferredQuality is string)
         && (!('language' in request.resource.data)
           || request.resource.data.language is string);
     }

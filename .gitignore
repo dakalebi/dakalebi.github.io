@@ -11,6 +11,9 @@ node_modules/
 kotlin-js-store/*
 !kotlin-js-store/yarn.lock
 
+# Wrangler's local state for the Cloudflare worker in workers/.
+.wrangler/
+
 # Claude Code — launch.json is shared, local permissions are not.
 .claude/settings.local.json
 

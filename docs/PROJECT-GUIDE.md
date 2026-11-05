@@ -69,7 +69,13 @@ Explicit instructions, not inferences. Do not quietly revisit these.
   `localStorage`.
 - **Language must be switchable and must sync between devices.**
 - **On Apple devices only**, a switch between the native player and the web
-  player. Stored per-device in `localStorage`, **default on**.
+  player, **default on**. Originally per device in `localStorage`; it now
+  follows the account like language and autoplay, so an iPhone and an iPad
+  agree. No other device offers or reads it.
+- **Every setting syncs between devices by default**, including ones added
+  later. Preferred quality syncs too, by the owner's choice. Only what
+  describes a screen rather than a person (TV interface size) stays on the
+  device.
 - **Every user-facing string extracted** into something like Android's
   `strings.xml`, so other languages can be added.
 - **Georgian set in Mtavruli** (uppercase Georgian: `ქართული` → `ᲥᲐᲠᲗᲣᲚᲘ`) for
@@ -128,6 +134,13 @@ fetch — happens in the browser. Consequences that reach everywhere:
   `EPISODE_TIMEOUT_MILLIS`, so an API outage costs a few seconds rather than a
   player that never appears. The abort goes through an `AbortSignal`, which
   adds no header.
+- **One exception: the VLC playlist.** On iPhone and iPad, "Open in VLC" can
+  queue the rest of the season with titles and a start time, but only through an M3U
+  served over https: VLC 3 reads no `data:` URL. `workers/vlc-playlist` is a
+  stateless Cloudflare Worker that echoes the site's list back as M3U, for
+  `cdn.formula.ge` links only. It stores nothing and never carries video. With
+  `VLC_PLAYLIST_ENDPOINT` unset, the button falls back to the single file, so the
+  site still works without the worker.
 
 ### Hash routing
 
@@ -295,7 +308,7 @@ unmount.
 ### Choosing a player
 
 ```
-nativePlayer = isAppleMobile && preferences.useNativePlayer
+nativePlayer = isAppleMobile && settings[Setting.UseNativePlayer]
 ```
 
 `isAppleMobile` must check touch points, not just the user agent: iPadOS 13+
@@ -327,8 +340,10 @@ saved position changes with every save, and a changed `src` reloads the video.
 
 ### Which quality an episode starts in
 
-A quality the viewer picked on this device (`preferred_quality` in
-`localStorage`) wins. Otherwise a phone-sized screen (`isCompactScreen`, shorter
+A quality the viewer picked on any device of the account
+(`Setting.PreferredQuality`, synced; its device copy is `preferred_quality` in
+`localStorage`) wins. That includes a pick made on a desktop or TV: once one
+exists, a phone starts there too, not at its 720p default. Otherwise a phone-sized screen (`isCompactScreen`, shorter
 side under 600 CSS px) starts at 720p and everything else at the best rendition
 (`defaultQualityLabel`). iPads are not compact. The native iOS player has no
 quality menu, so with it on, this default is an iPhone's only way off 1080p. TV
@@ -346,23 +361,54 @@ extrapolates, falling back to the native value the moment it becomes sane again.
 
 ### Language and settings
 
-`SettingsStore` owns no language state of its own: the language *is*
-`I18n.current`. It plumbs between that, `localStorage`, and the account
-document.
+Every setting that follows the account is one line in the `Setting` registry
+(`shared/.../domain/model/UserSettings.kt`): language, autoplay, System player,
+preferred quality.
+Everything that moves settings around iterates that registry — the Firestore
+document, the device copy (`LocalSettingsCache`), `SettingsStore` and the
+fixtures — so **a new setting syncs with no other code change**. The one other
+edit is the field allowlist in `firebase/firestore.rules`, deliberately by hand:
+the rules are the security boundary. Publish them before the bundle ships, or
+writes of the new key are rejected and the app toasts "not synced".
 
-The local copy is a cache, not a duplicate source of truth. It renders the first
-frame in the right language instead of flashing Georgian while the network
-answers, and it is the only copy that works offline or signed out. The server
-wins whenever it has an opinion.
+UI reads `settings[Setting.X]` and writes `settings.set(...)` or
+`settings.toggle(...)`. The language is applied to `I18n.current` as it arrives.
 
-An account with nothing on record is **seeded from the device**, or the first
-device to sign in would keep being asked and nothing would ever reach the
-second. A *failed* read seeds nothing — that would push a possibly-stale local
-value over the account's real setting because of one network blip.
+The device copy is a cache, not a second source of truth. It renders the first
+frame with the right values instead of flashing defaults while the network
+answers, and it is the only copy that works offline. It reuses the
+`localStorage` keys the per-device preferences had, which is the whole local
+migration: nothing set before this change is lost.
 
-A rejected write changes the setting locally anyway and toasts. Losing the sync
-should not cost you the setting, but failing silently looks exactly like "my
-other phone never updates".
+When the device and the account meet (`SettingsSync`), per setting:
+
+1. **A change this device made that the account has not confirmed wins**, and
+   is uploaded. Firestore here keeps pending writes in memory only, so a change
+   made offline is otherwise lost when the page closes, and the next load would
+   hand the switch back to the server's older value. The unconfirmed marks are
+   stored per account, so one account's change never reaches the next one to
+   sign in on the device.
+2. **Otherwise the account wins** whenever it has a value.
+3. **A value the account never had is uploaded from the device.** This is how
+   System player and preferred quality, per device until now, reach the account on the first
+   sign-in after the upgrade. A device that never chose uploads nothing, so a
+   default never overwrites a choice made elsewhere.
+
+A *failed* read uploads nothing — that would push a possibly-stale local value
+over the account's real setting because of one network blip. The owed sync runs
+when the live listener next hears from the server (a TV app that starts before
+its Wi-Fi does). The listener itself only ever applies the account side of the
+rules, so a snapshot can never trigger a write that triggers a snapshot.
+
+A rejected write keeps the setting locally, stays marked as unconfirmed, and
+toasts. Losing the sync should not cost you the setting, but failing silently
+looks exactly like "my other phone never updates".
+
+Each setting is uploaded in its own write. The rules check the whole document,
+so one field they do not allow yet would refuse every setting sent with it, on
+every start. A setting's write runs in the app's scope, never a screen's:
+closing the menu before Firestore answers must not lose the answer, or the
+change stays marked unconfirmed and the device stops following the account.
 
 ### Mtavruli casing
 
@@ -413,7 +459,8 @@ meta/catalog
     lastRefreshAtMillis, seasonCount, episodeCount
 
 users/{uid}
-    language, autoplayNext, updatedAtMillis
+    language, autoplayNext, useNativePlayer, preferredQuality, updatedAtMillis
+    (one field per `Setting`; the rules allowlist each by name and type)
 
 users/{uid}/progress/{episodeId}
     progressSeconds, durationSeconds, isWatched, lastWatchedAtMillis
@@ -474,9 +521,10 @@ Local preview is a static server over the built output — see
 `.claude/launch.json`. Do **not** start dev servers from a shell.
 
 Deployment is `.github/workflows/deploy.yml`: every push to `main` builds and
-publishes to the root of the Pages site, and every push to `preview` to
-`/preview/`. Every pull request from this repository is published to
-`/pr/<number>/` by `checks.yml` and removed when it closes. Pages must be set to
+publishes to the root of the Pages site. Every pull request from this repository
+is published to `/pr/<number>/` by `checks.yml` and removed when it closes, so to
+try a branch on the real site, open a draft pull request. The old `preview`
+branch and its `/preview/` folder are retired. Pages must be set to
 **Source: GitHub Actions**; if it ever reverts to `legacy`, the workflow goes
 green while the site 404s. That has happened.
 

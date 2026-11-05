@@ -13,6 +13,7 @@ import ge.dakalebi.data.local.BrowserPreferencesRepository
 import ge.dakalebi.data.local.LocalCatalogCache
 import ge.dakalebi.data.local.LocalGuestMode
 import ge.dakalebi.data.local.LocalProgressRepository
+import ge.dakalebi.data.local.LocalSettingsCache
 import ge.dakalebi.domain.Clock
 import ge.dakalebi.domain.repository.AccountRepository
 import ge.dakalebi.domain.repository.AdminRepository
@@ -21,10 +22,9 @@ import ge.dakalebi.domain.repository.CatalogRepository
 import ge.dakalebi.domain.repository.GuestModeRepository
 import ge.dakalebi.domain.repository.PreferencesRepository
 import ge.dakalebi.domain.repository.ProgressRepository
+import ge.dakalebi.domain.repository.SettingsCache
 import ge.dakalebi.domain.repository.SettingsRepository
-import ge.dakalebi.domain.usecase.ChangeAutoplay
 import ge.dakalebi.domain.usecase.CheckAdminRights
-import ge.dakalebi.domain.usecase.ChangeLanguage
 import ge.dakalebi.domain.usecase.ClearEpisodeProgress
 import ge.dakalebi.domain.usecase.LoadCatalog
 import ge.dakalebi.domain.usecase.LoadProgress
@@ -38,7 +38,7 @@ import ge.dakalebi.domain.usecase.ResetAllProgress
 import ge.dakalebi.domain.usecase.ResetSeasonProgress
 import ge.dakalebi.domain.usecase.ResolveEpisodeVideo
 import ge.dakalebi.domain.usecase.SaveProgress
-import ge.dakalebi.domain.usecase.SeedSettings
+import ge.dakalebi.domain.usecase.SaveUserSettings
 import ge.dakalebi.domain.usecase.SendPasswordReset
 import ge.dakalebi.domain.usecase.SignInWithEmail
 import ge.dakalebi.domain.usecase.SignOut
@@ -74,6 +74,7 @@ class AppGraph(
     accountRepository: AccountRepository = FirebaseAccountRepository(),
     adminRepository: AdminRepository = FirestoreAdminRepository(),
     preferencesRepository: PreferencesRepository = BrowserPreferencesRepository(),
+    settingsCache: SettingsCache = LocalSettingsCache(BrowserKeyValueStore()),
     /** A guest's progress: on this device, never uploaded. */
     guestProgressRepository: ProgressRepository = LocalProgressRepository(BrowserKeyValueStore()),
     guestModeRepository: GuestModeRepository = LocalGuestMode(BrowserKeyValueStore()),
@@ -116,10 +117,8 @@ class AppGraph(
     val settings = SettingsStore(
         loadUserSettings = LoadUserSettings(settingsRepository),
         observeUserSettings = ObserveUserSettings(settingsRepository),
-        changeLanguage = ChangeLanguage(settingsRepository),
-        changeAutoplay = ChangeAutoplay(settingsRepository),
-        seedSettings = SeedSettings(settingsRepository),
-        prefs = preferencesRepository,
+        saveUserSettings = SaveUserSettings(settingsRepository),
+        cache = settingsCache,
     )
 
     /** Used by the watch screen, which resolves a URL without going via a store. */

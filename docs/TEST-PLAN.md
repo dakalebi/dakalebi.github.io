@@ -130,7 +130,7 @@ rather than the absence of it.
 | F21 | Move the mouse | Controls reappear |
 | F22 | Move the pointer out of the player while playing | Controls hide |
 | F23 | Fullscreen button | Enters and exits; icon swaps; layout correct |
-| F24 | Quality menu | Lists 1080p / 720p / 360p; choice written to `localStorage` |
+| F24 | Quality menu | Lists 1080p / 720p / 360p; choice written to `localStorage` (`preferred_quality`) and, signed in, to the account |
 | F25 | Switch quality mid-playback | Position and play/pause state preserved |
 | F26 | Cast button | Present in Chrome; click opens the picker |
 | F27 | Seek to an unbuffered point | Spinner while it loads |
@@ -232,9 +232,15 @@ rather than the absence of it.
 | M1 | Toggle autoplay, reload | Setting persists |
 | M2 | Pick a quality, reload | Preference persists and is applied |
 | M3 | Pause, navigate away, come back | Stays paused |
-| M4 | Change a pref in a second tab | First tab syncs via the `storage` event |
+| M4 | Change a pref in a second tab | First tab syncs via the `storage` event (TV size); account settings, quality included, arrive through the Firestore listener |
 | M5 | Set a volume, reload | Documented either way — is volume meant to persist? |
 | M6 | Hard reload | Preferences survive |
+| M7 | Two devices on one account: change language, autoplay, and (iPhone/iPad) System player on one | The other follows within seconds, without a reload. Covers the web shell and `/tv/` |
+| M7b | Two devices: pick 720p on the phone while the TV is playing | The TV's current episode keeps its stream and label; the next episode it opens starts at 720p (when offered) |
+| M8 | Upgrade: iPhone with System player switched off before this release, account never had it | After sign-in it stays off, and an iPad on the same account turns off too |
+| M9 | Offline (airplane mode): flip autoplay, close the tab, go online, reopen | The switch is still flipped and the other device receives it |
+| M10 | Rules not yet published with a new setting's key | Flipping it toasts "not synced" and keeps the local value |
+| M11 | Sign out, sign in as a different account on the same device | The second account's own settings apply; nothing from the first is uploaded over them |
 
 ---
 

@@ -18,12 +18,13 @@ import ge.dakalebi.di.router
 import ge.dakalebi.di.session
 import ge.dakalebi.di.settings
 import ge.dakalebi.di.toasts
+import ge.dakalebi.domain.model.Setting
 import ge.dakalebi.domain.service.COMPACT_SCREEN_MAX_QUALITY
 import ge.dakalebi.domain.service.PlaybackFailure
 import ge.dakalebi.domain.service.defaultQualityLabel
 import ge.dakalebi.domain.service.playbackFailure
 import ge.dakalebi.domain.service.retryUrl
-import ge.dakalebi.domain.service.vlcStreamUrl
+import ge.dakalebi.domain.service.vlcOpenUrl
 import ge.dakalebi.domain.service.withStartFragment
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
@@ -64,6 +65,7 @@ fun WatchScreen(episodeId: String) {
     val toasts = toasts()
     val router = router()
     val prefs = preferences()
+    val settings = settings()
     val resolveVideo = LocalResolveEpisodeVideo.current
 
     val scope = rememberCoroutineScope()
@@ -96,7 +98,7 @@ fun WatchScreen(episodeId: String) {
     val savedSeconds = entry?.progressSeconds ?: 0
     val progressReady = !catalog.loading
     val nextEpisode = episode?.let { catalog.next(it) }
-    val autoplay = settings().autoplayNext
+    val autoplay = settings[Setting.AutoplayNext]
 
     val shouldAutoplay = remember(episodeId) {
         prefs.playIntent(episodeId) != "paused"
@@ -117,11 +119,11 @@ fun WatchScreen(episodeId: String) {
         // two disagreed about which rendition was best.
         val sources = resolved.sources.ifEmpty { current.sources }
         available = sources
-        val preferred = prefs.preferredQuality?.takeIf { sources.containsKey(it) }
-        // A quality picked on this device wins. Otherwise a phone starts at 720p,
-        // because the 1080p file is the slowest to start and the screen hides the
-        // difference. The URL follows the label, so the file that plays is always
-        // the one the quality menu names.
+        val preferred = settings[Setting.PreferredQuality].takeIf { sources.containsKey(it) }
+        // A quality picked on any device of this account wins. Otherwise a phone
+        // starts at 720p, because the 1080p file is the slowest to start and the
+        // screen hides the difference. The URL follows the label, so the file that
+        // plays is always the one the quality menu names.
         quality = preferred
             ?: defaultQualityLabel(sources, COMPACT_SCREEN_MAX_QUALITY.takeIf { isCompactScreen })
         videoUrl = quality?.let { sources[it] } ?: resolved.videoUrl
@@ -408,7 +410,7 @@ fun WatchScreen(episodeId: String) {
     // at all; the preference decides how it was answered. Everything else that
     // tests `isAppleMobile` is about the device's own quirks — resume, seeking,
     // AirPlay — and those hold whichever player is drawing the controls.
-    val nativePlayer = isAppleMobile && prefs.useNativePlayer
+    val nativePlayer = isAppleMobile && settings[Setting.UseNativePlayer]
 
     // No overlay over a native player: it draws its own fullscreen surface and
     // nothing of ours survives on top of it.
@@ -449,7 +451,9 @@ fun WatchScreen(episodeId: String) {
                         quality = quality,
                         onQualitySelected = { label ->
                             quality = label
-                            prefs.setPreferredQuality(label)
+                            settings.set(Setting.PreferredQuality, label) {
+                                toasts.error(S.settingNotSynced)
+                            }
                             available[label]?.let {
                                 videoUrl = it
                                 // A new source, so an error about the old one no longer applies.
@@ -548,14 +552,24 @@ fun WatchScreen(episodeId: String) {
                 // its own decoder, so it also plays what Safari cannot (all of season 2).
                 // Not on a computer, where VLC registers no link scheme and the browser
                 // already plays everything. Not `external`: a new tab would only sit
-                // empty behind VLC. VLC always starts at 0:00, so the label carries the
-                // time to seek to: the saved spot until this page's player moves, then
-                // wherever it is.
+                // empty behind VLC. The label carries where VLC starts: the saved spot
+                // until this page's player moves, then wherever it is. The playlist
+                // link starts there by itself; the plain fallback starts at 0:00, and
+                // the label is the time to seek to by hand.
                 val url = videoUrl
                 if (isAppleMobile && url != null) {
                     val seekTo = position ?: savedSeconds
                     LinkButton(
-                        href = vlcStreamUrl(url),
+                        href = vlcOpenUrl(
+                            current = episode,
+                            currentUrl = url,
+                            // VLC plays its queue through, so no queue when autoplay is
+                            // off. With it on, the queue runs to the end of the season.
+                            upcoming = if (autoplay) catalog.restOfSeason(episode) else emptyList(),
+                            quality = quality,
+                            startSeconds = seekTo,
+                            title = { S.seasonAndEpisode(it.seasonNumber, it.episodeNumber) },
+                        ),
                         label = if (seekTo >= 1) {
                             "${S.openInVlc.caps} · ${formatTime(seekTo.toDouble())}"
                         } else {

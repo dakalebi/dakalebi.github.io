@@ -37,6 +37,10 @@ object CatalogQueries {
     fun upcoming(episodes: List<Episode>, of: Episode, count: Int): List<Episode> =
         episodes.filter { it.ordinal > of.ordinal }.sortedBy { it.ordinal }.take(count)
 
+    /** The episodes after this one in its own season, in order. Empty for a season's last episode. */
+    fun restOfSeason(episodes: List<Episode>, of: Episode): List<Episode> =
+        episodes.filter { it.seasonNumber == of.seasonNumber && it.ordinal > of.ordinal }.sortedBy { it.ordinal }
+
     /**
      * What the hero offers.
      *
