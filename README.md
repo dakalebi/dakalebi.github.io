@@ -202,7 +202,7 @@ The consoles are yours; the code is already written against them.
 
 | What | Where it publishes | Workflow |
 |---|---|---|
-| A push to `main` | the site root, `/` | `deploy.yml` |
+| A push to `master` | the site root, `/` | `deploy.yml` |
 | A pull request from this repository | `/pr/<number>/`, rebuilt on each push, removed when it closes | `checks.yml` |
 
 To try a branch on the real site, open a draft pull request. There is no shared
@@ -212,11 +212,11 @@ preview branch.
   `tools/publish-site.sh` rewrites one folder and replaces that commit; the
   reusable `publish.yml` writes it and then deploys whatever `gh-pages` holds.
   Don't push to `gh-pages` by hand.
-- **`main` is protected.** Changes land through a pull request (no approvals
+- **`master` is protected.** Changes land through a pull request (no approvals
   needed) whose `css-classes` check passes. No force pushes or deletion, and
   admins are included. By convention, pull requests are squash-merged.
 - **Settings → Environments → github-pages → Deployment branches** must allow
-  `main` and `refs/pull/*/merge`. Pull request runs are matched by their merge
+  `master` and `refs/pull/*/merge`. Pull request runs are matched by their merge
   ref, not their branch name, so without the last one every preview fails at the
   deploy step.
 

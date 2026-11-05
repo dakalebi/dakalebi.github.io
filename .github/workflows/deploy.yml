@@ -2,14 +2,14 @@ name: Deploy to GitHub Pages
 
 # Two kinds of publisher, one site:
 #
-#   main          https://dakalebi.github.io/              /tv/  /drive/
+#   master        https://dakalebi.github.io/              /tv/  /drive/
 #   pull request  https://dakalebi.github.io/pr/<number>/  (checks.yml)
 #
 # Each one builds only itself and owns one folder of the site; publish.yml holds
 # how a folder is written and how the site is deployed. Rebuilding everything on
 # every deploy was tried before and retired in f6eb023: a branch that failed to
 # build blocked production too. To try something on the real site before it
-# reaches main, open a pull request (a draft is fine).
+# reaches master, open a pull request (a draft is fine).
 #
 # Each shell (/tv/, /drive/) is a folder inside the one distribution, so a new
 # shell is published with its folder and needs no step of its own.
@@ -29,7 +29,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches: [master]
   workflow_dispatch:
 
 # The ceiling for the publish workflow's jobs, which ask for what they need.
@@ -38,7 +38,7 @@ permissions:
   pages: write
   id-token: write
 
-# One run at a time, and queued rather than cancelled, so main's newest commit is
+# One run at a time, and queued rather than cancelled, so master's newest commit is
 # always the last one written. GitHub keeps one waiting run and cancels an older
 # waiting one, which is right here: the newer commit replaces it.
 concurrency:
@@ -53,8 +53,8 @@ jobs:
     steps:
       # A manual run from another branch would otherwise put that branch on the
       # production root.
-      - name: Only main publishes from here
-        if: github.ref_name != 'main'
+      - name: Only master publishes from here
+        if: github.ref_name != 'master'
         run: |
           echo "::error::${GITHUB_REF_NAME} has no folder to publish to. Pull requests publish from checks.yml."
           exit 1

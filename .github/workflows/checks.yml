@@ -1,6 +1,6 @@
 name: Checks
 
-# Everything except main. Pushes to main are covered by the deploy workflow, which
+# Everything except master. Pushes to master are covered by the deploy workflow, which
 # runs the same guard against the same build before it publishes anything.
 #
 # A pull request from this repository also gets its own copy of the site at
@@ -9,7 +9,7 @@ name: Checks
 # and they skip the preview jobs rather than fail them.
 on:
   push:
-    branches-ignore: [main]
+    branches-ignore: [master]
   pull_request:
     types: [opened, synchronize, reopened, closed]
   workflow_dispatch:
