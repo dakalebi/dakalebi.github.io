@@ -1,65 +1,59 @@
 name: Deploy to GitHub Pages
 
-# Two branches, two endpoints, one site:
+# Three kinds of publisher, one site:
 #
-#   main      https://dakalebi.github.io/          and /tv/
-#   preview   https://dakalebi.github.io/preview/  and /preview/tv/
+#   main          https://dakalebi.github.io/              and /tv/
+#   preview       https://dakalebi.github.io/preview/      and /preview/tv/
+#   pull request  https://dakalebi.github.io/pr/<number>/  (checks.yml)
 #
-# ------------------------------------------------------- why there are two parts --
+# Each one builds only itself and owns one folder of the site; publish.yml holds
+# how a folder is written and how the site is deployed. Rebuilding everything on
+# every deploy was tried before and retired in f6eb023: a branch that failed to
+# build blocked production too.
 #
-# A Pages deploy uploads an artifact that IS the site: every deploy replaces all of
-# it, and there is no way to write only part of one. Two workflows publishing two
-# halves therefore cannot coexist, because whichever finishes last erases the other.
-#
-# Rebuilding both halves on every deploy is the obvious fix and the wrong one, and
-# this repository has already been round that loop: the /preview endpoint added in
-# 66c0fc8 kept both halves alive by rebuilding both every time, which meant a
-# preview branch that failed to build blocked production too. It was retired in
-# f6eb023.
-#
-# So the site is kept on the `gh-pages` branch, and each push rewrites only its own
-# directory there before the whole tree is deployed. The branch is the state; the
-# artifact is still what Pages serves. That buys three things: a push only builds
-# its own half, a broken preview cannot hold up production, and what is live is a
-# real git tree, so a bad deploy is a revert rather than a hunt for what built it.
-#
-# ------------------------------------------------- what makes /preview work at all --
+# ------------------------------------------------- what makes the folders work at all --
 #
 # Two properties of the app, and both need to stay true. Every asset path is
 # relative - the TV shell reaches the shared sheets as `../keel/tokens.css`, which
-# stays correct under any prefix - so a copy under /preview finds its own files
-# rather than the root's. And routing is hash-based, so a deep link is
+# stays correct under any prefix - so a copy under /preview or /pr/<n> finds its
+# own files rather than the root's. And routing is hash-based, so a deep link is
 # /preview/#/watch, one real file, which is all Pages can serve without rewrite
 # rules.
 #
-# Note that /preview talks to the SAME Firebase project as production, because the
-# config is compiled in. It is a staging surface for the interface, not an isolated
-# environment: anything done there is real data.
+# Note that every folder talks to the SAME Firebase project as production, because
+# the config is compiled in. They are staging surfaces for the interface, not
+# isolated environments: anything done there is real data.
 
 on:
   push:
     branches: [main, preview]
   workflow_dispatch:
 
+# The ceiling for the publish workflow's jobs, which ask for what they need.
 permissions:
-  # The publish branch.
   contents: write
-  # The deployment itself, unchanged from when this workflow deployed a single
-  # build straight from the runner.
   pages: write
   id-token: write
 
-# One publish at a time, and queued rather than cancelled. Two runs racing would
-# both try to push the same branch, and cancelling one midway through its commit is
-# a worse failure than making it wait.
+# One run per branch at a time, and queued rather than cancelled, so a branch's
+# newest commit is always the last one written. GitHub keeps one waiting run and
+# cancels an older waiting one, which is right here: the newer commit replaces it.
 concurrency:
-  group: pages-publish
+  group: deploy-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
+      - name: Only main and preview have a folder
+        if: github.ref_name != 'main' && github.ref_name != 'preview'
+        run: |
+          echo "::error::${GITHUB_REF_NAME} has no folder to publish to. Pull requests publish from checks.yml."
+          exit 1
+
       # keel is a submodule, and `includeBuild("keel")` in settings.gradle.kts
       # points straight at its directory. Without this the checkout leaves that
       # directory empty and Gradle fails at configuration time, before any task
@@ -86,118 +80,28 @@ jobs:
       - name: Every emitted CSS class is styleable on the shell that draws it
         run: python3 tools/check-css-classes.py
 
-      # On the very first run the branch does not exist yet and is started here as
-      # an orphan, which is why this is a clone rather than actions/checkout.
-      - name: Check out the published site
-        env:
-          REMOTE: https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git
+      # Pages keys a deployment by commit SHA, so a preview branch sitting at the
+      # identical commit to main claims main's deployment: the duplicate is
+      # accepted, dropped seconds later, and /preview goes on serving whatever was
+      # there before. The folder is still written and the next deploy of anything
+      # serves it, so this says so rather than failing.
+      - name: Warn when preview is main's commit
+        if: github.ref_name == 'preview'
         run: |
-          set -eu
-          if ! git clone --depth 1 --branch gh-pages "$REMOTE" site 2>/dev/null; then
-            echo "gh-pages does not exist yet; starting it."
-            git init -q -b gh-pages site
-            git -C site remote add origin "$REMOTE"
+          if [ "$(git ls-remote origin refs/heads/main | cut -f1)" = "${GITHUB_SHA}" ]; then
+            echo "::warning::preview is at the same commit as main, so this deployment is a duplicate and /preview will not change until the next deploy."
           fi
 
-      - name: Put this branch's build in its own directory
-        run: |
-          set -eu
-          dist=build/dist/js/productionExecutable
-
-          case "${GITHUB_REF_NAME}" in
-            main)
-              # Production owns the root. `preview` is the one name it must not
-              # touch, because the other branch owns that directory.
-              find site -mindepth 1 -maxdepth 1 \
-                ! -name .git ! -name preview -exec rm -rf {} +
-              cp -R "$dist/." site/
-              ;;
-            preview)
-              # A Pages deployment is keyed by commit SHA, so a preview branch
-              # sitting at the identical commit to main claims main's deployment:
-              # the duplicate is accepted, dropped seconds later, and /preview
-              # goes on serving whatever was there before. The tree written below
-              # is still correct and the next publish from either branch serves
-              # it, so this says so rather than failing.
-              if [ "$(git ls-remote origin refs/heads/main 2>/dev/null | cut -f1)" = "${GITHUB_SHA}" ]; then
-                echo "::warning::preview is at the same commit as main, so this deployment is a duplicate and /preview will not change until the next publish."
-              fi
-
-              rm -rf site/preview
-              mkdir -p site/preview
-              cp -R "$dist/." site/preview/
-              ;;
-            *)
-              echo "::error::${GITHUB_REF_NAME} has no endpoint to publish to."
-              exit 1
-              ;;
-          esac
-
-          # Both files belong to the site rather than to either build, so they are
-          # rewritten on every publish and cannot be lost when the root is
-          # replaced. Pages runs Jekyll by default, and Jekyll drops files whose
-          # names begin with an underscore, which Kotlin/JS and webpack emit.
-          touch site/.nojekyll
-          # /preview is a copy of production on the same host, so leaving it
-          # indexable would have the two competing for the same search results.
-          printf 'User-agent: *\nDisallow: /preview/\n' > site/robots.txt
-
-      # Recording the tree before it is served, so what is live is always something
-      # with a commit behind it.
-      - name: Record the site
-        run: |
-          set -eu
-          cd site
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-
-          if git diff --cached --quiet; then
-            echo "The built output is identical to what is already published."
-            exit 0
-          fi
-
-          git commit -q -m "Publish ${GITHUB_REF_NAME} at ${GITHUB_SHA}"
-
-          # The concurrency group above makes a race unlikely rather than
-          # impossible: a manual dispatch can still land beside a push. Rebasing
-          # is safe because the two branches only ever write disjoint directories.
-          for attempt in 1 2 3; do
-            if git push origin gh-pages; then
-              exit 0
-            fi
-            echo "Push rejected on attempt ${attempt}; rebasing onto the newest site."
-            # A rebase needs the merge base, and the shallow clone above has it:
-            # whatever rejected us was pushed on top of the tip we cloned. The
-            # case where that is untrue is a rewritten gh-pages, and failing is
-            # the right answer there rather than rebasing onto an unrelated tree.
-            git pull --rebase origin gh-pages
-          done
-
-          echo "::error::Could not publish after three attempts."
-          exit 1
-
-      # Copied rather than uploaded in place: the artifact is served verbatim, and
-      # `site/.git` is the entire history of the site, which has no business being
-      # fetchable over HTTP.
-      - name: Stage the site for upload
-        run: |
-          set -eu
-          cp -R site _site
-          rm -rf _site/.git
-
-      - uses: actions/configure-pages@v5
-
-      - uses: actions/upload-pages-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
-          path: _site
+          name: site-build
+          path: build/dist/js/productionExecutable
+          if-no-files-found: error
+          retention-days: 1
 
-  deploy:
+  publish:
     needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+    uses: ./.github/workflows/publish.yml
+    with:
+      folder: ${{ github.ref_name == 'main' && '.' || 'preview' }}
+      artifact: site-build

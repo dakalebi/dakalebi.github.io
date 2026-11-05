@@ -474,11 +474,19 @@ Local preview is a static server over the built output — see
 `.claude/launch.json`. Do **not** start dev servers from a shell.
 
 Deployment is `.github/workflows/deploy.yml`: every push to `main` builds and
-publishes to Pages. Pages must be set to **Source: GitHub Actions**; if it ever
-reverts to `legacy`, the workflow goes green while the site 404s. That has
-happened.
+publishes to the root of the Pages site, and every push to `preview` to
+`/preview/`. Every pull request from this repository is published to
+`/pr/<number>/` by `checks.yml` and removed when it closes. Pages must be set to
+**Source: GitHub Actions**; if it ever reverts to `legacy`, the workflow goes
+green while the site 404s. That has happened.
 
-The workflow touches `.nojekyll`, because Pages runs Jekyll by default and Jekyll
+The site's state is the `gh-pages` branch, kept as a single commit:
+`tools/publish-site.sh` rewrites one folder and replaces the commit, and
+`publish.yml` deploys whatever the branch holds. Don't push to `gh-pages` by
+hand: there is no history to review it in, and the next publish of that folder
+overwrites it anyway.
+
+The script touches `.nojekyll`, because Pages runs Jekyll by default and Jekyll
 drops files beginning with an underscore, which webpack can emit.
 
 ---

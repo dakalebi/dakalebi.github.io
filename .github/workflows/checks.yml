@@ -3,20 +3,38 @@ name: Checks
 # Everything except the two branches that publish. Pushes to main and preview are
 # covered by the deploy workflow, which runs the same guard against the same build
 # before it publishes anything.
+#
+# A pull request from this repository also gets its own copy of the site at
+# /pr/<number>/, rebuilt on every push and removed when the pull request closes.
+# Pull requests from forks get the check only: their token cannot write the site,
+# and they skip the preview jobs rather than fail them.
 on:
   push:
     branches-ignore: [main, preview]
   pull_request:
+    types: [opened, synchronize, reopened, closed]
   workflow_dispatch:
 
-# One run per branch. A newer push makes an older run's answer irrelevant.
+# The ceiling for the publish workflow's jobs, which ask for what they need. The
+# check itself only reads.
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+# One run per branch or pull request. A newer push makes an older run's answer,
+# and its preview, irrelevant, and closing a pull request cancels a preview still
+# on its way.
 concurrency:
   group: checks-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   css-classes:
+    if: github.event.action != 'closed'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v5
         with:
@@ -37,3 +55,26 @@ jobs:
 
       - name: Every emitted CSS class is styleable on the shell that draws it
         run: python3 tools/check-css-classes.py
+
+      - name: Keep the build for the preview
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        uses: actions/upload-artifact@v7
+        with:
+          name: site-build
+          path: build/dist/js/productionExecutable
+          if-no-files-found: error
+          retention-days: 1
+
+  preview:
+    needs: css-classes
+    if: github.event_name == 'pull_request' && github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+    uses: ./.github/workflows/publish.yml
+    with:
+      folder: pr/${{ github.event.pull_request.number }}
+      artifact: site-build
+
+  remove-preview:
+    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+    uses: ./.github/workflows/publish.yml
+    with:
+      folder: pr/${{ github.event.pull_request.number }}
