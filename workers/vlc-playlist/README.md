@@ -29,8 +29,11 @@ https://cdn.formula.ge/…/10.mp4
   build a file per request.
 
 The site builds the link in
-`shared/src/commonMain/kotlin/ge/dakalebi/domain/service/VlcLink.kt`. Until
-`VLC_PLAYLIST_ENDPOINT` there is set, "Open in VLC" links to the single file.
+`shared/src/commonMain/kotlin/ge/dakalebi/domain/service/VlcLink.kt`.
+`VLC_PLAYLIST_ENDPOINT` there points at the deployed worker,
+`https://dakalebi-vlc.bachanamosulishvili.workers.dev/playlist.m3u`. With it set to
+`null`, or for a link that is not on the CDN, "Open in VLC" falls back to the
+single file, which starts at 0:00 and has no queue.
 
 ## Test
 
@@ -40,9 +43,16 @@ No dependencies. Needs Node 18+.
 node --test
 ```
 
+One test decodes the exact link that `VlcPlaylistTest` in `:shared` pins, so a
+change to the link format has to pass on both sides. CI runs neither, so run both
+by hand.
+
 ## Deploy
 
-Free plan. The first time, log in to your own Cloudflare account in the browser:
+Nothing deploys the worker automatically. The live one runs on the free plan in
+the owner's Cloudflare account, and a change here reaches it only when someone
+with access deploys it. The first time, log in to your Cloudflare account in the
+browser:
 
 ```bash
 npx wrangler login
@@ -54,6 +64,6 @@ Then deploy from this folder:
 npx wrangler deploy
 ```
 
-The address it prints, for example
-`https://dakalebi-vlc.<your-subdomain>.workers.dev`, plus `/playlist.m3u`, goes into
-`VLC_PLAYLIST_ENDPOINT`.
+From the owner's account this updates the live address. From another account it
+prints a new one, `https://dakalebi-vlc.<your-subdomain>.workers.dev`; that
+address plus `/playlist.m3u` would then have to go into `VLC_PLAYLIST_ENDPOINT`.

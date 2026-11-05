@@ -141,7 +141,7 @@ to the production site.
 | T12 | System font 1.3 | Layout unchanged | Pass: root stays 16 px, same as at 1.0 |
 | T13 | Idle on browse | Screen timeout recorded for D3 | Not measured. The screensaver started as soon as the app closed, which fits keep-screen-on holding it off while open |
 | — | Navigation allowlist | Off-site and `http:` blocked | Pass: both stay on the page; same-host `https` loads |
-| — | Preview build | Beside the real app, on `/preview/tv/` | Pass: loads, bridge and UA token present, Back exits |
+| — | Preview build | Beside the real app, on `/preview/tv/` (it opens `/pr/<n>/tv/` now, see D2) | Pass: loads, bridge and UA token present, Back exits |
 | — | `AndroidTvHost.exit()` called outside a Back press, directly and from a timer | Ignored | Pass: the app stays open. Back at the top of sign-in and of browse still exits |
 | — | Device-to-device transfer (`LocalTransport` with `is_device_transfer=true`: back up, `pm clear`, restore) | Nothing leaves the device | Pass. Before the fix, 4.4 MB went out and all 46 files came back, IndexedDB included. After it, every domain is excluded, the backup is 0 bytes and nothing comes back |
 

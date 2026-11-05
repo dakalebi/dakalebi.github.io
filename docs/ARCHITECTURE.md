@@ -11,8 +11,8 @@ boundary, which the compiler enforces rather than a grep.
 
 | Module | Holds | Why |
 |---|---|---|
-| `:shared` | `commonMain`: `domain`, `presentation`, `i18n`, `core`, the composition locals, the Formula DTOs, the catalog cache. `jsMain`: three `.js.kt` files | Everything that is not about being a web page, so a second front end reuses it instead of reimplementing it |
-| root | `ui` (Compose HTML), `data/firebase`, `data/local`, the composition root, `Main.kt` | The web app. It also owns the webpack build, so the GitHub Pages artifact path never moves |
+| `:shared` | `commonMain`: `domain`, `presentation`, `i18n`, `core`, the composition locals, the Formula API and DTOs, and the storage that is plain Kotlin over a `KeyValueStore`: the catalog cache, the settings device copy, guest progress, the guest choice, and `ViewerProgressRepository`, which routes progress between the account and the device. `jsMain`: three `.js.kt` files | Everything that is not about being a web page, so a second front end reuses it instead of reimplementing it |
+| root | `ui` (Compose HTML) for all three shells (`/`, `/tv/`, `/drive/`), `data/firebase`, `data/local` (the browser's `localStorage`), the composition root, `Main.kt` | The web app. It also owns the webpack build, so the GitHub Pages artifact path never moves |
 
 The root project stays the application deliberately: renaming it to `:web` would
 move the Pages artifact out of `build/dist/js/productionExecutable`, and
@@ -97,18 +97,27 @@ Paths below are in `:shared` unless they say root.
   repository or a composable can only be checked by running the app.
 - **New user-facing words** → `i18n/Strings.kt` first; the compiler then
   refuses to build until every locale has them.
+- **A new shell** (a page like `/tv/` or `/drive/`) → root
+  `src/jsMain/resources/<name>/index.html` with `data-shell="<name>"` and its own
+  stylesheet, a value in `Shell` and its branch in `Main.kt`, and the page and its
+  root composable in `SHELL_PAGES` / `SHELL_ROOTS` in `tools/check-css-classes.py`.
+  It is a folder in the one distribution, so the deploy needs no new step. Gate
+  it on `session.viewer` and file progress under `session.viewerId`, so guests
+  work there too.
 - **Something a second platform would do differently** → an `expect` beside the
   three that already exist, and resist it. Everything else in `commonMain` is
   plain Kotlin, and that is why the tests can run in a second.
 
 ## Testing
 
-`shared/src/commonTest` runs on Node via `./gradlew jsNodeTest` — no browser, no
-Karma, about a second. 60 tests over: the watched-threshold and
-never-rewind-a-finished-episode rules, the "continue watching" choice, episode
-ordering across season boundaries, hash-route parsing, the cross-device settings
-merge, the admin lookup, timestamp formatting, toast dismissal, and the catalog
-cache.
+`shared/src/commonTest` (and one `jsTest` for the bare GET) runs on Node via
+`./gradlew :shared:jsNodeTest` — no browser, no Karma, about a second. It covers
+the watched-threshold and never-rewind-a-finished-episode rules, the "continue
+watching" and next-to-play choices, episode ordering across season boundaries,
+hash-route parsing, settings sync (the merge rules, `SettingsStore`, the device
+copy), guest sessions and guest storage, playback-failure classification, the
+quality default, the iOS resume fragment, the VLC links and playlist, TV seeking
+and interface size, timestamp formatting, toast dismissal, and the catalog cache.
 
 Two of those earn their place beyond the coverage they add:
 

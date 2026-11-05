@@ -1,25 +1,34 @@
-# Test plan — signed-in state
+# Test plan
 
-Written from the code as it stands on `main` at `0a0634e`, not from memory of
-building it. Covers only the **signed-in** experience: the account is already
-authenticated, so login, signup and password reset are out of scope.
+The manual test plan for all three shells. Sections A to M were first written
+from the code on `main` at `0a0634e` and cover the signed-in web app. Later
+sections and rows were added as features landed: N is the TV UI, O is guest
+mode, P is driving mode. Login, signup and password reset are out of scope.
 
 ## Environment
 
 | | |
 |---|---|
 | Build | `./gradlew jsBrowserDistribution` |
-| Served from | `http://localhost:4173` (static, `build/dist/js/productionExecutable`) |
+| Served from | `http://localhost:4173` (static, `build/dist/js/productionExecutable`), or a pull request's own copy at `https://dakalebi.github.io/pr/<n>/` |
 | Desktop | Chrome, real profile |
-| Mobile | Safari in the iOS Simulator — iPhone and iPad |
-| Account | `bachanamosulishvili@gmail.com` — on the admin allowlist |
+| Mobile | Safari in the iOS Simulator (iPhone and iPad), and a real iPhone for the rows the Simulator cannot prove |
+| Account | `bachanamosulishvili@gmail.com`, an admin (it needs an `admins/{uid}` document for section D) |
+| Guest | No account. Sections O and P start from `Continue as guest` on the sign-in screen |
 | Data | Live Firestore `dakalebi-tv`: 932 episodes, 18 seasons |
 
-Not verifiable here, and deliberately not claimed as passing:
+Not verifiable in the Simulator, and deliberately not claimed as passing:
 
 - **AirPlay** (`I10`) needs a real Apple TV; the Simulator has no receiver.
-- **Pages deployment** — this branch never deploys, because Pages builds from
-  `main` and `main` is frozen for this pass.
+- **VLC and season 2** (`I11` to `I16`, `P7`, `P14`) need a real iPhone or iPad.
+  The Simulator has no VLC, and fixture links are not on `cdn.formula.ge`, so
+  there the button falls back to the single-file link.
+- **Autoplay without a tap** (`P10`). The Simulator does not enforce iOS's rule
+  that only a tap may start playback, so it passes there either way.
+
+A real phone is easiest to test against a pull request's copy at `/pr/<n>/`.
+That copy uses the same Firebase project as production, so what you do there is
+real data.
 
 The console is watched throughout. With the logging commit in place, any caught
 failure prints `dakalebi/<tag>`; an empty console is now meaningful evidence
@@ -173,7 +182,7 @@ rather than the absence of it.
 
 | ID | Scenario | Expected |
 |---|---|---|
-| I1 | iPhone Safari | Apple's native controls; no custom chrome anywhere |
+| I1 | iPhone Safari, System player on (the default) | Apple's native controls; no custom chrome anywhere |
 | I2 | iPad Safari | Same — the `MacIntel` + touch-points check must catch it |
 | I3 | Desktop Safari on a Mac | Keeps the custom player |
 | I4 | Playback on iOS | Plays |
@@ -183,6 +192,13 @@ rather than the absence of it.
 | I8 | iPhone layout | Dashboard and watch usable |
 | I9 | iPad layout | Dashboard and watch usable |
 | I10 | AirPlay clock | **Not verifiable** without an Apple TV — record as untested |
+| I11 | Any episode on iPhone or iPad | An orange `Open in VLC` button. None on a computer |
+| I12 | The button's label | `Open in VLC · m:ss` with the saved spot, then the player's spot once it moves. No time at 0:00 |
+| I13 | Press it, autoplay on | VLC opens a queue: this episode from that spot, then the rest of its season, each titled `სეზონი N · სერია M`, and plays the next one by itself |
+| I14 | Press it, autoplay off | VLC gets this episode alone |
+| I15 | The last episode of a season | Opens alone; the queue never crosses into the next season |
+| I16 | A season 2 episode in Safari | The message that points to VLC, not a generic playback error |
+| I17 | A phone with no quality picked yet | Starts at 720p or the best rendition below it. A quality picked on any device wins |
 
 ## J — Failure and resilience
 
@@ -354,7 +370,7 @@ Not scriptable, and still device-only:
 | N29d | interface size, after a reload | the choice survives, and is applied **before the first paint** — the screen must never be drawn at the designed size and then resized. It is per-device and deliberately not synced to the account: a phone and a television signed in together need different answers |
 | N30 | settings, `Down` from the language row | escapes the nested segment to the interface-size row, then autoplay, then sign-out, then walls. It must **not** fall through into the navigation rail: the rail is fixed and spans the panel's height, so a plain geometric `Down` from the last row walked straight into it |
 | N31 | settings footer | build number, short commit and publish time as `dd.MM.yyyy, HH:mm`, plus the catalog's last-refresh line |
-| N32 | sign-in | the web screen, unchanged: email and password, sign-up toggle, forgot-password. There is no Google button anywhere in the app |
+| N32 | sign-in | the web screen, unchanged: email and password, sign-up toggle, forgot-password, and `Continue as guest` below the form. There is no Google button anywhere in the app |
 | N33 | `/#/settings` on the **web** | falls through to the dashboard. The route is inert there by design |
 
 ### The TV player
@@ -410,3 +426,50 @@ a 500ms settle timer, so it assumed a repeat rate — too slow a remote and ever
 became its own seek and its own re-buffer. Committing on `Enter` instead means no timing
 assumption survives, and the only hardware question left is whether `repeat` is set at
 all rather than how fast it arrives.
+
+---
+
+## O — Guest mode
+
+All three shells. Fixtures: `/?ui=demo&guest`, `/tv/?ui=tv-demo&guest` and
+`/drive/?ui=drive-demo&guest`. A fixture keeps guest progress in memory, so O3
+and O4 need the real site.
+
+| ID | Scenario | Expected |
+|---|---|---|
+| O1 | Sign-in screen | `Continue as guest` below the form, with the note that a guest's progress is saved on this device only |
+| O2 | Continue as guest | Dashboard. A `Guest` badge and a Sign in button where the avatar was |
+| O3 | As a guest, watch part of an episode, reload | Still a guest; the progress is kept (`progress_v1:guest:device` in `localStorage`) |
+| O4 | Two tabs as a guest | Progress from both tabs is kept; neither overwrites the other |
+| O5 | Guest menu | Sign in instead of Sign out, and the guest note where the email was |
+| O6 | As a guest, Sign in, then sign in | The account's progress shows, and guest mode ends: a later sign-out returns to the sign-in screen |
+| O7 | As a member, menu → Continue as guest | Straight to the guest dashboard. No flash of the sign-in form, and none of the account's progress |
+| O8 | Back to guest after O6 | The earlier guest progress is still there. It is never moved into the account |
+| O9 | As a guest, change language, autoplay or quality | Applies on this device. No "not synced" toast |
+| O10 | As a guest, open the menu | No catalog refresh |
+| O11 | TV: reach `Continue as guest` with the remote | The ring reaches it from the form. **Not yet checked on a real remote** |
+| O12 | TV settings as a guest | A Sign in row instead of Sign out. Pressing it goes to sign-in with no confirmation |
+
+## P — Driving mode at `/drive/`
+
+Fixture: `/drive/?ui=drive-demo`. Its video links are fake, so playback, VLC and
+the car buttons need a real iPhone.
+
+| ID | Scenario | Expected |
+|---|---|---|
+| P1 | Open `/drive/` | Home is one large button for the episode to watch next: Continue or Play, season, episode, minutes left |
+| P2 | Tap it | Plays at once in the native player, from the saved spot |
+| P3 | Player screen | Back, the autoplay switch, season and episode, time and minutes left, Mark as watched, Open in VLC (iPhone and iPad), −30 s, play/pause, +30 s, next episode. All large |
+| P4 | Phone on its side | The video and the two episode buttons on the left, everything else on the right. Fits above Safari's bars |
+| P5 | −30 / +30 | Seeks 30 seconds |
+| P6 | Mark as watched | Becomes a green tick. No undo here; that stays on the web page |
+| P7 | Open in VLC | The car player pauses first. VLC gets the same queue as I13, from the car player's spot |
+| P8 | Episode page → Driving mode | Car mode on the same episode, at the time the web player was at |
+| P9 | Menu → Driving mode | Car mode home |
+| P10 | An episode ends, autoplay on | The next one starts with no tap. **Real iPhone only** |
+| P11 | Car, headphone or lock-screen buttons | Play, pause, −30/+30, next, and seeking. "Previous" goes back 30 seconds, not a whole episode |
+| P12 | While playing | The screen stays on |
+| P13 | Lock the phone | Safari pauses the video. Expected |
+| P14 | A season 2 episode on an iPhone | The error sits over the picture and points to VLC |
+| P15 | As a guest | Car mode without signing in. Progress stays on the device, and the autoplay switch gives no sync error |
+| P16 | Back from the player | The player pauses; home offers the same episode |
