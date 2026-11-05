@@ -10,8 +10,9 @@ import ge.dakalebi.di.session
 import ge.dakalebi.di.settings
 import ge.dakalebi.di.toasts
 import ge.dakalebi.domain.model.Episode
+import ge.dakalebi.domain.model.Setting
 import ge.dakalebi.domain.service.PlaybackFailure
-import ge.dakalebi.domain.service.vlcStreamUrl
+import ge.dakalebi.domain.service.vlcOpenUrl
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
 import ge.dakalebi.presentation.Route
@@ -63,7 +64,7 @@ internal fun DriveHomeScreen(player: DrivePlayer) {
                     Div({ classes("drive-note") }) { Text(S.catalogUnavailable) }
                     Button({
                         classes("drive-btn")
-                        onClick { session.uid?.let { uid -> scope.launch { catalog.ensureLoaded(uid) } } }
+                        onClick { session.viewerId?.let { id -> scope.launch { catalog.ensureLoaded(id) } } }
                     }) { Text(S.retry.caps) }
                 }
                 episode == null -> Div({ classes("drive-note") }) { Text(S.emptyBody) }
@@ -251,9 +252,11 @@ private fun DrivePlayerBody(episode: Episode, player: DrivePlayer) {
 @Composable
 private fun DriveExtras(episode: Episode, player: DrivePlayer, loaded: Boolean) {
     val catalog = catalog()
+    val settings = settings()
     val toasts = toasts()
     val watched = catalog.progress[episode.id]?.isWatched == true
     val vlcUrl = player.sourceUrl.takeIf { loaded && isAppleMobile }
+    val autoplay = settings[Setting.AutoplayNext]
 
     Div({ classes("drive-extras") }) {
         Button({
@@ -280,11 +283,21 @@ private fun DriveExtras(episode: Episode, player: DrivePlayer, loaded: Boolean) 
         }
 
         // As on the web page: every episode on an iPhone or iPad, since VLC also plays
-        // what Safari cannot (all of season 2). VLC always starts at 0:00, so the button
-        // carries the time to seek to. The page's own player pauses first, so the two
+        // what Safari cannot (all of season 2), and the same link: a playlist from here
+        // to the end of the season (this episode alone with autoplay off), starting
+        // where this player is. The plain fallback starts at 0:00, so the button
+        // carries the time either way. The page's own player pauses first, so the two
         // never play at once.
         if (vlcUrl != null) {
-            A(href = vlcStreamUrl(vlcUrl), attrs = {
+            val href = vlcOpenUrl(
+                current = episode,
+                currentUrl = vlcUrl,
+                upcoming = if (autoplay) catalog.restOfSeason(episode) else emptyList(),
+                quality = player.qualityFor(episode),
+                startSeconds = player.position,
+                title = { S.seasonAndEpisode(it.seasonNumber, it.episodeNumber) },
+            )
+            A(href = href, attrs = {
                 classes("drive-btn", "drive-extra", "drive-vlc")
                 onClick { player.pause() }
             }) {
@@ -306,14 +319,13 @@ private fun DriveExtras(episode: Episode, player: DrivePlayer, loaded: Boolean) 
 private fun DriveAutoplaySwitch() {
     val settings = settings()
     val toasts = toasts()
-    val scope = rememberCoroutineScope()
-    val on = settings.autoplayNext
+    val on = settings[Setting.AutoplayNext]
 
     Button({
         classes("drive-toggle")
         attr("role", "switch")
         attr("aria-checked", on.toString())
-        onClick { settings.setAutoplayNext(scope, !on) { toasts.error(S.settingNotSynced) } }
+        onClick { settings.toggle(Setting.AutoplayNext) { toasts.error(S.settingNotSynced) } }
     }) {
         Span { Text(S.autoplayShort.caps) }
         // The same keel switch the drawer draws. Its `aria-checked` copy is only for

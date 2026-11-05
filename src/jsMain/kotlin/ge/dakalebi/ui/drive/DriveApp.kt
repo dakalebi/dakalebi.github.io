@@ -7,7 +7,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import ge.dakalebi.di.LocalResolveEpisodeVideo
 import ge.dakalebi.di.catalog
-import ge.dakalebi.di.preferences
 import ge.dakalebi.di.router
 import ge.dakalebi.di.session
 import ge.dakalebi.di.settings
@@ -40,7 +39,6 @@ fun DriveApp() {
     val session = session()
     val catalog = catalog()
     val settings = settings()
-    val preferences = preferences()
     val resolveVideo = LocalResolveEpisodeVideo.current
     val scope = rememberCoroutineScope()
 
@@ -48,10 +46,9 @@ fun DriveApp() {
         DrivePlayer(
             catalog = catalog,
             settings = settings,
-            preferences = preferences,
             router = router,
             resolveVideo = resolveVideo,
-            uid = { session.uid },
+            viewerId = { session.viewerId },
         )
     }
 
@@ -64,18 +61,22 @@ fun DriveApp() {
 
     val route = router.current
     val account = session.account
+    // Signed in or a guest: either way car mode, not the sign-in screen.
+    val viewer = session.viewer
 
-    // The same gate and loading the TV root has. Settings carry the account-synced
-    // autoplay switch, which is the only setting this shell reads.
-    LaunchedEffect(account?.uid) {
-        val uid = account?.uid
-        if (uid == null) {
+    // The same gate and loading the TV root has. Keyed on the viewer, so a guest loads
+    // the catalog and their device progress too. Settings sync stays on the account: a
+    // guest has none, and their settings (autoplay, quality) stay on the device.
+    LaunchedEffect(viewer?.id) {
+        val viewerId = viewer?.id
+        if (viewerId == null) {
             player.stop()
             catalog.reset()
             settings.stop()
         } else {
-            settings.start(scope, uid)
-            catalog.ensureLoaded(uid)
+            val uid = account?.uid
+            if (uid != null) settings.start(scope, uid) else settings.stop()
+            catalog.ensureLoaded(viewerId)
         }
     }
 
@@ -85,7 +86,7 @@ fun DriveApp() {
     Div({ classes("drive-root") }) {
         when {
             session.loading -> Div({ classes("drive-note") }) { Text(S.loading) }
-            account == null -> LoginScreen()
+            viewer == null -> LoginScreen()
             route is Route.Watch -> DrivePlayerScreen(route.episodeId, player)
             else -> DriveHomeScreen(player)
         }

@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import ge.dakalebi.core.Log
 import ge.dakalebi.domain.model.Episode
+import ge.dakalebi.domain.model.Setting
 import ge.dakalebi.domain.service.COMPACT_SCREEN_MAX_QUALITY
 import ge.dakalebi.domain.service.PlaybackFailure
 import ge.dakalebi.domain.service.defaultQualityLabel
@@ -14,7 +15,6 @@ import ge.dakalebi.domain.service.withStartFragment
 import ge.dakalebi.domain.usecase.ResolveEpisodeVideo
 import ge.dakalebi.i18n.S
 import ge.dakalebi.presentation.CatalogStore
-import ge.dakalebi.presentation.PreferencesStore
 import ge.dakalebi.presentation.Route
 import ge.dakalebi.presentation.Router
 import ge.dakalebi.presentation.SettingsStore
@@ -76,10 +76,10 @@ private external class MediaMetadata(init: dynamic)
 internal class DrivePlayer(
     private val catalog: CatalogStore,
     private val settings: SettingsStore,
-    private val preferences: PreferencesStore,
     private val router: Router,
     private val resolveVideo: ResolveEpisodeVideo,
-    private val uid: () -> String?,
+    /** Who progress is filed under: the account's uid, or a guest's device key. */
+    private val viewerId: () -> String?,
 ) {
     /**
      * Lives as long as the page, like the graph's own scope. A composable's scope is
@@ -375,7 +375,7 @@ internal class DrivePlayer(
     private fun onEnded() {
         persist(isWatched = true)
         val next = current?.let { catalog.next(it) }
-        if (settings.autoplayNext && next != null) advanceTo(next) else wantsToPlay = false
+        if (settings[Setting.AutoplayNext] && next != null) advanceTo(next) else wantsToPlay = false
     }
 
     private fun onError() {
@@ -465,7 +465,7 @@ internal class DrivePlayer(
 
     private fun persist(isWatched: Boolean? = null) {
         val id = episodeId ?: return
-        val user = uid() ?: return
+        val user = viewerId() ?: return
         if (resumeTarget != null && isWatched == null) return
         val seconds = floor(video.currentTime).toInt()
         if (seconds < 1 && isWatched == null) return
@@ -601,10 +601,13 @@ internal class DrivePlayer(
      * has it, otherwise the best rendition, capped at 720p on a phone. The episode's
      * default stream only when it lists no renditions.
      */
-    private fun sourceFor(episode: Episode): String? {
+    private fun sourceFor(episode: Episode): String? =
+        qualityFor(episode)?.let { episode.sources[it] } ?: episode.videoUrl
+
+    /** The rendition [sourceFor] picks, by label. Null when the episode lists none. */
+    fun qualityFor(episode: Episode): String? {
         val sources = episode.sources
-        val label = preferences.preferredQuality?.takeIf { sources.containsKey(it) }
+        return settings[Setting.PreferredQuality].takeIf { sources.containsKey(it) }
             ?: defaultQualityLabel(sources, COMPACT_SCREEN_MAX_QUALITY.takeIf { isCompactScreen })
-        return label?.let { sources[it] } ?: episode.videoUrl
     }
 }

@@ -2,6 +2,7 @@ package ge.dakalebi.data.firebase
 
 import ge.dakalebi.core.Log
 import ge.dakalebi.domain.Clock
+import ge.dakalebi.domain.model.Setting
 import ge.dakalebi.domain.model.SettingsLoad
 import ge.dakalebi.domain.model.UserSettings
 import ge.dakalebi.domain.repository.SettingsRepository
@@ -11,6 +12,7 @@ import ge.dakalebi.data.firebase.externals.getDoc
 import ge.dakalebi.data.firebase.externals.onSnapshot
 import ge.dakalebi.data.firebase.externals.setDoc
 import kotlinx.coroutines.await
+import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * Account-level settings at `users/{uid}`.
@@ -32,18 +34,24 @@ class FirestoreSettingsRepository(private val clock: Clock) : SettingsRepository
         val payload = jsObject()
         // Only what was actually set. Writing a null would clear a field the
         // caller has no opinion about — the language picker knows nothing
-        // about autoplay, and two devices must not undo each other.
-        settings.language?.let { payload.language = it }
-        settings.autoplayNext?.let { payload.autoplayNext = it }
+        // about autoplay, and two devices must not undo each other. Every
+        // setting's value is a JS primitive already, and the rules check types.
+        for (setting in settings.present) payload[setting.key] = settings.valueOf(setting)
         payload.updatedAtMillis = clock.nowMillis()
-        return runCatching {
+        return try {
             // merge: this document will gain fields later, and a settings write
             // must never clobber one it does not know about.
             setDoc(ref(uid), payload, mergeOption()).await()
             true
-        }.onFailure {
-            Log.e("settings", "could not save settings for $uid", it)
-        }.getOrDefault(false)
+        } catch (e: CancellationException) {
+            // Not a rejection: the caller stopped waiting, and the write is still
+            // on its way. Reporting it as a failure is what told people a change
+            // had stayed on this device when it had synced.
+            throw e
+        } catch (e: Throwable) {
+            Log.e("settings", "could not save settings for $uid", e)
+            false
+        }
     }
 
     /**
@@ -62,12 +70,14 @@ class FirestoreSettingsRepository(private val clock: Clock) : SettingsRepository
 
     private fun read(snapshot: DocumentSnapshot): UserSettings {
         val data = snapshot.data()
-        return UserSettings(
-            language = dynString(data.language),
-            // Absent must stay absent: `dynBool` would turn "never set" into
-            // an explicit false and switch autoplay off on a fresh account.
-            autoplayNext = dynBoolOrNull(data.autoplayNext),
-        )
+        return Setting.all.fold(UserSettings()) { values, setting ->
+            when (setting) {
+                // Absent must stay absent: `dynBool` would turn "never set" into
+                // an explicit false and switch autoplay off on a fresh account.
+                is Setting.Flag -> dynBoolOrNull(data[setting.key])?.let { values.with(setting, it) }
+                is Setting.Text -> dynString(data[setting.key])?.let { values.with(setting, it) }
+            } ?: values
+        }
     }
 
     private companion object {

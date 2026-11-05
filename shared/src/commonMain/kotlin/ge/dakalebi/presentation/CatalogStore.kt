@@ -77,6 +77,10 @@ class CatalogStore(
         // failed read latched permanently: the guard matched on every later
         // call, so the retry button — and any navigation — was a no-op.
         if (loadedFor == uid && !loading && loadError == null) return
+        // Another viewer's progress must not carry over to this one, not for the
+        // frames the load takes and not after it fails. Switching from an account
+        // to guest mode goes straight from one viewer to the other.
+        if (loadedFor != uid) progress = emptyMap()
         loadedFor = uid
         loading = true
         loadError = null
@@ -214,6 +218,8 @@ class CatalogStore(
 
     fun upcoming(of: Episode, count: Int): List<Episode> =
         CatalogQueries.upcoming(episodes, of, count)
+
+    fun restOfSeason(of: Episode): List<Episode> = CatalogQueries.restOfSeason(episodes, of)
 
     /** Episodes started but not finished, most recent first. */
     fun inProgress(limit: Int): List<Episode> = progress.values

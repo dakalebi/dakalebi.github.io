@@ -28,16 +28,23 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Episode catalog: readable by any signed-in user, writable only by admins
-    // (this is what the Reload button writes).
+    // Episode catalog: readable by anyone, writable only by admins (this is what
+    // the Reload button writes).
+    //
+    // Public so guest mode can browse without an account. Nothing here is private:
+    // it is a copy of what Formula's public API already serves. The cost is that
+    // reads no longer need an account, so they count against the shared daily
+    // quota without one; the app's catalog cache keeps a returning visitor to
+    // one read of meta/catalog.
     match /episodes/{episodeId} {
-      allow read: if isSignedIn();
+      allow read: if true;
       allow write: if isAdmin();
     }
 
-    // Catalog metadata: last refresh time, counts.
+    // Catalog metadata: last refresh time, counts. Public for the same reason,
+    // and because it is what validates the cached catalog.
     match /meta/{docId} {
-      allow read: if isSignedIn();
+      allow read: if true;
       allow write: if isAdmin();
     }
 
@@ -58,14 +65,23 @@ service cloud.firestore {
     // why admin rights live in their own write-denied collection above.
     //
     // hasOnly permits a subset, so a write that touches only one setting passes
-    // and leaves the other alone.
+    // and leaves the others alone.
+    //
+    // One entry per `Setting` in shared/.../domain/model/UserSettings.kt, by key
+    // and by type. A new setting is added there and here in the same change, and
+    // these rules are published BEFORE the bundle that writes it ships: until
+    // then the app's writes of that key are rejected and it says "not synced".
     match /users/{userId} {
       allow read: if isSignedIn() && request.auth.uid == userId;
       allow write: if isSignedIn() && request.auth.uid == userId
         && request.resource.data.keys()
-          .hasOnly(['language', 'autoplayNext', 'updatedAtMillis'])
+          .hasOnly(['language', 'autoplayNext', 'useNativePlayer', 'preferredQuality', 'updatedAtMillis'])
         && (!('autoplayNext' in request.resource.data)
           || request.resource.data.autoplayNext is bool)
+        && (!('useNativePlayer' in request.resource.data)
+          || request.resource.data.useNativePlayer is bool)
+        && (!('preferredQuality' in request.resource.data)
+          || request.resource.data.preferredQuality is string)
         && (!('language' in request.resource.data)
           || request.resource.data.language is string);
     }

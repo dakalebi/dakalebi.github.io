@@ -86,7 +86,10 @@ fun main() {
         // fixture exists to be verified in. Loading first means the first paint is
         // already the finished screen.
         MainScope().launch {
-            runCatching { graph.catalog.ensureLoaded(FIXTURE_UID) }
+            // The fixture reports its viewer synchronously, so it is known here: a
+            // guest loads as the guest. Signed out loads as the account, ready for
+            // the sign-in the fixture accepts.
+            runCatching { graph.catalog.ensureLoaded(graph.session.viewerId ?: FIXTURE_UID) }
                 .onFailure { Log.e("boot", "fixture load failed", it) }
             render()
         }

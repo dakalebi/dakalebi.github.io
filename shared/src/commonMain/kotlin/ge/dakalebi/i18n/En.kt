@@ -44,6 +44,9 @@ object En : Strings {
     override val accountCreated = "Account created"
     override val resetLinkSent = "Password reset link sent"
     override val enterEmailFirst = "Enter your email first"
+    override val continueAsGuest = "Continue as guest"
+    override val guest = "Guest"
+    override val guestProgressNote = "A guest's progress is saved on this device only."
 
     override val errWrongCredentials = "Wrong email or password"
     override val errInvalidEmail = "That email is not valid"

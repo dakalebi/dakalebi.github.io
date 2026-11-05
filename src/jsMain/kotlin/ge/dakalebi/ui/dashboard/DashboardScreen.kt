@@ -25,6 +25,10 @@ import ge.dakalebi.ui.EpisodeTile
 import ge.dakalebi.ui.Rail
 import ge.dakalebi.ui.Thumb
 import ge.dakalebi.ui.assetBase
+import io.github.bchmsl.keel.components.Badge
+import io.github.bchmsl.keel.components.Button
+import io.github.bchmsl.keel.components.ButtonSize
+import io.github.bchmsl.keel.components.ButtonVariant
 import io.github.bchmsl.keel.components.DropdownItemTone
 import io.github.bchmsl.keel.components.DropdownMenu
 import io.github.bchmsl.keel.components.DropdownMenuItem
@@ -58,7 +62,8 @@ fun DashboardScreen() {
     val catalog = catalog()
     val toasts = toasts()
     val scope = rememberCoroutineScope()
-    val uid = session.uid
+    // Whose progress this is: the account's, or a guest's on this device.
+    val uid = session.viewerId
 
     var menuOpen by remember { mutableStateOf(false) }
     var confirm by remember { mutableStateOf(Confirm.None) }
@@ -180,6 +185,19 @@ fun DashboardScreen() {
             onResetAll = { menuOpen = false; confirm = Confirm.ResetAll },
             onRefresh = { scope.refreshCatalog(catalog, toasts) },
             onSignOut = { scope.launch { session.signOut() } },
+            onSignIn = {
+                menuOpen = false
+                session.leaveGuestMode()
+            },
+            onSwitchToGuest = {
+                menuOpen = false
+                scope.launch {
+                    runCatching { session.switchToGuest() }.onFailure {
+                        Log.e("auth", "switch to guest failed", it)
+                        toasts.error(S.actionFailed)
+                    }
+                }
+            },
             busy = busy,
         )
     }
@@ -261,8 +279,20 @@ private fun DashboardNav(onMenu: () -> Unit) {
                     Text(catalog.refreshNote ?: S.refreshing)
                 }
             }
-            Div({ classes("avatar"); attr("title", session.email ?: "") }) {
-                Text(session.email?.take(1)?.uppercase() ?: "?")
+            if (session.isGuest) {
+                // A guest has no initial to show, and the one thing worth offering
+                // them up here is the way to an account.
+                Badge(label = S.guest.caps)
+                Button(
+                    label = S.signIn.caps,
+                    onClick = { session.leaveGuestMode() },
+                    variant = ButtonVariant.Outline,
+                    size = ButtonSize.Small,
+                )
+            } else {
+                Div({ classes("avatar"); attr("title", session.email ?: "") }) {
+                    Text(session.email?.take(1)?.uppercase() ?: "?")
+                }
             }
         }
     }

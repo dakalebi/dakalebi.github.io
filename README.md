@@ -13,6 +13,7 @@ Live at <https://dakalebi.github.io/>.
 | Backend | Firebase Auth + Cloud Firestore — no server |
 | Hosting | GitHub Pages, hash routing |
 | Episodes | `https://mw-api.formula.ge/formula` (CORS-open, called from the browser) |
+| VLC playlist | [`workers/vlc-playlist`](workers/vlc-playlist), a stateless Cloudflare Worker (optional) |
 
 ## Start here
 

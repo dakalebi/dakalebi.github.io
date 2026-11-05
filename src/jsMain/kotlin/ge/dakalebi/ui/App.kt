@@ -30,10 +30,12 @@ fun App() {
     val route = router.current
     val loading = session.loading
     val account = session.account
+    // A guest gets the app too; only nobody at all gets the sign-in screen.
+    val viewer = session.viewer
 
-    LaunchedEffect(loading, account, route) {
+    LaunchedEffect(loading, viewer, route) {
         if (loading) return@LaunchedEffect
-        if (account == null) {
+        if (viewer == null) {
             // Drop cached rows on sign-out rather than refetching: a refetch
             // races the session teardown and comes back as permission errors.
             catalog.reset()
@@ -60,7 +62,9 @@ fun App() {
 
     // Keyed on the uid alone so navigating does not re-run it. Tearing the
     // listener down on sign-out matters: left attached, it keeps querying a
-    // document the signed-out client may no longer read.
+    // document the signed-out client may no longer read. The account's uid, not
+    // the viewer's: a guest has no settings document and no admin entry, so for
+    // a guest this stops sync and settings stay on the device.
     val scope = rememberCoroutineScope()
     LaunchedEffect(account?.uid) {
         val uid = account?.uid
@@ -71,7 +75,7 @@ fun App() {
 
     when {
         loading -> Div({ classes("center-note") }) { Text(S.loading) }
-        account == null -> LoginScreen()
+        viewer == null -> LoginScreen()
         else -> when (route) {
             is Route.Watch -> WatchScreen(route.episodeId)
             else -> DashboardScreen()

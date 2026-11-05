@@ -12,28 +12,3 @@ data class Account(
     val email: String?,
     val emailVerified: Boolean,
 )
-
-/** Settings that follow the account rather than the device. */
-data class UserSettings(
-    /**
-     * BCP-47 tag, nullable because an account that has never chosen one should
-     * leave each device on whatever it was already showing rather than being
-     * dragged to a default nobody picked.
-     */
-    val language: String? = null,
-    /** Null for the same reason: absent means "this account has not said". */
-    val autoplayNext: Boolean? = null,
-)
-
-/**
- * What a read of the settings document found.
- *
- * "Absent" and "could not read" must not collapse into one answer: treating a
- * failed read as an empty account would let a device with a stale local value
- * overwrite the real setting on the next network blip.
- */
-sealed interface SettingsLoad {
-    data class Found(val settings: UserSettings) : SettingsLoad
-    data object Missing : SettingsLoad
-    data object Failed : SettingsLoad
-}

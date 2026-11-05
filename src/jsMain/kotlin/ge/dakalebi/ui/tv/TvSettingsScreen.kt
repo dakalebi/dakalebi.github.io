@@ -9,6 +9,7 @@ import androidx.compose.runtime.setValue
 import ge.dakalebi.core.BuildInfo
 import ge.dakalebi.core.formatDateTime
 import ge.dakalebi.domain.model.InterfaceScale
+import ge.dakalebi.domain.model.Setting
 import ge.dakalebi.di.catalog
 import ge.dakalebi.di.preferences
 import ge.dakalebi.di.session
@@ -99,7 +100,7 @@ fun TvSettingsScreen() {
                             attr("lang", language.tag)
                             onClick {
                                 if (!selected) {
-                                    settings.setLanguage(scope, language.tag) {
+                                    settings.set(Setting.Language, language.tag) {
                                         toasts.error(S.settingNotSynced)
                                     }
                                 }
@@ -163,27 +164,41 @@ fun TvSettingsScreen() {
                 classNames(switchClasses())
                 focusItem("autoplay")
                 attr("role", "switch")
-                attr("aria-checked", settings.autoplayNext.toString())
+                attr("aria-checked", settings[Setting.AutoplayNext].toString())
                 onClick {
-                    settings.setAutoplayNext(scope, !settings.autoplayNext) {
-                        toasts.error(S.settingNotSynced)
-                    }
+                    settings.toggle(Setting.AutoplayNext) { toasts.error(S.settingNotSynced) }
                 }
             }) { Div({ classNames(switchKnobClasses()) }) }
         }
 
-        Div({ classes("tv-row") }) {
-            Span({ classes("tv-row-label") }) { Text(S.signOut.caps) }
-            Div({
-                classNames("tv-btn", buttonClasses(ButtonVariant.Outline))
-                focusItem("sign-out")
-                // The visible text is the account, not the action, so the name has to
-                // carry both — "Sign out" alone would hide which account it signs out.
-                actsAsButton(session.email?.let { "${S.signOut}: $it" } ?: S.signOut)
-                // Asks first rather than signing out on the press: on a shared television
-                // a stray OK on this row should not drop the household back to a login.
-                onClick { confirmSignOut = true }
-            }) { Text(session.email ?: S.signOut.caps) }
+        // A guest has nothing to sign out of, so the same row is their way to an
+        // account. No confirmation: leaving guest mode loses nothing, the progress
+        // stays on the device for next time.
+        if (session.isGuest) {
+            Div({ classes("tv-row") }) {
+                Span({ classes("tv-row-label") }) { Text(S.signIn.caps) }
+                Div({
+                    classNames("tv-btn", buttonClasses(ButtonVariant.Outline))
+                    focusItem("sign-in")
+                    // The visible text is who is watching, as on the account row below.
+                    actsAsButton("${S.signIn}: ${S.guest}")
+                    onClick { session.leaveGuestMode() }
+                }) { Text(S.guest.caps) }
+            }
+        } else {
+            Div({ classes("tv-row") }) {
+                Span({ classes("tv-row-label") }) { Text(S.signOut.caps) }
+                Div({
+                    classNames("tv-btn", buttonClasses(ButtonVariant.Outline))
+                    focusItem("sign-out")
+                    // The visible text is the account, not the action, so the name has to
+                    // carry both — "Sign out" alone would hide which account it signs out.
+                    actsAsButton(session.email?.let { "${S.signOut}: $it" } ?: S.signOut)
+                    // Asks first rather than signing out on the press: on a shared television
+                    // a stray OK on this row should not drop the household back to a login.
+                    onClick { confirmSignOut = true }
+                }) { Text(session.email ?: S.signOut.caps) }
+            }
         }
 
         // Build identity, which is the whole reason it is in the drawer on the web

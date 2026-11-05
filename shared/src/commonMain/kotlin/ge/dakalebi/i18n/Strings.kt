@@ -79,6 +79,13 @@ interface Strings {
     val resetLinkSent: String
     val enterEmailFirst: String
 
+    /** Enters the app without an account; also offered to a signed-in viewer. */
+    val continueAsGuest: String
+    val guest: String
+
+    /** Where a guest's progress goes: under the guest button, and where an account's email would be. */
+    val guestProgressNote: String
+
     val errWrongCredentials: String
     val errInvalidEmail: String
     val errEmailInUse: String
