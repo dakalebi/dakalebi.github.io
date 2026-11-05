@@ -7,8 +7,10 @@ piece works, and the traps that have already cost real time.
 Companion documents:
 
 - [`ARCHITECTURE.md`](ARCHITECTURE.md) — the layering and the rule that holds it
-- [`TEST-PLAN.md`](TEST-PLAN.md) — the manual, signed-in test plan
+- [`TEST-PLAN.md`](TEST-PLAN.md) — the manual test plan
+- [`TV-NATIVE-APP.md`](TV-NATIVE-APP.md), [`TV-NAVIGATION.md`](TV-NAVIGATION.md) — the Android TV app, and how the remote moves focus
 - [`BUG-REPORT.md`](BUG-REPORT.md), [`BUG-REPORT-2.md`](BUG-REPORT-2.md) — defects found and fixed, with root causes
+- [`../workers/vlc-playlist/README.md`](../workers/vlc-playlist/README.md) — the VLC playlist worker
 
 ---
 
@@ -36,6 +38,17 @@ video.
 
 It is one person's tool. There is no growth plan, no second tenant, and the
 whole point of several decisions below is that it costs nothing to run.
+
+Three front ends share one bundle:
+
+| Path | For |
+|---|---|
+| `/` | phone and desktop browsers: dashboard, watch page, menu |
+| `/tv/` | a television, driven by a remote. The Android TV app in `tv/` is a WebView on it |
+| `/drive/` | driving mode: a phone in a car mount, read at a glance, pressed with one thumb |
+
+You can sign in, so progress and settings follow you to every device, or continue
+as a guest, whose progress and settings stay on that device.
 
 **It is a rewrite, not a new idea.** The original is a TanStack Start + Supabase
 app at `../ch-ts-d.lovable app`. That project is **not** modified — it is the
@@ -85,6 +98,13 @@ Explicit instructions, not inferences. Do not quietly revisit these.
 - **Watch-screen action buttons full width on mobile.**
 - **Tab title while watching**: `სეზონი X ⋅ სერია XX - ჩცდ`. (The owner reordered
   this after the first attempt put the initials first — keep their order.)
+- **Guest mode**: watch without an account, on the web and on TV. The catalog is
+  publicly readable for it; guest progress stays on the device. Guests see a Guest
+  badge and Sign in; members also get "Continue as guest" in the menu.
+- **Driving mode plays video in the native player, with bigger buttons.** A first,
+  audio-only version was rejected in their words: *"The episode should play in
+  native player, just the buttons should be bigger."* They also asked for Mark as
+  watched and Open in VLC there, and a way into it from the episode page.
 
 ### Design direction
 
@@ -139,8 +159,14 @@ fetch — happens in the browser. Consequences that reach everywhere:
   served over https: VLC 3 reads no `data:` URL. `workers/vlc-playlist` is a
   stateless Cloudflare Worker that echoes the site's list back as M3U, for
   `cdn.formula.ge` links only. It stores nothing and never carries video. With
-  `VLC_PLAYLIST_ENDPOINT` unset, the button falls back to the single file, so the
-  site still works without the worker.
+  `VLC_PLAYLIST_ENDPOINT` set to null, the button falls back to the single file,
+  so the site still works without the worker. See
+  [iOS playback and VLC](#ios-playback-and-vlc).
+- **The catalog is public.** `episodes` and `meta` are readable without an
+  account, so guests can browse. They hold a copy of what Formula's public API
+  already serves. The cost is that reads no longer need an account, so they count
+  against the shared daily quota without one; the catalog cache keeps a returning
+  visitor to one read of `meta/catalog`.
 
 ### Hash routing
 
@@ -179,14 +205,15 @@ SDK: a service account and a server this app deliberately does not have.
 
 ### Manual dependency injection
 
-Five repositories and a use case per operation, wired by hand in
+The repositories, and a use case per operation, wired by hand in
 `di/AppGraph.kt`. A
 container would add a dependency and a layer of indirection to save one page of
 unambiguous constructor calls.
 
 ### Tests on Node, not in a browser
 
-`:shared` has no browser in it, so `jsNodeTest` runs it in about a second.
+`:shared` has no browser in it, so `:shared:jsNodeTest` runs it on Node in about a
+second.
 Standing up Karma and a headless Chrome to assert things about sorting would be
 slower and more fragile for no gain. The browser-facing code is tested by hand —
 see §8.
@@ -222,14 +249,23 @@ put the placeholder where their grammar needs it.
 
 1. `Log.installGlobalHandlers()` first, so a crash during the rest of startup is
    still reported.
-2. If `FirebaseConfig.isConfigured` is false, render `SetupNotice()` and stop —
-   touching Firebase before the config is filled in throws on init.
-3. Build `AppGraph()`, which constructs every repository, use case and store.
-4. `router.start()`, `preferences.start()`, `settings.applyCachedLanguage()`.
+2. With a fixture URL (`?ui=demo`, `?ui=tv-demo`, `?ui=drive-demo`), build
+   `fixtureGraph()` instead and never touch Firebase.
+3. Otherwise, if `FirebaseConfig.isConfigured` is false, render `SetupNotice()`
+   and stop — touching Firebase before the config is filled in throws on init.
+   If it is configured, build `AppGraph()`, which constructs every repository,
+   use case and store.
+4. `router.start()`, `preferences.start()`, `settings.applyCachedLanguage()`,
+   and on `/tv/` the saved interface size, all before the first paint.
 5. Seed `document.title` and `<html lang>` for the frames before the first
-   composition; from then on `App` owns both.
+   composition; from then on the shell's root owns both.
 6. `session.start()` — attaches the auth observer.
-7. `renderComposable { graph.Provide { App() } }`.
+7. `renderComposable { graph.Provide { … } }` with the root for this page's
+   shell: `App()`, `TvApp()` or `DriveApp()`.
+
+Which shell a page is comes from `data-shell` on its root element, read by
+`ui/Shell.kt`. A `?ui=` parameter can override it; names starting with `tv` or
+`drive` pick those shells.
 
 `Provide` puts every store into a `staticCompositionLocalOf`. The locals have no
 default, so a missing provider is a loud error at first read rather than a
@@ -260,6 +296,38 @@ or an account can still be created against it by other means.
 `ErrorMessages.signIn` maps Firebase codes to readable text. Firebase puts the
 only actionable identifier in `code` and prose in `message`; `Log.codeOf` digs
 the code out of the dynamic object.
+
+### Guest mode
+
+Who is using the app is a `Viewer` (`domain/model/Viewer.kt`): `Member(account)`
+or `Guest`. Every shell gates on `session.viewer` (null means the sign-in screen)
+and files progress under `session.viewerId`.
+
+- **`uid` still means the account.** `SessionStore.uid` is null for a guest, and
+  settings sync starts only with an account uid. That is the whole reason a
+  guest's settings stay on the device: `SettingsStore` changes the device copy and
+  has no account to write to.
+- **Guest progress never reaches Firestore.** `ViewerProgressRepository` routes
+  each call by the owner id it names: `guest:device` goes to
+  `LocalProgressRepository` (`localStorage` key `progress_v1:guest:device`),
+  anything else to Firestore. A colon can never appear in a Firebase uid. Routing
+  by the named owner, not by who is signed in now, keeps a late save from the
+  watch screen with the viewer who was watching.
+- **Two tabs add up.** `LocalProgressRepository` reads, changes and writes back on
+  every call instead of overwriting from memory. If storage refuses, it keeps this
+  page's copy, so only persistence is lost.
+- **The guest choice is per device**, in `localStorage` key `guest_mode_v1`
+  (`LocalGuestMode`). An account always wins over it, and signing in clears it,
+  so a later sign-out returns to the sign-in screen.
+- **Member to guest without a flash.** "Continue as guest" in a member's menu
+  (`switchToGuest`) sets the guest choice before signing out, and takes it back
+  if the sign-out fails.
+- **`CatalogStore` clears progress when the viewer changes**, so an account's
+  progress never shows for the guest, or the other way round.
+
+Where to find it: the sign-in screen's "Continue as guest" (web, TV and driving
+mode share `LoginScreen`), the web header's Guest badge and Sign in, the web
+menu, and a Sign in row in TV settings.
 
 ### The catalog
 
@@ -359,6 +427,79 @@ so the UI would sit at 0:00 and progress would never save.
 extrapolates, falling back to the native value the moment it becomes sane again.
 **Never verified on real hardware** — see §8.
 
+### iOS playback and VLC
+
+**Season 2 does not play on iPhone or iPad.** It is stored as interlaced 1080i
+H.264. Apple's decoder rejects it with `MediaError` code 4, and every browser on
+iOS has to use that decoder. Desktop browsers and VLC bring their own and play it.
+
+- **A failed video says so.** `playbackFailure` (`domain/service/PlaybackFailure.kt`)
+  turns code 4 on an iPhone or iPad into "does not play on iPhone or iPad", and
+  anything else into a general load failure. The watch screen first retries once
+  with a fresh link (`retryUrl`); when there is no new link to try, it shows the
+  error at once instead of waiting on a black screen.
+- **"Open in VLC" on every episode, iPhone and iPad only**, in VLC's orange,
+  not only after an error. Not on a computer: VLC registers no link scheme there,
+  and the browser plays everything anyway.
+- **The link** is VLC's x-callback `stream` action (`vlcStreamUrl`), which plays at
+  once. The whole link is percent-encoded, because VLC decodes the `url` value only
+  when it finds an encoded `://` near the start.
+- **The label carries a time** ("Open in VLC · 12:34"): the saved spot until the
+  page's player moves, then wherever it is.
+- **A playlist, through the worker.** `vlcOpenUrl` links to
+  `workers/vlc-playlist` (`VLC_PLAYLIST_ENDPOINT`), which answers with an M3U that
+  VLC for iOS 3.7.3+ expands into its queue:
+  - this episode first, starting at the label's time (`#EXTVLCOPT:start-time`);
+  - then the rest of its season (`CatalogQueries.restOfSeason`), so the queue
+    stops at the season's end. With autoplay off, this episode alone;
+  - each titled "სეზონი N · სერია M" from the catalog's own numbers, never from
+    the file path (season 15's "(5)" lives in `episode_54`);
+  - the current episode uses the page's fresh link, the next ones their stored
+    links in the quality being watched where they have it;
+  - what all items share (`base`, a `title` template) goes once, so a whole
+    season fits in a few kilobytes.
+- **Fallback.** With no endpoint, or a current link off `cdn.formula.ge`, the
+  button links to the single file, which starts at 0:00. The label's time is then
+  the spot to seek to by hand.
+
+Where the worker lives and how it ships: §6.
+
+### Driving mode
+
+`/drive/` is a third shell on the same bundle (`ui/drive/`). It is for a phone in
+a car mount, so it has no browsing: the home screen offers one episode, and the
+player screen is the native player with big controls around it.
+
+- **Home**: one large Continue or Play button. Whatever the player already holds
+  wins; otherwise the episode comes from `CatalogStore.nextToPlay`.
+- **Player**: the browser's native `<video controls playsinline>`, the same
+  attributes as `NativeVideoPlayer`. Around it, all large: back, the autoplay
+  switch, season and episode, time and minutes left, Mark as watched, Open in VLC
+  (iPhone and iPad), −30 s, play/pause, +30 s and Next episode. A playback error
+  sits over the picture, so it takes no room from the buttons.
+- **One `<video>` for the whole visit** (`DrivePlayer`). iOS lets an element start
+  without a tap only after a tap has started it once. The home button starts it
+  inside its tap, before the player screen exists; the player screen only lends it
+  a frame. Autoplay into the next episode swaps the source in the `ended` handler
+  and reuses that first permission.
+- **Same rules as the web player**: progress saves every `SAVE_EVERY` seconds,
+  resume retries the seek (up to eight tries), one fresh link after a media error, the
+  picked quality or the best rendition capped at 720p on a phone, and a `#t=`
+  fragment on iOS.
+- **Car and headphone buttons** through the Media Session API (play/pause, ∓30 s,
+  next, seek), and a screen wake lock while playing.
+- **Mark as watched** shows a green tick once done. There is no undo here: undoing
+  asks for a confirmation, which stays on the web page.
+- **Open in VLC** builds the same playlist as the web page, from where the car
+  player is, and pauses the car player first.
+- **Getting there**: "Driving mode" in the web menu, and a Driving mode button on
+  the episode page. That button saves the current spot first and waits up to two
+  seconds (`DRIVE_SAVE_WAIT_MS`), because car mode is another page that reads the
+  saved spot, and a save started while a page unloads may never arrive.
+  `driveHref` is relative, so `/pr/<n>/` opens its own car mode.
+- **Guests** get driving mode too. Autoplay and quality are the synced settings,
+  so a member's choice matches every other device; a guest's stay on the device.
+
 ### Language and settings
 
 Every setting that follows the account is one line in the `Setting` registry
@@ -402,7 +543,11 @@ rules, so a snapshot can never trigger a write that triggers a snapshot.
 
 A rejected write keeps the setting locally, stays marked as unconfirmed, and
 toasts. Losing the sync should not cost you the setting, but failing silently
-looks exactly like "my other phone never updates".
+looks exactly like "my other phone never updates". The marks live in
+`localStorage` under `settings_unconfirmed`, per account.
+
+A guest has no account, so `SettingsStore.start` is never called for one. Their
+changes go to the device copy only, and nothing is marked or uploaded.
 
 Each setting is uploaded in its own write. The rules check the whole document,
 so one field they do not allow yet would refuse every setting sent with it, on
@@ -469,19 +614,46 @@ admins/{uid}
     (existence is the whole payload; any fields are for humans)
 ```
 
-All of the above is on `main`. What is **not** yet true of the live Firebase
-project is the `admins/{uid}` document and the published rules — see §9.
+A guest has nothing here. Their data is in `localStorage` on the device:
+
+| Key | Holds |
+|---|---|
+| `progress_v1:guest:device` | the guest's watch progress |
+| `guest_mode_v1` | that this device chose guest mode |
+
+The device copy of the settings (`LocalSettingsCache`) uses the same keys for
+members and guests: `language`, `autoplay_next_episode`, `use_native_player`,
+`preferred_quality`.
 
 Rules, in `firebase/firestore.rules`:
 
 | Path | Read | Write |
 |---|---|---|
-| `episodes/*` | any signed-in | admin |
-| `meta/*` | any signed-in | admin |
+| `episodes/*` | anyone, no account needed | admin |
+| `meta/*` | anyone, no account needed | admin |
 | `admins/{uid}` | that uid only | **nobody** |
 | `users/{uid}` | owner | owner, fields allowlisted |
 | `users/{uid}/progress/*` | owner | owner |
 | everything else | denied | denied |
+
+### Publishing the rules
+
+**Nothing deploys the rules.** No workflow touches Firebase; the rules are pasted
+into **Firestore → Rules** in the console and published by hand. The live rules
+were last published on 2026-11-05 and match `firebase/firestore.rules` on `main`.
+
+- **Rules first, bundle second.** Publish a rules change before the bundle that
+  depends on it reaches `main` (a new settings key, a newly public path). Until
+  then the app's writes of that key are refused and it toasts "not synced".
+- **Publish the whole file from `main`**, never a branch's copy. Two pull
+  requests can change different blocks of the same file, and pasting one of them
+  drops the other's change. #28 and #29 both changed it; publishing one branch's
+  copy left the other's change out until a combined file was published.
+- **Never go back to an older `users` rule.** Once a `users/{uid}` document holds
+  `useNativePlayer` or `preferredQuality`, a rule whose allowlist lacks them
+  refuses every write to that document, language included.
+- Every `/pr/<n>/` preview uses the same Firebase project, so a pull request
+  that needs new rules needs them published before its preview can work.
 
 Two things worth knowing:
 
@@ -512,30 +684,95 @@ cache).
 
 ## 6. Build, test, deploy
 
+Use **JDK 17** locally (`export JAVA_HOME=$(/usr/libexec/java_home -v 17)`). In
+iCloud Drive, JDK 21's `Files.copy` uses `clonefile()`, which iCloud refuses, and
+the TV build fails. CI runs Temurin 21, outside iCloud. The `keel` submodule must
+be checked out (`git submodule update --init keel`), or Gradle fails at
+configuration.
+
 ```bash
+./gradlew :shared:jsNodeTest      # the unit tests, on Node, no browser
 ./gradlew jsBrowserDistribution   # production bundle -> build/dist/js/productionExecutable/
-./gradlew jsNodeTest              # 60 tests in :shared, ~1s, no browser
+python3 tools/check-css-classes.py   # after the build: every emitted class is styled on its shell
 ```
+
+The CSS check reads the built stylesheets of each shell (`/`, `/tv/`, `/drive/`)
+and fails when a composable emits a class that a page drawing it does not load.
+It runs in CI as `css-classes`, and `main` requires it. That job only builds the
+bundle and runs this check. It does not run the unit tests, so run
+`:shared:jsNodeTest` yourself before opening a pull request.
 
 Local preview is a static server over the built output — see
 `.claude/launch.json`. Do **not** start dev servers from a shell.
 
-Deployment is `.github/workflows/deploy.yml`: every push to `main` builds and
-publishes to the root of the Pages site. Every pull request from this repository
-is published to `/pr/<number>/` by `checks.yml` and removed when it closes, so to
-try a branch on the real site, open a draft pull request. The old `preview`
-branch and its `/preview/` folder are retired. Pages must be set to
-**Source: GitHub Actions**; if it ever reverts to `legacy`, the workflow goes
-green while the site 404s. That has happened.
+### Deploy
 
-The site's state is the `gh-pages` branch, kept as a single commit:
-`tools/publish-site.sh` rewrites one folder and replaces the commit, and
-`publish.yml` deploys whatever the branch holds. Don't push to `gh-pages` by
-hand: there is no history to review it in, and the next publish of that folder
-overwrites it anyway.
+| Trigger | Publishes to | Workflow |
+|---|---|---|
+| Push to `main` | the site root, with `/tv/` and `/drive/` inside it | `deploy.yml` |
+| Pull request from this repository: opened, pushed, reopened | `/pr/<number>/` | `checks.yml`, `preview` job |
+| That pull request closed | removes `/pr/<number>/` | `checks.yml`, `remove-preview` job |
 
-The script touches `.nojekyll`, because Pages runs Jekyll by default and Jekyll
-drops files beginning with an underscore, which webpack can emit.
+Both callers build, run the CSS check, then call the reusable `publish.yml`:
+
+- **`write`** runs `tools/publish-site.sh <folder> <build>`. The site's state is
+  the `gh-pages` branch, kept as **one commit with no history**. The script
+  clones it, replaces only its own folder (`.` or `pr/<n>`), writes `.nojekyll`
+  and `robots.txt` (which blocks `/pr/`), and replaces the commit with
+  `--force-with-lease`, retrying from the new tip if another writer got there
+  first. A root publish keeps `pr/` and drops any other top-level folder nothing
+  owns. Don't push to `gh-pages` by hand: there is no history to review it in,
+  and the next publish of that folder overwrites it anyway.
+- **`deploy`** runs one at a time across the repository (concurrency group
+  `pages-deploy`) and uploads whatever `gh-pages` holds when it starts. A queued
+  deploy cancelled by a newer one loses nothing, because the newer one sees at
+  least as much.
+- A removal does not deploy on its own. A closed pull request's folder leaves the
+  live site with the next deploy of anything.
+
+Repository settings this depends on:
+
+- **Settings → Pages → Source: GitHub Actions.** If it ever reverts to `legacy`,
+  the workflow goes green while the site 404s. That has happened.
+- **Settings → Environments → github-pages → Deployment branches**: `main` and
+  `refs/pull/*/merge`. Pull request runs are matched by their merge ref.
+- **`main` is protected**: a pull request is required (no approvals), the
+  `css-classes` check must pass, no force pushes or deletion, admins included. A
+  direct push to `main` is refused. By convention, pull requests are squash-merged.
+
+Other things worth knowing:
+
+- **There is no shared preview branch.** The old `preview` branch and its
+  `/preview/` folder are retired (#33). To try a branch on the real site, open a
+  draft pull request and use `/pr/<n>/`.
+- **Every folder uses the production Firebase project**, because the config is
+  compiled in. A preview is a staging surface for the interface, not an isolated
+  environment: anything done there is real data.
+- **Pull requests from forks** get the check only. Their token cannot write the
+  site, so the preview jobs are skipped.
+- **A pull request with merge conflicts gets no Checks run**, so its preview stops
+  updating until the conflict is resolved.
+- `deploy.yml` refuses a manual run from any branch but `main`.
+
+### The VLC playlist worker
+
+`workers/vlc-playlist` is deployed by hand, not by CI, to the owner's Cloudflare
+account (free plan). The site points at it through `VLC_PLAYLIST_ENDPOINT` in
+`shared/.../domain/service/VlcLink.kt`. From that folder:
+
+```bash
+node --test          # its own tests; Node 18+, no dependencies
+npx wrangler deploy  # after `npx wrangler login` once
+```
+
+CI does not run these tests. See
+[`workers/vlc-playlist/README.md`](../workers/vlc-playlist/README.md).
+
+### The TV app
+
+Built on a machine with an Android SDK, never by CI. `./gradlew :tv:assembleDebug`
+for the real app, `./gradlew :tv:assemblePreview -PpreviewPr=<n>` for one that opens
+`/pr/<n>/tv/`. Details in [`TV-NATIVE-APP.md`](TV-NATIVE-APP.md).
 
 ---
 
@@ -614,6 +851,28 @@ there is the accidental kind: `touch-action: manipulation` kills double-tap
 zoom, and 16px form fields stop the focus zoom that used to leave you signing in
 on a sideways-scrolled page.
 
+### iOS reports code 4 for more than undecodable files
+
+`MediaError` code 4 is what season 2's 1080i files produce, but Safari on iOS also
+reports it for some network and TLS failures. A blocked network (an office proxy,
+say) can therefore show "does not play on iPhone or iPad" for an episode that
+plays fine elsewhere.
+
+### The iOS Simulator does not enforce the tap rule
+
+A real iPhone starts media only from a tap, or on an element a tap has already
+started. The Simulator lets a script start it either way, so it cannot prove
+anything about autoplay without a tap. That is the whole risk in driving mode's
+autoplay, and it needs a real device.
+
+### iCloud Drive and the build
+
+This working tree lives in iCloud Drive. JDK 21 cannot build the TV app here (see
+§6), iCloud drops `"… 2"` conflict copies into `build/` folders that then fail
+the build as duplicates (`./gradlew :tv:clean`), and git has hung once reading a
+file in `.git`. If a git command hangs, find what it is reading with `lsof` and
+retry.
+
 ### The in-app Browser pane
 
 - **There is no Firebase session in it**, so every signed-in screen is
@@ -628,29 +887,52 @@ on a sideways-scrolled page.
 
 ## 8. What is verified, and what is not
 
-**Automated.** 60 tests on Node, in `:shared`: the watched threshold, the
-never-rewind guard, "continue watching" including its five-second floor,
-ordering across season boundaries, hash-route parsing, the settings merge
-semantics, the admin lookup, timestamp formatting, toast dismissal, the catalog
-cache's stamp rule and its thirteen-field round trip, and the Firebase error-code
-spellings.
+**Automated.** `./gradlew :shared:jsNodeTest`, on Node, in `:shared` (175 tests
+on 2026-11-05): the watched threshold, the never-rewind guard, "continue watching"
+and the next episode to play, ordering across season boundaries and the rest of a
+season, hash-route parsing, settings sync (the merge rules, the store, the device
+copy), guest sessions and guest storage, playback-failure classification, the
+quality default, the iOS resume fragment, the VLC links and playlist encoding,
+TV seeking and interface size, timestamp formatting, toast dismissal, the catalog
+cache's stamp rule and its thirteen-field round trip, the bare GET, and the
+Firebase error-code spellings.
+
+The worker has its own tests (`node --test` in `workers/vlc-playlist`). One of them
+decodes a link pinned by `VlcPlaylistTest` the way VLC does, so the two sides
+cannot drift apart.
+
+CI runs none of these tests, and nothing in the TV app. It only builds the bundle
+and runs the CSS check.
+
+**Fixtures.** `/?ui=demo`, `/tv/?ui=tv-demo` and `/drive/?ui=drive-demo` (plus
+`&guest`) render every screen against fake data with no Firebase, which is how
+UI changes are checked in a browser or the iOS Simulator. Their video links are
+fake, so playback itself is never exercised there.
 
 **Verified by hand, repeatedly.** The signed-out path — boot, redirect to
 `#/login`, language switching, the drawer's layout, responsive behaviour at
 375px — plus a full manual pass documented in `TEST-PLAN.md` and
 `BUG-REPORT*.md`.
 
+**On a real iPhone.** The VLC playlist (#32), from a real episode page on a pull
+request preview: the rest of the season in VLC's queue, with titles, the start
+time and autoplay.
+
 **Never verified.**
 
 - **Anything behind sign-in, in recent changes.** There is no Firebase session
   in the automated browser and signing in is not permitted, so dashboard,
-  watch and playback changes are compile-checked and reasoned about, not
-  exercised. Where a signed-in screen genuinely had to be seen, a throwaway
-  harness was used (a temporary catalog seeder plus an `App.kt` edit rendering
-  the dashboard while signed out), committed nothing, and was reverted.
-- **iOS Safari, on real hardware.** Both the native player path and the AirPlay
-  wall-clock extrapolation are unexercised. They are written from the
-  documented behaviour and the original app's workarounds.
+  watch and playback changes are compile-checked, checked on fixtures, and
+  reasoned about, not exercised against real data.
+- **The AirPlay clock** on real hardware. It is written from the documented
+  behaviour and the original app's workarounds.
+- **Driving mode on a real iPhone**: real playback, autoplay into the next
+  episode without a tap, native fullscreen while the source swaps, Media Session
+  buttons and the wake lock. All of it was checked only in the Simulator, which
+  does not enforce the tap rule (§7).
+- **Guest mode with a real TV remote**, reaching "Continue as guest".
+- **Settings sync on two real devices** after the final #28 fix and the
+  combined rules: no such check is recorded.
 - **`CustomVideoPlayer` internals**, beyond rendering. It is 600 lines of media
   state machine that needs a playing video to exercise.
 
@@ -660,32 +942,42 @@ spellings.
 
 ### Code
 
-Everything in this document is merged to `main` and deployed.
+Everything in this document is merged to `main` and deployed. The live
+Firestore rules match `firebase/firestore.rules` on `main` (published
+2026-11-05).
 
-### Two console steps still outstanding
+### Admin rights need a console entry
 
-The code for admin rights ships, but the Firebase project has not been set up
-for it yet. Until both of these are done, **the catalog refresh control will
-not appear**, because `FirestoreAdminRepository` reads `admins/{uid}` and the
-published rules currently deny that path.
+The catalog refresh control appears only for an account with an `admins/{uid}`
+document, because `FirestoreAdminRepository` reads it and `isAdmin()` in the
+rules calls `exists()` on it. If the owner does not see the refresh control,
+create that document by hand in the Firebase console (fields are for humans
+only). No redeploy is needed. `admins` is write-denied to every client, which is
+the security property, not an obstacle to route around, and no Firebase or
+gcloud CLI is installed on the owner's machine.
 
-Nothing else is affected: language and autoplay sync, the catalog cache and
-playback all work. The fix is recoverable at any time and needs no redeploy.
+### Known limits
 
-1. **Create `admins/PZ6HS4qhStUv8Ai1VxCGU72bW6G3`** in the Firebase console.
-   Fields are for humans only.
-2. **Publish `firebase/firestore.rules`** — Firestore → Rules → select all →
-   paste → Publish.
-
-**Order matters.** The new `isAdmin()` calls `exists()` on that document, so
-publishing first denies catalog writes until the document appears.
-
-Both must be done in the console. `admins` is write-denied to every client —
-that is the security property, not an obstacle to route around — and no
-Firebase or gcloud CLI is installed on the owner's machine.
-
-A scheduled task, `dakalebi-finish-firestore-admin`, exists to walk these
-steps and verify them.
+- **Season 2 does not play in any browser on iPhone or iPad.** VLC is the way
+  (§4, iOS playback and VLC). Safari also reports some network failures as the
+  same error (§7).
+- **VLC reports nothing back.** Watching in VLC does not save progress or mark
+  episodes watched on the site.
+- **Only the current episode gets a fresh link** in the VLC playlist. The next
+  ones use their stored links, which can go stale.
+- **The worker is in the owner's Cloudflare account** and is deployed by hand.
+  If it goes away, "Open in VLC" still works for one episode at a time once
+  `VLC_PLAYLIST_ENDPOINT` is set to null.
+- **A guest's progress is on one device**, in `localStorage`. Clearing site data
+  loses it, and signing in does not move it to the account.
+- **Public catalog reads count against the shared daily quota** without an
+  account (§3).
+- **Previews share production's Firebase project.** Anything done on `/pr/<n>/`
+  is real data.
+- **A pull request with merge conflicts gets no preview update**, and a closed
+  pull request's folder leaves the live site only with the next deploy.
+- **The TV app is only as good as the live site.** A broken deploy to `main`
+  breaks it with no reinstall; try TV changes with the preview build first.
 
 ### Known gaps, unprioritised
 
