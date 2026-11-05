@@ -140,8 +140,15 @@ The consoles are yours; the code is already written against them.
 ### GitHub Pages
 
 **Settings → Pages → Source: GitHub Actions.** `.github/workflows/deploy.yml`
-builds and deploys on every push to `main`. If the source ever reverts to
-`legacy`, the workflow goes green while the site 404s.
+builds and deploys on every push to `main` (the root) and `preview`
+(`/preview/`). Every pull request from this repository gets its own copy at
+`/pr/<number>/`, rebuilt on each push and removed when it closes. If the source
+ever reverts to `legacy`, the workflow goes green while the site 404s.
+
+**Settings → Environments → github-pages → Deployment branches** must allow
+`main`, `preview` and `refs/pull/*/merge`. Pull request runs are matched by
+their merge ref, not their branch name, so without the last one every preview
+fails at the deploy step.
 
 ## Notes
 

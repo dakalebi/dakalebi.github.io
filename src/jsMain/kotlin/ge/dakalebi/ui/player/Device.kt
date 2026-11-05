@@ -2,6 +2,7 @@ package ge.dakalebi.ui.player
 
 import kotlinx.browser.window
 import org.w3c.dom.HTMLVideoElement
+import kotlin.math.min
 
 /**
  * iPhone / iPad detection.
@@ -18,6 +19,18 @@ val isAppleMobile: Boolean by lazy {
     val touchPoints = runCatching { nav.asDynamic().maxTouchPoints as? Int }.getOrNull() ?: 0
     Regex("iPhone|iPod|iPad", RegexOption.IGNORE_CASE).containsMatchIn(ua) ||
         (platform == "MacIntel" && touchPoints > 1)
+}
+
+/**
+ * A phone-sized screen: the shorter side under 600 CSS px, Material's compact width.
+ *
+ * Read from the screen, not the window, so a narrow desktop window is not a phone,
+ * and from the shorter side, so turning the phone does not change the answer. An
+ * iPad's shorter side is 744 px or more, so an iPad is not compact.
+ */
+val isCompactScreen: Boolean by lazy {
+    val screen = window.screen
+    min(screen.width, screen.height) < 600
 }
 
 /** True once the element exposes the WebKit inline-fullscreen video API. */

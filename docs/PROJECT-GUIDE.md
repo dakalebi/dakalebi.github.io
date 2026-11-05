@@ -122,6 +122,12 @@ fetch — happens in the browser. Consequences that reach everywhere:
   client set `User-Agent`/`Origin`/`Referer`, all forbidden to scripts, and any
   non-safelisted header forces a preflight the API does not advertise
   `Access-Control-Allow-Headers` for.
+- **Fresh episode URLs have five seconds.** The watch screen asks the Formula
+  API for an episode's current URLs before it shows the player, and plays the
+  stored URL when that fails. `fetchEpisode` aborts after
+  `EPISODE_TIMEOUT_MILLIS`, so an API outage costs a few seconds rather than a
+  player that never appears. The abort goes through an `AbortSignal`, which
+  adds no header.
 
 ### Hash routing
 
@@ -313,6 +319,21 @@ giving up after eight attempts.
 It **never pauses the element while waiting** — pausing breaks the AirPlay
 handshake and leaves the receiver playing while the phone reports 0:00.
 
+On iOS the first source also carries the saved position as a `#t=` media
+fragment (`withStartFragment`), so the first load starts there instead of loading
+0:00 and then seeking. When the element is already at the target before any seek
+of ours, `applyResume` stops there. The fragment is fixed at the first source: the
+saved position changes with every save, and a changed `src` reloads the video.
+
+### Which quality an episode starts in
+
+A quality the viewer picked on this device (`preferred_quality` in
+`localStorage`) wins. Otherwise a phone-sized screen (`isCompactScreen`, shorter
+side under 600 CSS px) starts at 720p and everything else at the best rendition
+(`defaultQualityLabel`). iPads are not compact. The native iOS player has no
+quality menu, so with it on, this default is an iPhone's only way off 1080p. TV
+picks its quality in `TvWatchScreen` and is not affected.
+
 ### The AirPlay clock
 
 iOS reports `currentTime` as 0 while playback is routed to an AirPlay target.
@@ -453,11 +474,19 @@ Local preview is a static server over the built output — see
 `.claude/launch.json`. Do **not** start dev servers from a shell.
 
 Deployment is `.github/workflows/deploy.yml`: every push to `main` builds and
-publishes to Pages. Pages must be set to **Source: GitHub Actions**; if it ever
-reverts to `legacy`, the workflow goes green while the site 404s. That has
-happened.
+publishes to the root of the Pages site, and every push to `preview` to
+`/preview/`. Every pull request from this repository is published to
+`/pr/<number>/` by `checks.yml` and removed when it closes. Pages must be set to
+**Source: GitHub Actions**; if it ever reverts to `legacy`, the workflow goes
+green while the site 404s. That has happened.
 
-The workflow touches `.nojekyll`, because Pages runs Jekyll by default and Jekyll
+The site's state is the `gh-pages` branch, kept as a single commit:
+`tools/publish-site.sh` rewrites one folder and replaces the commit, and
+`publish.yml` deploys whatever the branch holds. Don't push to `gh-pages` by
+hand: there is no history to review it in, and the next publish of that folder
+overwrites it anyway.
+
+The script touches `.nojekyll`, because Pages runs Jekyll by default and Jekyll
 drops files beginning with an underscore, which webpack can emit.
 
 ---

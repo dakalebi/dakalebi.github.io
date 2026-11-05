@@ -10,6 +10,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import ge.dakalebi.core.Log
+import ge.dakalebi.core.formatTime
 import ge.dakalebi.di.LocalResolveEpisodeVideo
 import ge.dakalebi.di.catalog
 import ge.dakalebi.di.preferences
@@ -17,7 +18,13 @@ import ge.dakalebi.di.router
 import ge.dakalebi.di.session
 import ge.dakalebi.di.settings
 import ge.dakalebi.di.toasts
-import ge.dakalebi.domain.service.orderedQualityLabels
+import ge.dakalebi.domain.service.COMPACT_SCREEN_MAX_QUALITY
+import ge.dakalebi.domain.service.PlaybackFailure
+import ge.dakalebi.domain.service.defaultQualityLabel
+import ge.dakalebi.domain.service.playbackFailure
+import ge.dakalebi.domain.service.retryUrl
+import ge.dakalebi.domain.service.vlcStreamUrl
+import ge.dakalebi.domain.service.withStartFragment
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
 import ge.dakalebi.presentation.Route
@@ -29,9 +36,11 @@ import ge.dakalebi.ui.player.CustomVideoPlayer
 import ge.dakalebi.ui.player.NativeVideoPlayer
 import ge.dakalebi.ui.player.PlayerEvents
 import ge.dakalebi.ui.player.isAppleMobile
+import ge.dakalebi.ui.player.isCompactScreen
 import io.github.bchmsl.keel.components.Callout
 import io.github.bchmsl.keel.components.CalloutBody
 import io.github.bchmsl.keel.components.CalloutTone
+import io.github.bchmsl.keel.components.LinkButton
 import io.github.bchmsl.keel.dom.buttonClasses
 import io.github.bchmsl.keel.components.ButtonVariant
 import io.github.bchmsl.keel.dom.classNames
@@ -74,6 +83,10 @@ fun WatchScreen(episodeId: String) {
     var promptDismissed by remember(episodeId) { mutableStateOf(false) }
     var resolving by remember(episodeId) { mutableStateOf(true) }
     var confirmReset by remember(episodeId) { mutableStateOf(false) }
+    // Where this page's player is, in whole seconds, for the VLC button: VLC's link
+    // cannot carry a start time, so the label shows it for seeking by hand. Whole
+    // seconds so a `timeupdate` four times a second recomposes at most once.
+    var position by remember(episodeId) { mutableStateOf<Int?>(null) }
 
     LaunchedEffect(uid) { if (uid != null) catalog.ensureLoaded(uid) }
 
@@ -105,10 +118,13 @@ fun WatchScreen(episodeId: String) {
         val sources = resolved.sources.ifEmpty { current.sources }
         available = sources
         val preferred = prefs.preferredQuality?.takeIf { sources.containsKey(it) }
-        quality = preferred ?: orderedQualityLabels(sources).firstOrNull()
-        videoUrl = preferred?.let { sources[it] }
-            ?: resolved.videoUrl
-            ?: quality?.let { sources[it] }
+        // A quality picked on this device wins. Otherwise a phone starts at 720p,
+        // because the 1080p file is the slowest to start and the screen hides the
+        // difference. The URL follows the label, so the file that plays is always
+        // the one the quality menu names.
+        quality = preferred
+            ?: defaultQualityLabel(sources, COMPACT_SCREEN_MAX_QUALITY.takeIf { isCompactScreen })
+        videoUrl = quality?.let { sources[it] } ?: resolved.videoUrl
 
         if (videoUrl == null) error = S.videoLinkFailed
         resolving = false
@@ -191,6 +207,23 @@ fun WatchScreen(episodeId: String) {
 
         if (isAppleMobile && stage == "metadata") return
 
+        fun settle() {
+            refs.resumeApplied = true
+            refs.resumeAttempts = 0
+            refs.resumeSeekIssued = false
+            refs.resumeTimer?.let { window.clearTimeout(it) }
+            refs.resumeTimer = null
+        }
+
+        // Already there before any seek of ours: the `#t=` start on the source did it,
+        // and seeking again would only stall the element on a position it has. Once
+        // we have seeked, iOS can report the target while having ignored the seek, so
+        // from then on only the retry loop below decides.
+        if (!refs.resumeSeekIssued && kotlin.math.abs(video.currentTime - target) < 0.75) {
+            settle()
+            return
+        }
+
         fun scheduleRetry(nextStage: String, delay: Int) {
             refs.resumeTimer?.let { window.clearTimeout(it) }
             if (refs.resumeAttempts >= 8) return
@@ -214,15 +247,20 @@ fun WatchScreen(episodeId: String) {
         }
 
         if (kotlin.math.abs(video.currentTime - target) < 0.75) {
-            refs.resumeApplied = true
-            refs.resumeAttempts = 0
-            refs.resumeSeekIssued = false
-            refs.resumeTimer?.let { window.clearTimeout(it) }
-            refs.resumeTimer = null
+            settle()
             return
         }
 
         scheduleRetry("data", 250)
+    }
+
+    /**
+     * Feeds [position]. Ignored until the resume seek has landed, or the player has
+     * passed the saved spot on its own: before that the element reports the 0:00 it
+     * loaded at, and the label would flash it over the saved time.
+     */
+    fun trackPosition(time: Double) {
+        if (refs.resumeApplied || time >= savedSeconds) position = floor(time).toInt()
     }
 
     // ----------------------------------------------------- airplay ticker
@@ -237,6 +275,7 @@ fun WatchScreen(episodeId: String) {
         refs.airplayTimer = window.setInterval({
             val video = refs.video ?: return@setInterval
             if (!video.paused && !video.ended) {
+                trackPosition(effectiveTime(video))
                 val dur = effectiveDuration(video)
                 if (dur != null && dur > 0) {
                     duration = dur
@@ -295,6 +334,7 @@ fun WatchScreen(episodeId: String) {
         onTimeUpdate = { video ->
             refs.airplay.sync(video)
             val time = effectiveTime(video)
+            trackPosition(time)
             if (time - refs.lastSaved >= SAVE_EVERY) {
                 refs.lastSaved = time
                 persist()
@@ -329,22 +369,27 @@ fun WatchScreen(episodeId: String) {
             if (autoplay && nextEpisode != null) goToNext()
         },
         onError = {
-            Log.e(
-                "player",
-                "media error for ${episode.id} " +
-                    "(code=${refs.video?.asDynamic()?.error?.code}, src=$videoUrl)",
-            )
+            val code = refs.video?.asDynamic()?.error?.code as? Int
+            Log.e("player", "media error for ${episode.id} (code=$code, src=$videoUrl)")
+            val failure = when (playbackFailure(code, isAppleMobile)) {
+                PlaybackFailure.UnsupportedOnAppleMobile -> S.videoUnsupportedOnAppleMobile
+                PlaybackFailure.LoadFailed -> S.videoLoadFailed
+            }
             if (!refs.retried) {
                 refs.retried = true
                 toasts.show(S.retryingVideo)
                 scope.launch {
                     val resolved = resolveVideo(episode)
                     catalog.putEpisode(resolved)
-                    videoUrl = resolved.videoUrl
-                    if (resolved.videoUrl == null) error = S.videoLoadFailed
+                    // Retry the quality that was playing. The fresh best URL would
+                    // undo the viewer's pick and a phone's lower start.
+                    val fresh = resolved.sources.ifEmpty { episode.sources }
+                    val next = retryUrl(failedUrl = videoUrl, freshUrl = quality?.let { fresh[it] } ?: resolved.videoUrl)
+                    // No new link means no new load, so say so now instead of waiting.
+                    if (next != null) videoUrl = next else error = failure
                 }
             } else {
-                error = S.videoLoadFailed
+                error = failure
             }
         },
         onAirPlayChange = { active, video ->
@@ -388,18 +433,28 @@ fun WatchScreen(episodeId: String) {
         val url = videoUrl
         if (url != null && progressReady) {
             key(episode.id) {
+                // iOS resumes through the source itself (see [withStartFragment]).
+                // Fixed at the first source: the saved position moves with every
+                // save while playing, and a changed src reloads the video. A quality
+                // switch changes the URL and does its own seek, so it gets no fragment.
+                val start = remember(episode.id) { url to savedSeconds }
+                val src = if (isAppleMobile && url == start.first) withStartFragment(url, start.second) else url
                 if (nativePlayer) {
-                    NativeVideoPlayer(src = url, autoPlay = shouldAutoplay, events = events)
+                    NativeVideoPlayer(src = src, autoPlay = shouldAutoplay, events = events)
                 } else {
                     CustomVideoPlayer(
-                        src = url,
+                        src = src,
                         autoPlay = shouldAutoplay,
                         sources = available.ifEmpty { episode.sources },
                         quality = quality,
                         onQualitySelected = { label ->
                             quality = label
                             prefs.setPreferredQuality(label)
-                            available[label]?.let { videoUrl = it }
+                            available[label]?.let {
+                                videoUrl = it
+                                // A new source, so an error about the old one no longer applies.
+                                error = null
+                            }
                         },
                         events = events,
                         overlay = {
@@ -487,6 +542,27 @@ fun WatchScreen(episodeId: String) {
                     Button({ classNames(buttonClasses()); onClick { goToNext() } }) {
                         Text(S.nextEpisodeAction.caps)
                     }
+                }
+
+                // Every episode on an iPhone or iPad, not only after an error: VLC brings
+                // its own decoder, so it also plays what Safari cannot (all of season 2).
+                // Not on a computer, where VLC registers no link scheme and the browser
+                // already plays everything. Not `external`: a new tab would only sit
+                // empty behind VLC. VLC always starts at 0:00, so the label carries the
+                // time to seek to: the saved spot until this page's player moves, then
+                // wherever it is.
+                val url = videoUrl
+                if (isAppleMobile && url != null) {
+                    val seekTo = position ?: savedSeconds
+                    LinkButton(
+                        href = vlcStreamUrl(url),
+                        label = if (seekTo >= 1) {
+                            "${S.openInVlc.caps} · ${formatTime(seekTo.toDouble())}"
+                        } else {
+                            S.openInVlc.caps
+                        },
+                        attrs = { classes("vlc-btn") },
+                    )
                 }
 
                 ExternalLink(episode.episodePageUrl, S.openOnFormula.caps)

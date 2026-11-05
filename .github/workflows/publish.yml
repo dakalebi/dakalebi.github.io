@@ -1,0 +1,114 @@
+name: Publish
+
+# Shared by deploy.yml (production and /preview) and checks.yml (one preview per
+# pull request). Callers build; this writes the build into its folder of the site
+# and deploys the site.
+#
+# ---------------------------------------------------- why writing and deploying split --
+#
+# A Pages deploy uploads an artifact that IS the whole site, so the site's state
+# lives on the `gh-pages` branch and each caller changes only its own folder there
+# (tools/publish-site.sh). Writes never wait for each other; the script retries
+# when two land at once.
+#
+# Deploys do wait, one at a time across the repository. GitHub keeps at most one
+# run waiting in a concurrency group and cancels the older one when a newer one
+# arrives. That used to drop a push's publish entirely, because the cancelled run
+# held the write as well as the deploy. Now a deploy holds nothing of its own: it
+# serves whatever `gh-pages` holds when it starts, so a cancelled waiting deploy
+# is always covered by the newer one that replaced it, which starts later and
+# therefore sees at least as much.
+#
+# Pages keys a deployment by the run's commit SHA, and a second deployment of a SHA
+# that already deployed is accepted and then dropped. Every caller runs on a commit
+# of its own (a `main` commit, a `preview` commit, a pull request's merge commit),
+# so this only bites a re-run of the same commit.
+
+on:
+  workflow_call:
+    inputs:
+      folder:
+        description: The caller's folder of the site. "." is the root.
+        type: string
+        required: true
+      artifact:
+        description: The uploaded build to publish there. Empty removes the folder instead.
+        type: string
+        default: ""
+
+jobs:
+  write:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Check out the publish script
+        uses: actions/checkout@v5
+        with:
+          # A closed pull request's merge commit may no longer be fetchable, so
+          # removing its preview runs the default branch's copy of the script.
+          ref: ${{ github.event.action == 'closed' && github.event.repository.default_branch || '' }}
+          sparse-checkout: tools/publish-site.sh
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      - name: Download the build
+        if: inputs.artifact != ''
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ inputs.artifact }}
+          path: ${{ runner.temp }}/build
+
+      - name: Write ${{ inputs.folder }} on gh-pages
+        env:
+          FOLDER: ${{ inputs.folder }}
+          BUILD: ${{ inputs.artifact != '' && format('{0}/build', runner.temp) || '' }}
+          PUBLISH_REMOTE: https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git
+          PUBLISH_MESSAGE: Publish ${{ inputs.folder }} from ${{ github.ref_name }} at ${{ github.sha }}
+        run: bash tools/publish-site.sh "$FOLDER" ${BUILD:+"$BUILD"}
+
+  # A removed folder is not deployed on its own: a pull request's close event runs
+  # on the same merge commit as its last push, so Pages would drop it as a
+  # duplicate anyway. The folder leaves the live site with the next deploy of
+  # anything.
+  deploy:
+    needs: write
+    if: inputs.artifact != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    concurrency:
+      group: pages-deploy
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}${{ inputs.folder != '.' && format('{0}/', inputs.folder) || '' }}
+    steps:
+      # Read only after this job holds the deploy slot, so it is the newest site.
+      - name: Take the site as gh-pages holds it now
+        uses: actions/checkout@v5
+        with:
+          ref: gh-pages
+          path: site
+          persist-credentials: false
+
+      # The artifact is served verbatim, and `.git` has no business being
+      # fetchable over HTTP.
+      - name: Stage the site for upload
+        run: rm -rf site/.git
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Link the published folder
+        env:
+          URL: ${{ steps.deployment.outputs.page_url }}${{ inputs.folder != '.' && format('{0}/', inputs.folder) || '' }}
+        run: echo "Published at <${URL}>" >> "$GITHUB_STEP_SUMMARY"
