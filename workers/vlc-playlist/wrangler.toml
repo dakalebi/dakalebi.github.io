@@ -1,0 +1,5 @@
+# The playlist worker behind "Open in VLC". See README.md beside this file.
+name = "dakalebi-vlc"
+main = "src/index.js"
+compatibility_date = "2025-09-01"
+workers_dev = true

@@ -23,7 +23,7 @@ import ge.dakalebi.domain.service.PlaybackFailure
 import ge.dakalebi.domain.service.defaultQualityLabel
 import ge.dakalebi.domain.service.playbackFailure
 import ge.dakalebi.domain.service.retryUrl
-import ge.dakalebi.domain.service.vlcStreamUrl
+import ge.dakalebi.domain.service.vlcOpenUrl
 import ge.dakalebi.domain.service.withStartFragment
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
@@ -547,14 +547,23 @@ fun WatchScreen(episodeId: String) {
                 // its own decoder, so it also plays what Safari cannot (all of season 2).
                 // Not on a computer, where VLC registers no link scheme and the browser
                 // already plays everything. Not `external`: a new tab would only sit
-                // empty behind VLC. VLC always starts at 0:00, so the label carries the
-                // time to seek to: the saved spot until this page's player moves, then
-                // wherever it is.
+                // empty behind VLC. The label carries where VLC starts: the saved spot
+                // until this page's player moves, then wherever it is. The playlist
+                // link starts there by itself; the plain fallback starts at 0:00, and
+                // the label is the time to seek to by hand.
                 val url = videoUrl
                 if (isAppleMobile && url != null) {
                     val seekTo = position ?: savedSeconds
                     LinkButton(
-                        href = vlcStreamUrl(url),
+                        href = vlcOpenUrl(
+                            current = episode,
+                            currentUrl = url,
+                            // VLC plays its queue through, so no queue when autoplay is off.
+                            upcoming = if (autoplay) catalog.upcoming(episode, VLC_LOOKAHEAD) else emptyList(),
+                            quality = quality,
+                            startSeconds = seekTo,
+                            title = { S.seasonAndEpisode(it.seasonNumber, it.episodeNumber) },
+                        ),
                         label = if (seekTo >= 1) {
                             "${S.openInVlc.caps} · ${formatTime(seekTo.toDouble())}"
                         } else {

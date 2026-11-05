@@ -128,6 +128,13 @@ fetch — happens in the browser. Consequences that reach everywhere:
   `EPISODE_TIMEOUT_MILLIS`, so an API outage costs a few seconds rather than a
   player that never appears. The abort goes through an `AbortSignal`, which
   adds no header.
+- **One exception: the VLC playlist.** On iPhone and iPad, "Open in VLC" can
+  queue the next episodes with titles and a start time, but only through an M3U
+  served over https: VLC 3 reads no `data:` URL. `workers/vlc-playlist` is a
+  stateless Cloudflare Worker that echoes the site's list back as M3U, for
+  `cdn.formula.ge` links only. It stores nothing and never carries video. With
+  `VLC_PLAYLIST_ENDPOINT` unset, the button falls back to the single file, so the
+  site still works without the worker.
 
 ### Hash routing
 
