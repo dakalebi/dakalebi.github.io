@@ -130,6 +130,7 @@ object Ka : Strings {
     override val episodeNotFound = "სერია ვერ მოიძებნა"
     override val videoLinkFailed = "ვიდეოს ლინკის მიღება ვერ მოხერხდა"
     override val videoLoadFailed = "ვიდეოს ჩატვირთვა ვერ მოხერხდა"
+    override val videoUnsupportedOnAppleMobile = "ეს ვიდეო iPhone-სა და iPad-ზე ვერ ჩაირთვება. სცადე კომპიუტერზე."
     override val retryingVideo = "ვცდი თავიდან..."
     override val markedAsWatched = "მონიშნულია, როგორც ნანახი"
     override val episodeMarkedWatched = "სერია მონიშნულია ნანახად"

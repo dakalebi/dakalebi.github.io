@@ -18,7 +18,10 @@ import ge.dakalebi.di.session
 import ge.dakalebi.di.settings
 import ge.dakalebi.di.toasts
 import ge.dakalebi.domain.service.COMPACT_SCREEN_MAX_QUALITY
+import ge.dakalebi.domain.service.PlaybackFailure
 import ge.dakalebi.domain.service.defaultQualityLabel
+import ge.dakalebi.domain.service.playbackFailure
+import ge.dakalebi.domain.service.retryUrl
 import ge.dakalebi.domain.service.withStartFragment
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
@@ -347,11 +350,12 @@ fun WatchScreen(episodeId: String) {
             if (autoplay && nextEpisode != null) goToNext()
         },
         onError = {
-            Log.e(
-                "player",
-                "media error for ${episode.id} " +
-                    "(code=${refs.video?.asDynamic()?.error?.code}, src=$videoUrl)",
-            )
+            val code = refs.video?.asDynamic()?.error?.code as? Int
+            Log.e("player", "media error for ${episode.id} (code=$code, src=$videoUrl)")
+            val failure = when (playbackFailure(code, isAppleMobile)) {
+                PlaybackFailure.UnsupportedOnAppleMobile -> S.videoUnsupportedOnAppleMobile
+                PlaybackFailure.LoadFailed -> S.videoLoadFailed
+            }
             if (!refs.retried) {
                 refs.retried = true
                 toasts.show(S.retryingVideo)
@@ -361,11 +365,12 @@ fun WatchScreen(episodeId: String) {
                     // Retry the quality that was playing. The fresh best URL would
                     // undo the viewer's pick and a phone's lower start.
                     val fresh = resolved.sources.ifEmpty { episode.sources }
-                    videoUrl = quality?.let { fresh[it] } ?: resolved.videoUrl
-                    if (videoUrl == null) error = S.videoLoadFailed
+                    val next = retryUrl(failedUrl = videoUrl, freshUrl = quality?.let { fresh[it] } ?: resolved.videoUrl)
+                    // No new link means no new load, so say so now instead of waiting.
+                    if (next != null) videoUrl = next else error = failure
                 }
             } else {
-                error = S.videoLoadFailed
+                error = failure
             }
         },
         onAirPlayChange = { active, video ->
@@ -426,7 +431,11 @@ fun WatchScreen(episodeId: String) {
                         onQualitySelected = { label ->
                             quality = label
                             prefs.setPreferredQuality(label)
-                            available[label]?.let { videoUrl = it }
+                            available[label]?.let {
+                                videoUrl = it
+                                // A new source, so an error about the old one no longer applies.
+                                error = null
+                            }
                         },
                         events = events,
                         overlay = {
