@@ -12,6 +12,7 @@ import ge.dakalebi.data.firebase.externals.getDoc
 import ge.dakalebi.data.firebase.externals.onSnapshot
 import ge.dakalebi.data.firebase.externals.setDoc
 import kotlinx.coroutines.await
+import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * Account-level settings at `users/{uid}`.
@@ -37,14 +38,20 @@ class FirestoreSettingsRepository(private val clock: Clock) : SettingsRepository
         // setting's value is a JS primitive already, and the rules check types.
         for (setting in settings.present) payload[setting.key] = settings.valueOf(setting)
         payload.updatedAtMillis = clock.nowMillis()
-        return runCatching {
+        return try {
             // merge: this document will gain fields later, and a settings write
             // must never clobber one it does not know about.
             setDoc(ref(uid), payload, mergeOption()).await()
             true
-        }.onFailure {
-            Log.e("settings", "could not save settings for $uid", it)
-        }.getOrDefault(false)
+        } catch (e: CancellationException) {
+            // Not a rejection: the caller stopped waiting, and the write is still
+            // on its way. Reporting it as a failure is what told people a change
+            // had stayed on this device when it had synced.
+            throw e
+        } catch (e: Throwable) {
+            Log.e("settings", "could not save settings for $uid", e)
+            false
+        }
     }
 
     /**

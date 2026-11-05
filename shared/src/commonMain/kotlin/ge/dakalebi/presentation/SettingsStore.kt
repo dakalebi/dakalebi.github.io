@@ -45,6 +45,16 @@ class SettingsStore(
     private var unsubscribe: (() -> Unit)? = null
 
     /**
+     * Where this account's writes run: the app's own scope, handed to [start].
+     * Never a screen's. Firestore sends a write whether or not anyone waits for
+     * the answer, so a write tied to the menu it came from lands anyway when the
+     * menu closes, but its confirmation is lost. The change then stays marked
+     * unconfirmed, and this device ignores every other device's value for that
+     * setting from then on.
+     */
+    private var scope: CoroutineScope? = null
+
+    /**
      * The first read of the account failed, so the upload and the offline
      * changes it would have carried are still owed. Retried when the listener
      * next hears from the server, which proves it is reachable again — the case
@@ -60,11 +70,15 @@ class SettingsStore(
         current[Setting.Language]?.let(I18n::use)
     }
 
-    /** Attaches to the signed-in account. */
+    /**
+     * Attaches to the signed-in account. [scope] must live as long as the app,
+     * because every write for this account runs in it.
+     */
     fun start(scope: CoroutineScope, uid: String) {
         if (this.uid == uid) return
         stop()
         this.uid = uid
+        this.scope = scope
 
         scope.launch { sync(uid) }
         unsubscribe = observeUserSettings(uid) { remote -> onRemote(scope, uid, remote) }
@@ -75,6 +89,7 @@ class SettingsStore(
         unsubscribe?.invoke()
         unsubscribe = null
         uid = null
+        scope = null
         syncOwed = false
     }
 
@@ -86,19 +101,23 @@ class SettingsStore(
      * syncing, not the setting — but it must be visible, because failing
      * silently here looks exactly like "my other phone never updates". The
      * change stays marked as unconfirmed, so the next sync uploads it.
+     *
+     * Takes no scope on purpose: the write runs in the app's (see [scope]), so
+     * closing the screen that made the change cannot lose its confirmation.
      */
-    fun <T : Any> set(scope: CoroutineScope, setting: Setting<T>, value: T, onSyncFailed: () -> Unit) {
+    fun <T : Any> set(setting: Setting<T>, value: T, onSyncFailed: () -> Unit) {
         val change = UserSettings().with(setting, value)
         adopt(change)
         val id = uid ?: return
+        val appScope = scope ?: return
         cache.markUnsynced(id, setting)
-        scope.launch {
+        appScope.launch {
             if (saveUserSettings(id, change)) settle(id, change) else onSyncFailed()
         }
     }
 
-    fun toggle(scope: CoroutineScope, setting: Setting<Boolean>, onSyncFailed: () -> Unit) =
-        set(scope, setting, !get(setting), onSyncFailed)
+    fun toggle(setting: Setting<Boolean>, onSyncFailed: () -> Unit) =
+        set(setting, !get(setting), onSyncFailed)
 
     private suspend fun sync(uid: String) {
         val remote = when (val load = loadUserSettings(uid)) {

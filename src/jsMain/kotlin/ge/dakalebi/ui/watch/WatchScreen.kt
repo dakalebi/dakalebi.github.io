@@ -450,7 +450,7 @@ fun WatchScreen(episodeId: String) {
                         quality = quality,
                         onQualitySelected = { label ->
                             quality = label
-                            settings.set(scope, Setting.PreferredQuality, label) {
+                            settings.set(Setting.PreferredQuality, label) {
                                 toasts.error(S.settingNotSynced)
                             }
                             available[label]?.let {

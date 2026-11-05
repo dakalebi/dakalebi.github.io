@@ -100,7 +100,7 @@ fun TvSettingsScreen() {
                             attr("lang", language.tag)
                             onClick {
                                 if (!selected) {
-                                    settings.set(scope, Setting.Language, language.tag) {
+                                    settings.set(Setting.Language, language.tag) {
                                         toasts.error(S.settingNotSynced)
                                     }
                                 }
@@ -166,7 +166,7 @@ fun TvSettingsScreen() {
                 attr("role", "switch")
                 attr("aria-checked", settings[Setting.AutoplayNext].toString())
                 onClick {
-                    settings.toggle(scope, Setting.AutoplayNext) { toasts.error(S.settingNotSynced) }
+                    settings.toggle(Setting.AutoplayNext) { toasts.error(S.settingNotSynced) }
                 }
             }) { Div({ classNames(switchKnobClasses()) }) }
         }

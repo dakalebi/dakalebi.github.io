@@ -1,7 +1,6 @@
 package ge.dakalebi.ui.dashboard
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.rememberCoroutineScope
 import ge.dakalebi.core.BuildInfo
 import ge.dakalebi.core.formatDateTime
 import ge.dakalebi.di.catalog
@@ -109,7 +108,6 @@ fun MenuSheet(
 private fun SettingsSection() {
     val settings = settings()
     val toasts = toasts()
-    val scope = rememberCoroutineScope()
 
     Div {
         Div({ classes("eyebrow-mut"); style { property("margin-bottom", "8px") } }) {
@@ -122,7 +120,7 @@ private fun SettingsSection() {
                 body = S.autoplayBody,
                 checked = settings[Setting.AutoplayNext],
                 onToggle = {
-                    settings.toggle(scope, Setting.AutoplayNext) { toasts.error(S.settingNotSynced) }
+                    settings.toggle(Setting.AutoplayNext) { toasts.error(S.settingNotSynced) }
                 },
             )
 
@@ -136,7 +134,7 @@ private fun SettingsSection() {
                     body = S.nativePlayerBody,
                     checked = settings[Setting.UseNativePlayer],
                     onToggle = {
-                        settings.toggle(scope, Setting.UseNativePlayer) { toasts.error(S.settingNotSynced) }
+                        settings.toggle(Setting.UseNativePlayer) { toasts.error(S.settingNotSynced) }
                     },
                 )
             }
@@ -189,7 +187,6 @@ private fun ToggleRow(title: String, body: String, checked: Boolean, onToggle: (
 private fun LanguagePicker() {
     val settings = settings()
     val toasts = toasts()
-    val scope = rememberCoroutineScope()
     val active = I18n.current.tag
 
     Div({ classes("setting-row") }) {
@@ -209,7 +206,7 @@ private fun LanguagePicker() {
             // No "is it already selected" guard any more, and none is needed: these
             // are real radios, and clicking the checked one fires no change event.
             onSelect = { tag ->
-                settings.set(scope, Setting.Language, tag) { toasts.error(S.settingNotSynced) }
+                settings.set(Setting.Language, tag) { toasts.error(S.settingNotSynced) }
             },
             ariaLabel = S.language,
             attrs = { classes("seg") },

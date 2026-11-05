@@ -230,7 +230,7 @@ fun TvWatchScreen(episodeId: String) {
                 quality = quality,
                 onQualitySelected = { label ->
                     pickedQuality = label
-                    settings.set(scope, Setting.PreferredQuality, label) { toasts.error(S.settingNotSynced) }
+                    settings.set(Setting.PreferredQuality, label) { toasts.error(S.settingNotSynced) }
                     sources[label]?.let { resolvedUrl = it }
                 },
                 input = input,
@@ -241,7 +241,7 @@ fun TvWatchScreen(episodeId: String) {
                 // control row so it is reachable mid-episode.
                 autoplayNext = settings[Setting.AutoplayNext],
                 onToggleAutoplay = {
-                    settings.toggle(scope, Setting.AutoplayNext) { toasts.error(S.settingNotSynced) }
+                    settings.toggle(Setting.AutoplayNext) { toasts.error(S.settingNotSynced) }
                 },
                 chromeExtra = {
                     if (upcoming.isNotEmpty() || earlier.isNotEmpty()) {

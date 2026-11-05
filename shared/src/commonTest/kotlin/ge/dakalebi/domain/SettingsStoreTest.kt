@@ -115,10 +115,31 @@ class SettingsStoreTest {
         val settings = store(FakeKeyValueStore(), account)
         signIn(settings)
 
-        settings.toggle(this, Setting.AutoplayNext, off)
+        settings.toggle(Setting.AutoplayNext, off)
         advanceUntilIdle()
 
         assertEquals(true, account.stored?.get(Setting.AutoplayNext))
+    }
+
+    /**
+     * The reported symptom: a language picked here, then picked differently on
+     * another device, never arrived back. The write ran in the menu's scope, so
+     * closing the menu lost the account's answer and left the change marked
+     * unconfirmed for good. Writes now run in the scope [SettingsStore.start]
+     * got, and `set` takes no scope a screen could pass.
+     */
+    @Test
+    fun after_a_change_here_a_later_change_elsewhere_still_arrives() = runTest {
+        val account = FakeSettingsRepository(stored = UserSettings().with(Setting.Language, "ka"))
+        val settings = store(FakeKeyValueStore(), account)
+        signIn(settings)
+
+        settings.set(Setting.Language, "en", off)
+        advanceUntilIdle()
+        account.changeElsewhere(UserSettings().with(Setting.Language, "ka"))
+
+        assertEquals("ka", settings[Setting.Language])
+        assertEquals("ka", I18n.current.tag)
     }
 
     /**
@@ -135,7 +156,7 @@ class SettingsStoreTest {
         account.writesSucceed = false
         var reported = false
 
-        before.toggle(this, Setting.AutoplayNext) { reported = true }
+        before.toggle(Setting.AutoplayNext) { reported = true }
         advanceUntilIdle()
         assertTrue(reported, "the failure is visible")
         assertTrue(before[Setting.AutoplayNext], "and costs the syncing, not the setting")
@@ -156,7 +177,7 @@ class SettingsStoreTest {
         signIn(settings)
         account.writesSucceed = false
 
-        settings.toggle(this, Setting.AutoplayNext) {}
+        settings.toggle(Setting.AutoplayNext) {}
         advanceUntilIdle()
         account.emit(account.stored!!)
 
@@ -197,7 +218,7 @@ class SettingsStoreTest {
         val firstStore = store(device, first)
         signIn(firstStore, uid = "a")
         first.writesSucceed = false
-        firstStore.toggle(this, Setting.AutoplayNext) {}
+        firstStore.toggle(Setting.AutoplayNext) {}
         advanceUntilIdle()
         firstStore.stop()
 
@@ -215,7 +236,7 @@ class SettingsStoreTest {
         val settings = store(FakeKeyValueStore(), account)
         signIn(settings)
 
-        settings.set(this, Setting.Language, "en", off)
+        settings.set(Setting.Language, "en", off)
         advanceUntilIdle()
 
         assertEquals("en", I18n.current.tag)
