@@ -49,15 +49,21 @@ bundles no web code, so every deploy is live on the television. It is built only
 when an Android SDK is visible (`local.properties` or `ANDROID_HOME`).
 
 ```bash
-./gradlew :tv:assembleDebug :tv:assemblePreview
+./gradlew :tv:assembleDebug
 ```
 
 ```bash
 adb install -r tv/build/outputs/apk/debug/tv-debug.apk
 ```
 
-`tv-preview.apk` opens `/preview/tv/` and installs beside the real app. Both
-builds can be inspected from `chrome://inspect`. In iCloud Drive, build with JDK
+The preview build opens one pull request's copy of the site, `/pr/<number>/tv/`,
+and installs beside the real app. It needs the number, and stops without one:
+
+```bash
+./gradlew :tv:assemblePreview -PpreviewPr=<number>
+```
+
+Both builds can be inspected from `chrome://inspect`. In iCloud Drive, build with JDK
 17 and run `./gradlew :tv:clean` if the build trips over `"… 2"` duplicate
 files. How the remote reaches the page, and what was verified:
 [`docs/TV-NATIVE-APP.md`](docs/TV-NATIVE-APP.md).
@@ -140,13 +146,14 @@ The consoles are yours; the code is already written against them.
 ### GitHub Pages
 
 **Settings → Pages → Source: GitHub Actions.** `.github/workflows/deploy.yml`
-builds and deploys on every push to `main` (the root) and `preview`
-(`/preview/`). Every pull request from this repository gets its own copy at
-`/pr/<number>/`, rebuilt on each push and removed when it closes. If the source
-ever reverts to `legacy`, the workflow goes green while the site 404s.
+builds and deploys on every push to `main`, at the root. Every pull request from
+this repository gets its own copy at `/pr/<number>/`, rebuilt on each push and
+removed when it closes, so a draft pull request is how to try a branch on the
+real site. If the source ever reverts to `legacy`, the workflow goes green while
+the site 404s.
 
 **Settings → Environments → github-pages → Deployment branches** must allow
-`main`, `preview` and `refs/pull/*/merge`. Pull request runs are matched by
+`main` and `refs/pull/*/merge`. Pull request runs are matched by
 their merge ref, not their branch name, so without the last one every preview
 fails at the deploy step.
 

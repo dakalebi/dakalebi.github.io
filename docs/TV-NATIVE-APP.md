@@ -81,7 +81,7 @@ All defaults were taken.
 | ID | Decision |
 |---|---|
 | D1 | Sideload only. No Play listing |
-| D2 | A `preview` build type: `/preview/tv/`, id `ge.dakalebi.tv.preview`, name "დაქალები preview", amber banner and icon. Installs beside the real app |
+| D2 | A `preview` build type: one pull request's `/pr/<n>/tv/`, chosen with `-PpreviewPr=<n>` (it was `/preview/tv/` until the `preview` branch was retired), id `ge.dakalebi.tv.preview`, name "დაქალები preview", amber banner and icon. Installs beside the real app |
 | D3 | Keep-screen-on stays as is |
 | D4 | Debug-signed APKs. `assembleRelease` gives an unsigned APK; a release keystore is yours to create and stays out of the repo |
 | D5 | A held FF/RW repeats the skip, as in a browser |
@@ -93,11 +93,18 @@ Needs an Android SDK: a gitignored `local.properties` with `sdk.dir`, or
 (`git submodule update --init keel`).
 
 ```bash
-./gradlew :tv:assembleDebug :tv:assemblePreview
+./gradlew :tv:assembleDebug
 ```
 
 ```bash
 adb install -r tv/build/outputs/apk/debug/tv-debug.apk
+```
+
+The preview build needs the pull request whose `/pr/<n>/tv/` it should open, and
+stops without one:
+
+```bash
+./gradlew :tv:assemblePreview -PpreviewPr=<number>
 ```
 
 Debug and preview builds show up in `chrome://inspect` for the WebView.
@@ -167,7 +174,8 @@ with `:tv` in the build.
   even after a reinstall, although the APK carries the amber one (checked with
   `aapt2`). Cause not found. The two apps still differ by name.
 - **The app is only as good as the live site.** A broken deploy to `main` breaks the
-  TV app with no reinstall. The preview build (D2) is the mitigation.
+  TV app with no reinstall. The preview build (D2) is the mitigation: point it at
+  the pull request and try the change on the television before it merges.
 
 ## 8. Out of scope
 

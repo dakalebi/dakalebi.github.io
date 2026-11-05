@@ -1,15 +1,15 @@
 name: Deploy to GitHub Pages
 
-# Three kinds of publisher, one site:
+# Two kinds of publisher, one site:
 #
 #   main          https://dakalebi.github.io/              /tv/  /drive/
-#   preview       https://dakalebi.github.io/preview/      /preview/tv/  /preview/drive/
 #   pull request  https://dakalebi.github.io/pr/<number>/  (checks.yml)
 #
 # Each one builds only itself and owns one folder of the site; publish.yml holds
 # how a folder is written and how the site is deployed. Rebuilding everything on
 # every deploy was tried before and retired in f6eb023: a branch that failed to
-# build blocked production too.
+# build blocked production too. To try something on the real site before it
+# reaches main, open a pull request (a draft is fine).
 #
 # Each shell (/tv/, /drive/) is a folder inside the one distribution, so a new
 # shell is published with its folder and needs no step of its own.
@@ -18,9 +18,9 @@ name: Deploy to GitHub Pages
 #
 # Two properties of the app, and both need to stay true. Every asset path is
 # relative - the TV shell reaches the shared sheets as `../keel/tokens.css`, which
-# stays correct under any prefix - so a copy under /preview or /pr/<n> finds its
-# own files rather than the root's. And routing is hash-based, so a deep link is
-# /preview/#/watch, one real file, which is all Pages can serve without rewrite
+# stays correct under any prefix - so a copy under /pr/<n> finds its own files
+# rather than the root's. And routing is hash-based, so a deep link is
+# /pr/<n>/#/watch, one real file, which is all Pages can serve without rewrite
 # rules.
 #
 # Note that every folder talks to the SAME Firebase project as production, because
@@ -29,7 +29,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [main, preview]
+    branches: [main]
   workflow_dispatch:
 
 # The ceiling for the publish workflow's jobs, which ask for what they need.
@@ -38,9 +38,9 @@ permissions:
   pages: write
   id-token: write
 
-# One run per branch at a time, and queued rather than cancelled, so a branch's
-# newest commit is always the last one written. GitHub keeps one waiting run and
-# cancels an older waiting one, which is right here: the newer commit replaces it.
+# One run at a time, and queued rather than cancelled, so main's newest commit is
+# always the last one written. GitHub keeps one waiting run and cancels an older
+# waiting one, which is right here: the newer commit replaces it.
 concurrency:
   group: deploy-${{ github.ref }}
   cancel-in-progress: false
@@ -51,8 +51,10 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Only main and preview have a folder
-        if: github.ref_name != 'main' && github.ref_name != 'preview'
+      # A manual run from another branch would otherwise put that branch on the
+      # production root.
+      - name: Only main publishes from here
+        if: github.ref_name != 'main'
         run: |
           echo "::error::${GITHUB_REF_NAME} has no folder to publish to. Pull requests publish from checks.yml."
           exit 1
@@ -83,18 +85,6 @@ jobs:
       - name: Every emitted CSS class is styleable on the shell that draws it
         run: python3 tools/check-css-classes.py
 
-      # Pages keys a deployment by commit SHA, so a preview branch sitting at the
-      # identical commit to main claims main's deployment: the duplicate is
-      # accepted, dropped seconds later, and /preview goes on serving whatever was
-      # there before. The folder is still written and the next deploy of anything
-      # serves it, so this says so rather than failing.
-      - name: Warn when preview is main's commit
-        if: github.ref_name == 'preview'
-        run: |
-          if [ "$(git ls-remote origin refs/heads/main | cut -f1)" = "${GITHUB_SHA}" ]; then
-            echo "::warning::preview is at the same commit as main, so this deployment is a duplicate and /preview will not change until the next deploy."
-          fi
-
       - uses: actions/upload-artifact@v7
         with:
           name: site-build
@@ -106,5 +96,5 @@ jobs:
     needs: build
     uses: ./.github/workflows/publish.yml
     with:
-      folder: ${{ github.ref_name == 'main' && '.' || 'preview' }}
+      folder: "."
       artifact: site-build

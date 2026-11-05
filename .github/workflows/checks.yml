@@ -1,8 +1,7 @@
 name: Checks
 
-# Everything except the two branches that publish. Pushes to main and preview are
-# covered by the deploy workflow, which runs the same guard against the same build
-# before it publishes anything.
+# Everything except main. Pushes to main are covered by the deploy workflow, which
+# runs the same guard against the same build before it publishes anything.
 #
 # A pull request from this repository also gets its own copy of the site at
 # /pr/<number>/, rebuilt on every push and removed when the pull request closes.
@@ -10,7 +9,7 @@ name: Checks
 # and they skip the preview jobs rather than fail them.
 on:
   push:
-    branches-ignore: [main, preview]
+    branches-ignore: [main]
   pull_request:
     types: [opened, synchronize, reopened, closed]
   workflow_dispatch:
