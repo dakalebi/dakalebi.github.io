@@ -74,7 +74,7 @@ class LocalSettingsCache(private val store: KeyValueStore) : SettingsCache {
     }
 
     private companion object {
-        const val UNSYNCED_KEY = "settings_unsynced"
+        const val UNSYNCED_KEY = "settings_unconfirmed"
         const val SEPARATOR = ':'
 
         /**

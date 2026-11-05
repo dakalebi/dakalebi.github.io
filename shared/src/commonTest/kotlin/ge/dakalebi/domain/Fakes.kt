@@ -2,6 +2,7 @@ package ge.dakalebi.domain
 
 import ge.dakalebi.data.local.KeyValueStore
 import ge.dakalebi.domain.model.Episode
+import ge.dakalebi.domain.model.Setting
 import ge.dakalebi.domain.model.SettingsLoad
 import ge.dakalebi.domain.model.UserSettings
 import ge.dakalebi.domain.model.WatchProgress
@@ -44,6 +45,11 @@ class FakeSettingsRepository(
     var stored: UserSettings? = null,
     var readsFail: Boolean = false,
     var writesSucceed: Boolean = true,
+    /**
+     * Fields the rules do not allow yet. Like the real rules, which check the
+     * whole document, one of them anywhere in a write refuses all of it.
+     */
+    private val refused: Set<Setting<*>> = emptySet(),
 ) : SettingsRepository {
     /** Every write attempted, accepted or not. */
     val writes = mutableListOf<UserSettings>()
@@ -56,7 +62,7 @@ class FakeSettingsRepository(
 
     override suspend fun save(uid: String, settings: UserSettings): Boolean {
         writes += settings
-        if (!writesSucceed) return false
+        if (!writesSucceed || settings.present.any { it in refused }) return false
         stored = (stored ?: UserSettings()) + settings
         return true
     }

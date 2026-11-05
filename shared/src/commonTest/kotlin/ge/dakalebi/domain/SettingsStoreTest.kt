@@ -143,6 +143,35 @@ class SettingsStoreTest {
     }
 
     /**
+     * The rules check the whole document, so one field they do not allow yet
+     * refuses the write it is in. With every owed setting in one write, a device
+     * holding a quality the rules did not allow yet also lost its marked
+     * language, on every start, and kept ignoring the account's language.
+     */
+    @Test
+    fun a_field_the_rules_refuse_does_not_hold_back_the_others() = runTest {
+        val device = FakeKeyValueStore().apply { entries["preferred_quality"] = "720p" }
+        val account = FakeSettingsRepository(
+            stored = UserSettings().with(Setting.Language, "ka"),
+            refused = setOf(Setting.PreferredQuality),
+        )
+        val before = store(device, account)
+        signIn(before)
+        account.writesSucceed = false
+        before.set(Setting.Language, "en") {}
+        advanceUntilIdle()
+        account.writesSucceed = true
+
+        val after = store(device, account)
+        signIn(after)
+
+        assertEquals("en", account.stored?.get(Setting.Language), "the owed language reaches the account")
+        assertNull(account.stored?.get(Setting.PreferredQuality), "the refused field stays off it")
+        account.changeElsewhere(UserSettings().with(Setting.Language, "ka"))
+        assertEquals("ka", after[Setting.Language], "and the device follows the account again")
+    }
+
+    /**
      * Firestore here keeps pending writes in memory only. A change made offline,
      * with the page closed before it landed, has to survive the reload and win
      * over the server's older value on the next sync.

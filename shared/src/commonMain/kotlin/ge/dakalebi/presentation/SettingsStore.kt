@@ -138,10 +138,16 @@ class SettingsStore(
         adopt(plan.adopt)
         if (plan.upload.isEmpty()) return
         Log.d("settings", "uploading from this device: ${plan.upload.present}")
-        if (saveUserSettings(uid, plan.upload)) {
-            settle(uid, plan.upload)
-        } else {
-            Log.w("settings", "could not upload this device's settings; the next sync retries")
+        // One write per setting. The rules check the whole document, so a field
+        // they do not allow yet (published after the bundle that writes it)
+        // would refuse every other setting sent with it, on every start.
+        for (setting in plan.upload.present) {
+            val one = setting.copy(plan.upload, UserSettings())
+            if (saveUserSettings(uid, one)) {
+                settle(uid, one)
+            } else {
+                Log.w("settings", "could not upload $setting from this device; the next sync retries")
+            }
         }
     }
 

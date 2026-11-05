@@ -397,6 +397,12 @@ A rejected write keeps the setting locally, stays marked as unconfirmed, and
 toasts. Losing the sync should not cost you the setting, but failing silently
 looks exactly like "my other phone never updates".
 
+Each setting is uploaded in its own write. The rules check the whole document,
+so one field they do not allow yet would refuse every setting sent with it, on
+every start. A setting's write runs in the app's scope, never a screen's:
+closing the menu before Firestore answers must not lose the answer, or the
+change stays marked unconfirmed and the device stops following the account.
+
 ### Mtavruli casing
 
 Georgian has a real uppercase alphabet and setting chrome in it is a normal
