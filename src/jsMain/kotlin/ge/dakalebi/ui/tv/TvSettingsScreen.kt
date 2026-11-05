@@ -9,6 +9,7 @@ import androidx.compose.runtime.setValue
 import ge.dakalebi.core.BuildInfo
 import ge.dakalebi.core.formatDateTime
 import ge.dakalebi.domain.model.InterfaceScale
+import ge.dakalebi.domain.model.Setting
 import ge.dakalebi.di.catalog
 import ge.dakalebi.di.preferences
 import ge.dakalebi.di.session
@@ -99,7 +100,7 @@ fun TvSettingsScreen() {
                             attr("lang", language.tag)
                             onClick {
                                 if (!selected) {
-                                    settings.setLanguage(scope, language.tag) {
+                                    settings.set(Setting.Language, language.tag) {
                                         toasts.error(S.settingNotSynced)
                                     }
                                 }
@@ -163,11 +164,9 @@ fun TvSettingsScreen() {
                 classNames(switchClasses())
                 focusItem("autoplay")
                 attr("role", "switch")
-                attr("aria-checked", settings.autoplayNext.toString())
+                attr("aria-checked", settings[Setting.AutoplayNext].toString())
                 onClick {
-                    settings.setAutoplayNext(scope, !settings.autoplayNext) {
-                        toasts.error(S.settingNotSynced)
-                    }
+                    settings.toggle(Setting.AutoplayNext) { toasts.error(S.settingNotSynced) }
                 }
             }) { Div({ classNames(switchKnobClasses()) }) }
         }

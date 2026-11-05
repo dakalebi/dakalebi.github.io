@@ -1,14 +1,13 @@
 package ge.dakalebi.ui.dashboard
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.rememberCoroutineScope
 import ge.dakalebi.core.BuildInfo
 import ge.dakalebi.core.formatDateTime
 import ge.dakalebi.di.catalog
-import ge.dakalebi.di.preferences
 import ge.dakalebi.di.session
 import ge.dakalebi.di.settings
 import ge.dakalebi.di.toasts
+import ge.dakalebi.domain.model.Setting
 import ge.dakalebi.i18n.I18n
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
@@ -107,38 +106,36 @@ fun MenuSheet(
 
 @Composable
 private fun SettingsSection() {
-    val prefs = preferences()
     val settings = settings()
     val toasts = toasts()
-    val scope = rememberCoroutineScope()
 
     Div {
         Div({ classes("eyebrow-mut"); style { property("margin-bottom", "8px") } }) {
             Text(S.settings.caps)
         }
         Div({ classes("settings-list") }) {
-            // Autoplay follows the account, not the device: it describes how
-            // someone watches, not which screen they are holding.
+            // Everything in this section follows the account to every device.
             ToggleRow(
                 title = S.autoplayTitle.caps,
                 body = S.autoplayBody,
-                checked = settings.autoplayNext,
+                checked = settings[Setting.AutoplayNext],
                 onToggle = {
-                    settings.setAutoplayNext(scope, !settings.autoplayNext) {
-                        toasts.error(S.settingNotSynced)
-                    }
+                    settings.toggle(Setting.AutoplayNext) { toasts.error(S.settingNotSynced) }
                 },
             )
 
             // Offered only where there are two players to choose between.
             // Everywhere else the custom one is the only one there is, so the
-            // switch would be a control that does nothing.
+            // switch would be a control that does nothing. It still syncs, so
+            // an iPhone and an iPad on one account agree.
             if (isAppleMobile) {
                 ToggleRow(
                     title = S.nativePlayerTitle.caps,
                     body = S.nativePlayerBody,
-                    checked = prefs.useNativePlayer,
-                    onToggle = { prefs.setUseNativePlayer(!prefs.useNativePlayer) },
+                    checked = settings[Setting.UseNativePlayer],
+                    onToggle = {
+                        settings.toggle(Setting.UseNativePlayer) { toasts.error(S.settingNotSynced) }
+                    },
                 )
             }
 
@@ -190,7 +187,6 @@ private fun ToggleRow(title: String, body: String, checked: Boolean, onToggle: (
 private fun LanguagePicker() {
     val settings = settings()
     val toasts = toasts()
-    val scope = rememberCoroutineScope()
     val active = I18n.current.tag
 
     Div({ classes("setting-row") }) {
@@ -210,7 +206,7 @@ private fun LanguagePicker() {
             // No "is it already selected" guard any more, and none is needed: these
             // are real radios, and clicking the checked one fires no change event.
             onSelect = { tag ->
-                settings.setLanguage(scope, tag) { toasts.error(S.settingNotSynced) }
+                settings.set(Setting.Language, tag) { toasts.error(S.settingNotSynced) }
             },
             ariaLabel = S.language,
             attrs = { classes("seg") },
