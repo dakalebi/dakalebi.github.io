@@ -96,7 +96,8 @@ fun TvWatchScreen(episodeId: String) {
     var resolvedSources by remember(episodeId) { mutableStateOf<Map<String, String>>(emptyMap()) }
     var pickedQuality by remember(episodeId) { mutableStateOf<String?>(null) }
 
-    val uid = session.uid
+    // Whose progress this is: the account's, or a guest's on this device.
+    val uid = session.viewerId
     val episode = catalog.byId(episodeId)
     val entry = episode?.let { catalog.progress[it.id] }
     val savedSeconds = entry?.progressSeconds ?: 0

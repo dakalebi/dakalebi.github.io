@@ -28,16 +28,23 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Episode catalog: readable by any signed-in user, writable only by admins
-    // (this is what the Reload button writes).
+    // Episode catalog: readable by anyone, writable only by admins (this is what
+    // the Reload button writes).
+    //
+    // Public so guest mode can browse without an account. Nothing here is private:
+    // it is a copy of what Formula's public API already serves. The cost is that
+    // reads no longer need an account, so they count against the shared daily
+    // quota without one; the app's catalog cache keeps a returning visitor to
+    // one read of meta/catalog.
     match /episodes/{episodeId} {
-      allow read: if isSignedIn();
+      allow read: if true;
       allow write: if isAdmin();
     }
 
-    // Catalog metadata: last refresh time, counts.
+    // Catalog metadata: last refresh time, counts. Public for the same reason,
+    // and because it is what validates the cached catalog.
     match /meta/{docId} {
-      allow read: if isSignedIn();
+      allow read: if true;
       allow write: if isAdmin();
     }
 

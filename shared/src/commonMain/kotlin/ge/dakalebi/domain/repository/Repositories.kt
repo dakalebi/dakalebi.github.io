@@ -115,6 +115,18 @@ interface AdminRepository {
 }
 
 /**
+ * Whether this device chose to continue as a guest.
+ *
+ * Remembered so a reload lands back in the app rather than on the sign-in form.
+ * Synchronous for the same reason as [PreferencesRepository]: the first frame
+ * needs the answer.
+ */
+interface GuestModeRepository {
+    fun isGuest(): Boolean
+    fun setGuest(value: Boolean)
+}
+
+/**
  * Local copy of the catalog, keyed by the server's last-refresh stamp.
  *
  * A port rather than an implementation detail of the repository so the caching

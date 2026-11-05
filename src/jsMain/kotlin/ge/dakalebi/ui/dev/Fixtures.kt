@@ -1,6 +1,8 @@
 package ge.dakalebi.ui.dev
 
 import ge.dakalebi.data.local.BrowserPreferencesRepository
+import ge.dakalebi.data.local.InMemoryKeyValueStore
+import ge.dakalebi.data.local.LocalProgressRepository
 import ge.dakalebi.di.AppGraph
 import ge.dakalebi.domain.model.Account
 import ge.dakalebi.domain.model.Catalog
@@ -14,6 +16,7 @@ import ge.dakalebi.domain.repository.AccountRepository
 import ge.dakalebi.domain.repository.AdminRepository
 import ge.dakalebi.domain.repository.CatalogCache
 import ge.dakalebi.domain.repository.CatalogRepository
+import ge.dakalebi.domain.repository.GuestModeRepository
 import ge.dakalebi.domain.repository.ProgressRepository
 import ge.dakalebi.domain.repository.SettingsRepository
 import kotlinx.browser.window
@@ -43,11 +46,16 @@ internal fun fixtureGraph(): AppGraph {
         catalogCache = NoCatalogCache,
         catalogRepository = FixtureCatalogRepository(episodes),
         progressRepository = FixtureProgressRepository(fixtureProgress(episodes)),
+        // The real device store over memory: a guest starts with no progress and
+        // forgets it with the page, so every run starts from the same place.
+        guestProgressRepository = LocalProgressRepository(InMemoryKeyValueStore()),
+        guestModeRepository = FixtureGuestMode(startAsGuest = fixtureGuest()),
         settingsRepository = FixtureSettingsRepository(),
         // `&signedout` starts with no account, so the sign-in screen — otherwise
         // unreachable without a real recomposition to swap it in — renders on the
-        // first paint and can be driven like every other screen.
-        accountRepository = FixtureAccountRepository(startSignedOut = fixtureSignedOut()),
+        // first paint and can be driven like every other screen. `&guest` starts
+        // with no account too, already in guest mode.
+        accountRepository = FixtureAccountRepository(startSignedOut = fixtureSignedOut() || fixtureGuest()),
         adminRepository = FixtureAdminRepository,
         // The real one: per-device preferences are `localStorage`, which the
         // fixture has as much right to as the app does, and it makes the
@@ -208,8 +216,27 @@ private class FixtureSettingsRepository : SettingsRepository {
  * being the one thing it cannot show.
  */
 /** Whether `&signedout` asked the fixture to start with no account. */
-private fun fixtureSignedOut(): Boolean =
-    runCatching { URLSearchParams(window.location.search).has("signedout") }.getOrDefault(false)
+private fun fixtureSignedOut(): Boolean = fixtureFlag("signedout")
+
+/** Whether `&guest` asked the fixture to start in guest mode. */
+private fun fixtureGuest(): Boolean = fixtureFlag("guest")
+
+private fun fixtureFlag(name: String): Boolean =
+    runCatching { URLSearchParams(window.location.search).has(name) }.getOrDefault(false)
+
+/**
+ * The guest choice in memory, seeded from the URL. The real one is `localStorage`,
+ * where a choice made in one fixture run would decide what the next run shows.
+ */
+private class FixtureGuestMode(startAsGuest: Boolean) : GuestModeRepository {
+    private var guest = startAsGuest
+
+    override fun isGuest() = guest
+
+    override fun setGuest(value: Boolean) {
+        guest = value
+    }
+}
 
 private class FixtureAccountRepository(startSignedOut: Boolean) : AccountRepository {
     private var listener: ((Account?) -> Unit)? = null

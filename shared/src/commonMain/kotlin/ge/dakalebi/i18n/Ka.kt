@@ -43,6 +43,9 @@ object Ka : Strings {
     override val accountCreated = "ანგარიში შეიქმნა"
     override val resetLinkSent = "პაროლის აღდგენის ბმული გაიგზავნა"
     override val enterEmailFirst = "ჯერ შეიყვანე ელფოსტა"
+    override val continueAsGuest = "სტუმრად გაგრძელება"
+    override val guest = "სტუმარი"
+    override val guestProgressNote = "სტუმრის პროგრესი მხოლოდ ამ მოწყობილობაზე ინახება."
 
     override val errWrongCredentials = "ელფოსტა ან პაროლი არასწორია"
     override val errInvalidEmail = "ელფოსტა არასწორია"

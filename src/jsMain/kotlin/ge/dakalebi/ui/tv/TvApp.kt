@@ -63,6 +63,8 @@ fun TvApp() {
 
     val route = router.current
     val account = session.account
+    // Signed in or a guest: either way the app, not the sign-in screen.
+    val viewer = session.viewer
 
     /*
      * Assigned here rather than in an effect, and read straight off `route`. Focus
@@ -75,7 +77,7 @@ fun TvApp() {
 
     // Watching, not browsing: the rail is chrome over content, and there is no content
     // behind a full-screen video for it to sit beside.
-    val showRail = account != null && route !is Route.Watch
+    val showRail = viewer != null && route !is Route.Watch
 
     DisposableEffect(Unit) {
         val removeListeners = input.install()
@@ -221,9 +223,13 @@ fun TvApp() {
     // LaunchedEffects because both are ordinary app behaviour that wants the real
     // frame clock; the fixture path pre-loads instead so the screens are complete
     // on the first paint. See `Main.kt`.
-    LaunchedEffect(account?.uid) {
-        val uid = account?.uid
-        if (uid == null) {
+    //
+    // Keyed on the viewer, so a guest loads the catalog and their device progress
+    // too. Settings sync and the admin check stay on the account: a guest has
+    // neither, and their settings stay on the device.
+    LaunchedEffect(viewer?.id) {
+        val viewerId = viewer?.id
+        if (viewerId == null) {
             catalog.reset()
             settings.stop()
             // One account's place in a rail is not another's, and neither is the
@@ -231,9 +237,10 @@ fun TvApp() {
             FocusMemory.clear()
             BrowseState.clear()
         } else {
-            settings.start(scope, uid)
+            val uid = account?.uid
+            if (uid != null) settings.start(scope, uid) else settings.stop()
             session.refreshAdminRights()
-            catalog.ensureLoaded(uid)
+            catalog.ensureLoaded(viewerId)
         }
     }
 
@@ -248,10 +255,10 @@ fun TvApp() {
             classNames(
                 "tv-root",
                 // The watch screen fills the panel; every other screen is padded.
-                if (route is Route.Watch && account != null) "tv-root-bare" else null,
+                if (route is Route.Watch && viewer != null) "tv-root-bare" else null,
                 // Signed out there is no rail, so the left inset that makes room for one
                 // would push the sign-in card off centre.
-                if (account == null) "tv-root-signin" else null,
+                if (viewer == null) "tv-root-signin" else null,
             )
             ref { element ->
                 refs.root = element
@@ -264,7 +271,7 @@ fun TvApp() {
 
             when {
                 session.loading -> Div({ classes("tv-note") }) { Text(S.loading) }
-                account == null -> LoginScreen()
+                viewer == null -> LoginScreen()
                 route is Route.Settings -> TvSettingsScreen()
                 route is Route.Watch -> TvWatchScreen(route.episodeId)
                 else -> TvBrowseScreen()
