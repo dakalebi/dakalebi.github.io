@@ -76,8 +76,6 @@ fun WatchScreen(episodeId: String) {
     // always reading the same map — see the resolution effect below.
     var available by remember(episodeId) { mutableStateOf<Map<String, String>>(emptyMap()) }
     var error by remember(episodeId) { mutableStateOf<String?>(null) }
-    // Offered beside [error] when the device's own decoder turned the file down.
-    var vlcLink by remember(episodeId) { mutableStateOf<String?>(null) }
     var ended by remember(episodeId) { mutableStateOf(false) }
     var remaining by remember(episodeId) { mutableStateOf<Double?>(null) }
     var duration by remember(episodeId) { mutableStateOf<Double?>(null) }
@@ -105,7 +103,6 @@ fun WatchScreen(episodeId: String) {
         val current = episode ?: return@LaunchedEffect
         resolving = true
         error = null
-        vlcLink = null
         val resolveStartedAt = kotlin.js.Date.now() // TEMPORARY
         debug?.log("resolving ${current.id}")
         val resolved = resolveVideo(current)
@@ -377,18 +374,10 @@ fun WatchScreen(episodeId: String) {
         },
         onError = {
             val code = refs.video?.asDynamic()?.error?.code as? Int
-            val failedUrl = videoUrl
-            Log.e("player", "media error for ${episode.id} (code=$code, src=$failedUrl)")
-            val failure = playbackFailure(code, isAppleMobile)
-            fun showFailure() {
-                error = when (failure) {
-                    PlaybackFailure.UnsupportedOnAppleMobile -> S.videoUnsupportedOnAppleMobile
-                    PlaybackFailure.LoadFailed -> S.videoLoadFailed
-                }
-                // VLC brings its own decoder, so the same file Safari turned down plays there.
-                vlcLink = failedUrl
-                    ?.takeIf { failure == PlaybackFailure.UnsupportedOnAppleMobile }
-                    ?.let(::vlcStreamUrl)
+            Log.e("player", "media error for ${episode.id} (code=$code, src=$videoUrl)")
+            val failure = when (playbackFailure(code, isAppleMobile)) {
+                PlaybackFailure.UnsupportedOnAppleMobile -> S.videoUnsupportedOnAppleMobile
+                PlaybackFailure.LoadFailed -> S.videoLoadFailed
             }
             if (!refs.retried) {
                 refs.retried = true
@@ -401,10 +390,10 @@ fun WatchScreen(episodeId: String) {
                     val fresh = resolved.sources.ifEmpty { episode.sources }
                     val next = retryUrl(failedUrl = videoUrl, freshUrl = quality?.let { fresh[it] } ?: resolved.videoUrl)
                     // No new link means no new load, so say so now instead of waiting.
-                    if (next != null) videoUrl = next else showFailure()
+                    if (next != null) videoUrl = next else error = failure
                 }
             } else {
-                showFailure()
+                error = failure
             }
         },
         onAirPlayChange = { active, video ->
@@ -469,7 +458,6 @@ fun WatchScreen(episodeId: String) {
                                 videoUrl = it
                                 // A new source, so an error about the old one no longer applies.
                                 error = null
-                                vlcLink = null
                             }
                         },
                         events = events,
@@ -507,16 +495,7 @@ fun WatchScreen(episodeId: String) {
                 // `announce`, because this arrives in response to something the viewer
                 // did - a stream that would not start - rather than sitting on the page
                 // from the beginning. A screen reader says it when it appears.
-                Callout(tone = CalloutTone.Destructive, announce = true) {
-                    val link = vlcLink
-                    if (link == null) {
-                        Text(error!!)
-                    } else {
-                        CalloutBody { Text(error!!) }
-                        // Not `external`: a new tab would only sit empty behind VLC.
-                        LinkButton(href = link, label = S.openInVlc.caps)
-                    }
-                }
+                Callout(tone = CalloutTone.Destructive, announce = true) { Text(error!!) }
             }
 
             if (ended && nextEpisode != null) {
@@ -567,6 +546,20 @@ fun WatchScreen(episodeId: String) {
                     Button({ classNames(buttonClasses()); onClick { goToNext() } }) {
                         Text(S.nextEpisodeAction.caps)
                     }
+                }
+
+                // Every episode on an iPhone or iPad, not only after an error: VLC brings
+                // its own decoder, so it also plays what Safari cannot (all of season 2).
+                // Not on a computer, where VLC registers no link scheme and the browser
+                // already plays everything. Not `external`: a new tab would only sit
+                // empty behind VLC.
+                val url = videoUrl
+                if (isAppleMobile && url != null) {
+                    LinkButton(
+                        href = vlcStreamUrl(url),
+                        label = S.openInVlc.caps,
+                        attrs = { classes("vlc-btn") },
+                    )
                 }
 
                 ExternalLink(episode.episodePageUrl, S.openOnFormula.caps)

@@ -816,6 +816,21 @@ h3 {
   gap: 8px;
 }
 
+/* "Open in VLC" in VLC's own orange (`orangeUI`, 0xFF8800, in VLC for iOS), so it
+   reads as a hand-off to that app rather than one more action of ours. It sits on
+   keel's filled variant and only swaps the colours. Black ink, not white: white on
+   this orange is about 2.4:1, black is about 8.8:1. `.btn.vlc-btn` so it outranks
+   `.btn--default` whatever the sheet order. */
+.btn.vlc-btn {
+  background-color: #ff8800;
+  color: #000;
+}
+@media (hover: hover) {
+  .btn.vlc-btn:hover {
+    background-color: rgb(255 136 0 / 0.9);
+  }
+}
+
 /* `.ended` is gone: keel's `Callout` at `CalloutTone.Primary`, with the text side in
    `CalloutBody` so it takes the room the button does not. The flex row, the 14px gap
    and the radius are keel's and were already identical.
