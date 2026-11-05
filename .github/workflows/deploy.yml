@@ -2,14 +2,17 @@ name: Deploy to GitHub Pages
 
 # Three kinds of publisher, one site:
 #
-#   main          https://dakalebi.github.io/              and /tv/
-#   preview       https://dakalebi.github.io/preview/      and /preview/tv/
+#   main          https://dakalebi.github.io/              /tv/  /drive/
+#   preview       https://dakalebi.github.io/preview/      /preview/tv/  /preview/drive/
 #   pull request  https://dakalebi.github.io/pr/<number>/  (checks.yml)
 #
 # Each one builds only itself and owns one folder of the site; publish.yml holds
 # how a folder is written and how the site is deployed. Rebuilding everything on
 # every deploy was tried before and retired in f6eb023: a branch that failed to
 # build blocked production too.
+#
+# Each shell (/tv/, /drive/) is a folder inside the one distribution, so a new
+# shell is published with its folder and needs no step of its own.
 #
 # ------------------------------------------------- what makes the folders work at all --
 #

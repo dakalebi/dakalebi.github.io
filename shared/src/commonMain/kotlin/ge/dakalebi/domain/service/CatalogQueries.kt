@@ -58,6 +58,24 @@ object CatalogQueries {
     }
 
     /**
+     * What driving mode's one big button plays.
+     *
+     * [continueWatching], except that a finished episode is never the answer. The hero
+     * can offer one, because it sits above a grid and the viewer picks from there. The
+     * driving screen has no grid, so offering a finished episode would mean replaying
+     * it, and the only way to the next one would be more taps while driving. Stays on
+     * the finished episode only when it is the last one in the catalog.
+     */
+    fun nextToPlay(
+        episodes: List<Episode>,
+        progress: Map<String, WatchProgress>,
+    ): Episode? {
+        val candidate = continueWatching(episodes, progress) ?: return null
+        if (progress[candidate.id]?.isWatched != true) return candidate
+        return next(episodes, candidate) ?: candidate
+    }
+
+    /**
      * Season the dashboard should open on: wherever the viewer last was,
      * falling back to the newest season.
      *

@@ -76,6 +76,10 @@ fun MenuSheet(
         )
 
         Div({ classes("sheet-list") }) {
+            // A link to another page, not a route: driving mode is its own shell with its
+            // own stylesheet, the way `/tv/` is. Relative, so `/preview/` opens
+            // `/preview/drive/` rather than production's.
+            A(href = "drive/", attrs = { classes("sheet-item") }) { Text(S.driveMode.caps) }
             if (session.isAdmin) {
                 Button({
                     classes("sheet-item")

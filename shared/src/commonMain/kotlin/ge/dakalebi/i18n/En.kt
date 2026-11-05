@@ -194,4 +194,12 @@ object En : Strings {
     override fun volumeFeedback(percent: Int) = "Volume: $percent%"
     override fun seekForward(seconds: Int) = "$seconds s ▸"
     override fun seekBackward(seconds: Int) = "◂ $seconds s"
+
+    // ------------------------------------------------------- driving mode
+    override val driveMode = "Driving mode"
+    override val driveExit = "Exit driving mode"
+
+    override fun minutesRemaining(minutes: Int) = "$minutes min left"
+    override fun skipBack(seconds: Int) = "Back $seconds seconds"
+    override fun skipForward(seconds: Int) = "Forward $seconds seconds"
 }

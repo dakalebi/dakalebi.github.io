@@ -9,6 +9,7 @@ import ge.dakalebi.ui.App
 import ge.dakalebi.ui.SetupNotice
 import ge.dakalebi.ui.Shell
 import ge.dakalebi.ui.dev.fixtureGraph
+import ge.dakalebi.ui.drive.DriveApp
 import ge.dakalebi.ui.shell
 import ge.dakalebi.ui.tv.TvApp
 import ge.dakalebi.ui.tv.applyInterfaceScale
@@ -29,8 +30,8 @@ fun main() {
     // First, so a crash during the rest of startup is still reported.
     Log.installGlobalHandlers()
 
-    // `/?ui=demo` and `/tv/?ui=tv-demo` swap the outside world for fixtures and
-    // never touch Firebase. It is how either shell is verified at all: an automated
+    // `/?ui=demo`, `/tv/?ui=tv-demo` and `/drive/?ui=drive-demo` swap the outside
+    // world for fixtures and never touch Firebase. It is how each shell is verified at all: an automated
     // browser has no session and cannot sign in, so every screen past the sign-in
     // form is otherwise reachable only against production data.
     val graph = if (useFixtures) {
@@ -67,7 +68,11 @@ fun main() {
     val render = {
         renderComposable(rootElementId = "root") {
             graph.Provide {
-                if (shell == Shell.Tv) TvApp() else App()
+                when (shell) {
+                    Shell.Tv -> TvApp()
+                    Shell.Drive -> DriveApp()
+                    Shell.Web -> App()
+                }
             }
         }
     }
