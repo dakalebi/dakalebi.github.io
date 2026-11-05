@@ -5,7 +5,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import ge.dakalebi.core.Log
 import ge.dakalebi.domain.model.Episode
-import ge.dakalebi.domain.service.orderedQualityLabels
+import ge.dakalebi.domain.service.COMPACT_SCREEN_MAX_QUALITY
+import ge.dakalebi.domain.service.defaultQualityLabel
+import ge.dakalebi.domain.service.withStartFragment
 import ge.dakalebi.domain.usecase.ResolveEpisodeVideo
 import ge.dakalebi.i18n.S
 import ge.dakalebi.presentation.CatalogStore
@@ -15,6 +17,7 @@ import ge.dakalebi.presentation.Router
 import ge.dakalebi.presentation.SettingsStore
 import ge.dakalebi.ui.assetBase
 import ge.dakalebi.ui.player.isAppleMobile
+import ge.dakalebi.ui.player.isCompactScreen
 import ge.dakalebi.ui.watch.SAVE_EVERY
 import kotlinx.browser.document
 import kotlinx.browser.window
@@ -219,7 +222,9 @@ internal class DrivePlayer(
             video.load()
             return
         }
-        video.src = url
+        // iOS resumes through the source itself, as the web player does (see
+        // [withStartFragment]). [resume] stays as the fallback and finds it already there.
+        video.src = if (isAppleMobile) withStartFragment(url, saved) else url
         if (play) playNow()
     }
 
@@ -562,13 +567,14 @@ internal class DrivePlayer(
     }
 
     /**
-     * The same choice the web player makes: the quality the viewer picked there if this
-     * episode has it, otherwise the episode's default stream, otherwise the best rendition.
+     * The same choice the web player makes: the quality the viewer picked if this episode
+     * has it, otherwise the best rendition, capped at 720p on a phone. The episode's
+     * default stream only when it lists no renditions.
      */
     private fun sourceFor(episode: Episode): String? {
         val sources = episode.sources
-        return preferences.preferredQuality?.let { sources[it] }
-            ?: episode.videoUrl
-            ?: orderedQualityLabels(sources).firstOrNull()?.let { sources[it] }
+        val label = preferences.preferredQuality?.takeIf { sources.containsKey(it) }
+            ?: defaultQualityLabel(sources, COMPACT_SCREEN_MAX_QUALITY.takeIf { isCompactScreen })
+        return label?.let { sources[it] } ?: episode.videoUrl
     }
 }
