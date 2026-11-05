@@ -824,6 +824,9 @@ h3 {
 .btn.vlc-btn {
   background-color: #ff8800;
   color: #000;
+  /* The label carries a running time; even-width digits keep it from shifting
+     sideways every second. */
+  font-variant-numeric: tabular-nums;
 }
 @media (hover: hover) {
   .btn.vlc-btn:hover {

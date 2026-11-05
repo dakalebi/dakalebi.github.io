@@ -10,6 +10,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import ge.dakalebi.core.Log
+import ge.dakalebi.core.formatTime
 import ge.dakalebi.di.LocalResolveEpisodeVideo
 import ge.dakalebi.di.catalog
 import ge.dakalebi.di.preferences
@@ -82,6 +83,10 @@ fun WatchScreen(episodeId: String) {
     var promptDismissed by remember(episodeId) { mutableStateOf(false) }
     var resolving by remember(episodeId) { mutableStateOf(true) }
     var confirmReset by remember(episodeId) { mutableStateOf(false) }
+    // Where this page's player is, in whole seconds, for the VLC button: VLC's link
+    // cannot carry a start time, so the label shows it for seeking by hand. Whole
+    // seconds so a `timeupdate` four times a second recomposes at most once.
+    var position by remember(episodeId) { mutableStateOf<Int?>(null) }
 
     LaunchedEffect(uid) { if (uid != null) catalog.ensureLoaded(uid) }
 
@@ -256,6 +261,15 @@ fun WatchScreen(episodeId: String) {
         scheduleRetry("data", 250)
     }
 
+    /**
+     * Feeds [position]. Ignored until the resume seek has landed, or the player has
+     * passed the saved spot on its own: before that the element reports the 0:00 it
+     * loaded at, and the label would flash it over the saved time.
+     */
+    fun trackPosition(time: Double) {
+        if (refs.resumeApplied || time >= savedSeconds) position = floor(time).toInt()
+    }
+
     // ----------------------------------------------------- airplay ticker
 
     fun stopAirplayTicker() {
@@ -268,6 +282,7 @@ fun WatchScreen(episodeId: String) {
         refs.airplayTimer = window.setInterval({
             val video = refs.video ?: return@setInterval
             if (!video.paused && !video.ended) {
+                trackPosition(effectiveTime(video))
                 val dur = effectiveDuration(video)
                 if (dur != null && dur > 0) {
                     duration = dur
@@ -339,6 +354,7 @@ fun WatchScreen(episodeId: String) {
         onTimeUpdate = { video ->
             refs.airplay.sync(video)
             val time = effectiveTime(video)
+            trackPosition(time)
             if (time - refs.lastSaved >= SAVE_EVERY) {
                 refs.lastSaved = time
                 persist()
@@ -552,12 +568,19 @@ fun WatchScreen(episodeId: String) {
                 // its own decoder, so it also plays what Safari cannot (all of season 2).
                 // Not on a computer, where VLC registers no link scheme and the browser
                 // already plays everything. Not `external`: a new tab would only sit
-                // empty behind VLC.
+                // empty behind VLC. VLC always starts at 0:00, so the label carries the
+                // time to seek to: the saved spot until this page's player moves, then
+                // wherever it is.
                 val url = videoUrl
                 if (isAppleMobile && url != null) {
+                    val seekTo = position ?: savedSeconds
                     LinkButton(
                         href = vlcStreamUrl(url),
-                        label = S.openInVlc.caps,
+                        label = if (seekTo >= 1) {
+                            "${S.openInVlc.caps} · ${formatTime(seekTo.toDouble())}"
+                        } else {
+                            S.openInVlc.caps
+                        },
                         attrs = { classes("vlc-btn") },
                     )
                 }
