@@ -43,6 +43,17 @@ class CatalogQueriesTest {
         assertEquals(listOf("s1e2", "s1e3", "s2e1"), ids)
     }
 
+    @Test
+    fun rest_of_season_stops_at_the_season_boundary() {
+        val shuffled = catalog.reversed()
+        assertEquals(listOf("s1e2", "s1e3"), CatalogQueries.restOfSeason(shuffled, episode(1, 1)).map { it.id })
+    }
+
+    @Test
+    fun rest_of_season_is_empty_for_a_season_finale() {
+        assertEquals(emptyList(), CatalogQueries.restOfSeason(catalog, episode(1, 3)))
+    }
+
     // ------------------------------------------------------ continue watching
 
     @Test
