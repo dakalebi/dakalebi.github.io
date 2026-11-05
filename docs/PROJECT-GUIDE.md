@@ -391,6 +391,35 @@ controls. Do not fold them into `nativePlayer`.
 There is no next-episode overlay over the native player: it draws its own
 fullscreen surface and nothing survives on top of it.
 
+### Leaving fullscreen on iOS
+
+Closing Safari's fullscreen video player on an iPhone pauses the video. That is
+the browser, not this app: a bare page with a `<video>` does the same. The pauses,
+measured in the iOS Simulator:
+
+- **The X button**: a pause just before `webkitendfullscreen`, then, if the video
+  plays again, a second one as the player finishes closing (about 0.5 to 0.8 s
+  after).
+- **Swiping the player down**: `webkitendfullscreen` while still playing, then one
+  pause 0.3 to 0.4 s later.
+
+`FullscreenExitResumer` (`ui/player/`) undoes them, on iPhone and iPad only, for
+all three players: `NativeVideoPlayer`, `CustomVideoPlayer` (whose fullscreen is
+Apple's own on an iPhone) and `DrivePlayer`. Which pause is the browser's is a
+timing rule, `FullscreenExitResume` (`domain/service/`, unit tested), because the
+events carry nothing else to tell them apart. What keeps a real pause a pause:
+
+- a pause made inside the fullscreen player well before closing it stays;
+- every pause the page itself makes goes through `viewerPaused()` first;
+- any touch on the page resets the rule. Touches inside Apple's fullscreen player
+  never reach the page, so a touch means the viewer is back on it, and a tap on the
+  inline controls right after closing is theirs;
+- an episode that ended (`pause`, then `ended`), a failed load and a hidden page
+  are never played again, so autoplay into the next episode is untouched.
+
+Desktop browsers do not pause on leaving fullscreen, so nothing is installed there.
+TV has no fullscreen exit of this kind.
+
 ### Resume, and why it is a state machine
 
 iOS silently ignores a seek issued too early. `applyResume` therefore retries
@@ -474,9 +503,16 @@ player screen is the native player with big controls around it.
   wins; otherwise the episode comes from `CatalogStore.nextToPlay`.
 - **Player**: the browser's native `<video controls playsinline>`, the same
   attributes as `NativeVideoPlayer`. Around it, all large: back, the autoplay
-  switch, season and episode, time and minutes left, Mark as watched, Open in VLC
-  (iPhone and iPad), −30 s, play/pause, +30 s and Next episode. A playback error
-  sits over the picture, so it takes no room from the buttons.
+  switch, season and episode, time and minutes left, Full screen, Mark as watched,
+  Open in VLC (iPhone and iPad), −30 s, play/pause, +30 s and Next episode. A
+  playback error sits over the picture, so it takes no room from the buttons.
+- **Full screen** (`DrivePlayer.enterFullscreen`) uses the standard Fullscreen API
+  on the video where the page may use it (desktop, Android, iPad). An iPhone has
+  none for a page, so there it opens Safari's own player with
+  `webkitEnterFullscreen`. The button stays disabled until `loadedmetadata`: an
+  iPhone asked earlier opens nothing, and then ignores the next request too.
+  Leaving is the browser's own X, swipe or Escape, and playback carries on (see
+  "Leaving fullscreen on iOS" below).
 - **One `<video>` for the whole visit** (`DrivePlayer`). iOS lets an element start
   without a tap only after a tap has started it once. The home button starts it
   inside its tap, before the player screen exists; the player screen only lends it

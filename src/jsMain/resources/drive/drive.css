@@ -441,9 +441,9 @@ button {
   letter-spacing: 0.04em;
 }
 
-/* Mark as watched and Open in VLC, side by side under the picture. Smaller than the
-   playback buttons: they are pressed once a visit, while parked, not while driving.
-   One button alone (no VLC off Apple devices) takes the whole row. */
+/* Full screen, Mark as watched and Open in VLC, side by side under the picture. Smaller
+   than the playback buttons: they are pressed once a visit, while parked, not while
+   driving. Two abreast off Apple devices, which have no VLC button. */
 .drive-extras {
   display: grid;
   grid-auto-flow: column;
@@ -451,10 +451,14 @@ button {
   gap: var(--d-gap);
 }
 
+/* Three abreast on an upright phone leaves no room beside a label, so the icon sits
+   over it. A row of its own instead would push the controls under Safari's bar. */
 .drive-extra {
+  flex-direction: column;
+  gap: 4px;
   min-height: 64px;
-  padding: 6px 12px;
-  font-size: clamp(1rem, 4.4vw, 1.25rem);
+  padding: 8px 6px;
+  font-size: clamp(0.9375rem, 4vw, 1.25rem);
   line-height: 1.15;
   text-align: center;
   text-wrap: balance;

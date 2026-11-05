@@ -19,6 +19,7 @@ import ge.dakalebi.presentation.Route
 import ge.dakalebi.presentation.Router
 import ge.dakalebi.presentation.SettingsStore
 import ge.dakalebi.ui.assetBase
+import ge.dakalebi.ui.player.FullscreenExitResumer
 import ge.dakalebi.ui.player.isAppleMobile
 import ge.dakalebi.ui.player.isCompactScreen
 import ge.dakalebi.ui.watch.SAVE_EVERY
@@ -94,11 +95,23 @@ internal class DrivePlayer(
         setAttribute("x-webkit-airplay", "allow")
     }
 
+    /** Undoes the pause iOS makes when its fullscreen player closes. */
+    private val fullscreenExit = FullscreenExitResumer(video)
+
     var episodeId: String? by mutableStateOf(null)
         private set
     var playing: Boolean by mutableStateOf(false)
         private set
     var buffering: Boolean by mutableStateOf(false)
+        private set
+
+    /**
+     * The element knows its picture, so it can go full screen, playing or not. The big
+     * Fullscreen button waits for this. Asked earlier, an iPhone does nothing: in the
+     * Simulator, a call on an element with nothing loaded neither threw nor opened the
+     * player, and the next call, on a loaded element, was ignored too.
+     */
+    var fullscreenReady: Boolean by mutableStateOf(false)
         private set
 
     /** Whole seconds, so the screen redraws once a second rather than four times. */
@@ -141,7 +154,13 @@ internal class DrivePlayer(
     fun install(): () -> Unit {
         val mediaEvents = listOf<Pair<String, (Event) -> Unit>>(
             // iOS drops a seek issued this early, so on iPhone the first attempt waits.
-            "loadedmetadata" to { onDurationKnown(); if (!isAppleMobile) resume(confirming = false) },
+            "loadedmetadata" to {
+                fullscreenReady = true
+                onDurationKnown()
+                if (!isAppleMobile) resume(confirming = false)
+            },
+            // A new source, or none: the element starts over from knowing nothing.
+            "emptied" to { fullscreenReady = false },
             "loadeddata" to { resume(confirming = false) },
             "canplay" to { buffering = false; resume(confirming = false) },
             "durationchange" to { onDurationKnown() },
@@ -168,8 +187,10 @@ internal class DrivePlayer(
         window.addEventListener("pagehide", onPageHide)
 
         installMediaSession()
+        val removeFullscreenExit = fullscreenExit.install()
 
         return {
+            removeFullscreenExit()
             persist()
             wantsToPlay = false
             video.pause()
@@ -254,9 +275,61 @@ internal class DrivePlayer(
         if (video.paused) playNow() else pause()
     }
 
+    /** Every pause the page asks for: the big button, the steering wheel, VLC, leaving the screen. */
     fun pause() {
         wantsToPlay = false
+        fullscreenExit.viewerPaused()
         video.pause()
+    }
+
+    /**
+     * The picture, full screen. Call from a tap: every browser refuses otherwise.
+     *
+     * The standard Fullscreen API where the page may use it (desktop, Android, iPad).
+     * An iPhone has none for a page, only its own video player, which
+     * `webkitEnterFullscreen` opens on this element. Either way the picture is the
+     * element with its native controls, so leaving is the browser's own button, swipe
+     * or Escape.
+     */
+    fun enterFullscreen() {
+        if (!fullscreenReady) return
+        val doc = document.asDynamic()
+        val element = video.asDynamic()
+        when {
+            doc.fullscreenEnabled == true && jsTypeOf(element.requestFullscreen) == "function" -> {
+                val request = runCatching { element.requestFullscreen() }
+                    .onFailure { Log.w("drive", "requestFullscreen threw", it) }
+                if (request.isFailure) {
+                    enterNativeFullscreen()
+                } else {
+                    // A refusal arrives later, as a rejected promise. Older engines return nothing.
+                    val promise = request.getOrNull()
+                    if (promise != null && jsTypeOf(promise.then) == "function") {
+                        promise.catch { error: dynamic ->
+                            Log.w("drive", "requestFullscreen refused: ${error?.name}")
+                            enterNativeFullscreen()
+                        }
+                    }
+                }
+            }
+            doc.webkitFullscreenEnabled == true && jsTypeOf(element.webkitRequestFullscreen) == "function" ->
+                runCatching { element.webkitRequestFullscreen() }.onFailure {
+                    Log.w("drive", "webkitRequestFullscreen threw", it)
+                    enterNativeFullscreen()
+                }
+            else -> enterNativeFullscreen()
+        }
+    }
+
+    /** iPhone: Safari's own fullscreen video player. */
+    private fun enterNativeFullscreen() {
+        val element = video.asDynamic()
+        if (jsTypeOf(element.webkitEnterFullscreen) != "function") {
+            Log.w("drive", "no way to go full screen in this browser")
+            return
+        }
+        runCatching { element.webkitEnterFullscreen() }
+            .onFailure { Log.w("drive", "webkitEnterFullscreen refused", it) }
     }
 
     /** Relative to the saved position while the resume has not landed yet, not to 0:00. */
@@ -274,6 +347,7 @@ internal class DrivePlayer(
     /** Signed out: nothing may keep playing, or saving, for an account that is gone. */
     fun stop() {
         wantsToPlay = false
+        fullscreenExit.viewerPaused()
         video.pause()
         video.removeAttribute("src")
         video.load()

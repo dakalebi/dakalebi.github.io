@@ -121,7 +121,7 @@ rather than the absence of it.
 | F3 | Centre overlay | Big play button when paused; gone while playing |
 | F4 | Play/pause button | Toggles; icon swaps |
 | F5 | Click the video surface | Toggles play/pause |
-| F6 | Double-click the video | Enters fullscreen and does **not** also toggle play |
+| F6 | Double-click the video | Enters fullscreen and does **not** also toggle play. Same for a slow double-click, and for one that leaves fullscreen |
 | F7 | Back-10s button | Seeks back exactly 10s |
 | F8 | Drag the volume slider | Volume follows |
 | F9 | Volume to 0 | Mutes; icon becomes muted |
@@ -138,7 +138,7 @@ rather than the absence of it.
 | F20 | While controls are hidden | The thin bar is visible — never no indicator |
 | F21 | Move the mouse | Controls reappear |
 | F22 | Move the pointer out of the player while playing | Controls hide |
-| F23 | Fullscreen button | Enters and exits; icon swaps; layout correct |
+| F23 | Fullscreen button | Enters and exits; icon swaps; layout correct; playing stays playing |
 | F24 | Quality menu | Lists 1080p / 720p / 360p; choice written to `localStorage` (`preferred_quality`) and, signed in, to the account |
 | F25 | Switch quality mid-playback | Position and play/pause state preserved |
 | F26 | Cast button | Present in Chrome; click opens the picker |
@@ -199,6 +199,10 @@ rather than the absence of it.
 | I15 | The last episode of a season | Opens alone; the queue never crosses into the next season |
 | I16 | A season 2 episode in Safari | The message that points to VLC, not a generic playback error |
 | I17 | A phone with no quality picked yet | Starts at 720p or the best rendition below it. A quality picked on any device wins |
+| I18 | iPhone, playing in Apple's fullscreen player, close it with X | Keeps playing inline. Both with System player on and off |
+| I19 | Same, close it with a swipe down | Keeps playing inline |
+| I20 | Pause inside the fullscreen player, wait a moment, then close it | Stays paused |
+| I21 | Close it, then tap pause on the inline controls at once | Stays paused |
 
 ## J — Failure and resilience
 
@@ -459,7 +463,7 @@ the car buttons need a real iPhone.
 |---|---|---|
 | P1 | Open `/drive/` | Home is one large button for the episode to watch next: Continue or Play, season, episode, minutes left |
 | P2 | Tap it | Plays at once in the native player, from the saved spot |
-| P3 | Player screen | Back, the autoplay switch, season and episode, time and minutes left, Mark as watched, Open in VLC (iPhone and iPad), −30 s, play/pause, +30 s, next episode. All large |
+| P3 | Player screen | Back, the autoplay switch, season and episode, time and minutes left, Full screen, Mark as watched, Open in VLC (iPhone and iPad), −30 s, play/pause, +30 s, next episode. All large |
 | P4 | Phone on its side | The video and the two episode buttons on the left, everything else on the right. Fits above Safari's bars |
 | P5 | −30 / +30 | Seeks 30 seconds |
 | P6 | Mark as watched | Becomes a green tick. No undo here; that stays on the web page |
@@ -473,3 +477,7 @@ the car buttons need a real iPhone.
 | P14 | A season 2 episode on an iPhone | The error sits over the picture and points to VLC |
 | P15 | As a guest | Car mode without signing in. Progress stays on the device, and the autoplay switch gives no sync error |
 | P16 | Back from the player | The player pauses; home offers the same episode |
+| P17 | Full screen | Disabled until the video has loaded. Then opens the video full screen: Safari's own player on an iPhone, the browser's fullscreen elsewhere. Works with Tab and Enter, and a screen reader reads its label |
+| P18 | Leave full screen while playing (X, swipe down, Escape) | Keeps playing; the big button still shows Pause |
+| P19 | Pause inside full screen, then leave | Stays paused; the big button shows Play |
+| P20 | An episode ends while full screen, autoplay on | The next one starts. **Real iPhone only** |

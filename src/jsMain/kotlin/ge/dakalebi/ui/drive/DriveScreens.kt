@@ -246,8 +246,9 @@ private fun DrivePlayerBody(episode: Episode, player: DrivePlayer) {
 }
 
 /**
- * The two actions the web page has under its player, at car size: mark the episode
- * watched, and on an iPhone or iPad open it in VLC.
+ * The actions under the picture, at car size: the picture full screen, then the two the
+ * web page has under its player, mark the episode watched and, on an iPhone or iPad,
+ * open it in VLC.
  */
 @Composable
 private fun DriveExtras(episode: Episode, player: DrivePlayer, loaded: Boolean) {
@@ -259,6 +260,18 @@ private fun DriveExtras(episode: Episode, player: DrivePlayer, loaded: Boolean) 
     val autoplay = settings[Setting.AutoplayNext]
 
     Div({ classes("drive-extras") }) {
+        // The native player has a fullscreen button of its own, but a small one, hidden
+        // until the picture is tapped. This one waits for the video to know its picture,
+        // which an iPhone needs before it opens its fullscreen player.
+        Button({
+            classes("drive-btn", "drive-extra")
+            if (!loaded || !player.fullscreenReady) disabled()
+            onClick { player.enterFullscreen() }
+        }) {
+            Icon(LucideIcon.Maximize, size = null)
+            Span { Text(S.fullscreen.caps) }
+        }
+
         Button({
             classes("drive-btn", "drive-extra")
             // Shown as done rather than offered back: undoing it asks for a

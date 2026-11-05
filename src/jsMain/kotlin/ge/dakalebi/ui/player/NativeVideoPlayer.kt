@@ -36,6 +36,9 @@ fun NativeVideoPlayer(
             ref { element ->
                 holder[0] = element
                 events.onElement(element)
+                // Closing Apple's fullscreen player pauses the video. The page's only
+                // pause of its own is on the way to car mode, which leaves the page.
+                val removeFullscreenExit = FullscreenExitResumer(element).install()
 
                 val dyn = element.asDynamic()
                 val syncAirPlay = { _: dynamic ->
@@ -64,6 +67,7 @@ fun NativeVideoPlayer(
                 syncAirPlay(null)
 
                 onDispose {
+                    removeFullscreenExit()
                     runCatching {
                         dyn.removeEventListener("webkitcurrentplaybacktargetiswirelesschanged", syncAirPlay)
                         val remote = dyn.remote
