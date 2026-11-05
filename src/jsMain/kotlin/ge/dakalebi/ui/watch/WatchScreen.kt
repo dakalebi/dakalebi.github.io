@@ -558,8 +558,9 @@ fun WatchScreen(episodeId: String) {
                         href = vlcOpenUrl(
                             current = episode,
                             currentUrl = url,
-                            // VLC plays its queue through, so no queue when autoplay is off.
-                            upcoming = if (autoplay) catalog.upcoming(episode, VLC_LOOKAHEAD) else emptyList(),
+                            // VLC plays its queue through, so no queue when autoplay is
+                            // off. With it on, the queue runs to the end of the season.
+                            upcoming = if (autoplay) catalog.restOfSeason(episode) else emptyList(),
                             quality = quality,
                             startSeconds = seekTo,
                             title = { S.seasonAndEpisode(it.seasonNumber, it.episodeNumber) },

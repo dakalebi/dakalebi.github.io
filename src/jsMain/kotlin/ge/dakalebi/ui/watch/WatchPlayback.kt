@@ -36,12 +36,6 @@ internal const val PROMPT_WINDOW = 180.0
 internal const val SAVE_EVERY = 7.0
 
 /**
- * How far ahead "Open in VLC" looks for its queue. Wider than the queue itself,
- * so the handful of episodes with no video cannot leave it short.
- */
-internal const val VLC_LOOKAHEAD = 12
-
-/**
  * Assigning `currentTime` throws on an element that is not seekable yet. That
  * is expected during the resume retry loop, but a seek that keeps failing is
  * exactly why someone would report "it never remembers where I was".

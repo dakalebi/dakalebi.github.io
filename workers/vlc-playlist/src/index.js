@@ -7,11 +7,13 @@
  * `data:` URL, so the playlist has to come from an https address. This is that
  * address, and nothing more:
  *
- *   GET /playlist.m3u?start=754&u=<mp4>&t=<title>&u=<mp4>&t=<title>…
+ *   GET /playlist.m3u?start=754&base=<folder>&title=<words {} words>
+ *                     &u=<mp4>&t=<title>&u=<mp4>&t=<title>…
  *
  * It keeps no state. The site puts the whole list in the query and this answers
  * with the same list as M3U, in the shape tested on a real iPhone: `#EXTINF`
- * for the title and `#EXTVLCOPT:start-time` on the first item only.
+ * for the title and `#EXTVLCOPT:start-time` on the first item only. A season
+ * is dozens of items, so `base` and `title` carry what they all share once.
  *
  * Only links on cdn.formula.ge are accepted, so it cannot be used to serve a
  * playlist of anyone else's files. It never touches the video itself.
@@ -19,8 +21,11 @@
 
 export const PLAYLIST_PATH = '/playlist.m3u';
 export const MEDIA_HOST = 'cdn.formula.ge';
-export const MAX_ITEMS = 20;
+/** More than any season has. */
+export const MAX_ITEMS = 200;
 export const MAX_TITLE_LENGTH = 120;
+/** Where each `t` goes in a shared `title`. */
+export const TITLE_SLOT = '{}';
 /** A day. No episode comes close; anything longer is a broken link. */
 export const MAX_START_SECONDS = 86_400;
 
@@ -31,7 +36,9 @@ export class PlaylistError extends Error {}
  * The M3U text for a query, or a thrown `PlaylistError`.
  *
  * `u` and `t` repeat in pairs: the n-th title names the n-th link. `start` is
- * whole seconds and applies to the first item only.
+ * whole seconds and applies to the first item only. `base` and `title` are
+ * optional: `base` goes in front of every `u` before the link is checked, and
+ * `title` is every title with a `{}` that each `t` fills.
  */
 export function buildPlaylist(params) {
   const urls = params.getAll('u');
@@ -40,13 +47,18 @@ export function buildPlaylist(params) {
   if (urls.length > MAX_ITEMS) throw new PlaylistError(`more than ${MAX_ITEMS} items`);
   if (titles.length !== urls.length) throw new PlaylistError('each link needs one title');
   const start = startSeconds(params.get('start'));
+  const base = params.get('base') ?? '';
+  const template = params.get('title');
+  if (template !== null && !template.includes(TITLE_SLOT)) {
+    throw new PlaylistError(`title needs ${TITLE_SLOT}`);
+  }
 
   const lines = ['#EXTM3U'];
   urls.forEach((raw, index) => {
-    const title = cleanTitle(titles[index]);
+    const title = cleanTitle(template === null ? titles[index] : fillTitle(template, titles[index]));
     if (title) lines.push(`#EXTINF:-1,${title}`);
     if (index === 0 && start > 0) lines.push(`#EXTVLCOPT:start-time=${start}`);
-    lines.push(mediaUrl(raw));
+    lines.push(mediaUrl(base + raw));
   });
   return `${lines.join('\n')}\n`;
 }
@@ -74,6 +86,12 @@ function mediaUrl(raw) {
   if (!allowed) throw new PlaylistError(`only https links on ${MEDIA_HOST}`);
   url.hash = '';
   return url.href;
+}
+
+/** The first `{}` of the template, filled. Not `replace`, which reads `$&` in the part. */
+function fillTitle(template, part) {
+  const slot = template.indexOf(TITLE_SLOT);
+  return template.slice(0, slot) + part + template.slice(slot + TITLE_SLOT.length);
 }
 
 /** One line of plain text: no control characters, so no extra playlist lines. */

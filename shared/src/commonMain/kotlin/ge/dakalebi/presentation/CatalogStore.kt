@@ -213,6 +213,8 @@ class CatalogStore(
     fun upcoming(of: Episode, count: Int): List<Episode> =
         CatalogQueries.upcoming(episodes, of, count)
 
+    fun restOfSeason(of: Episode): List<Episode> = CatalogQueries.restOfSeason(episodes, of)
+
     /** Episodes started but not finished, most recent first. */
     fun inProgress(limit: Int): List<Episode> = progress.values
         .filter { it.isStarted }

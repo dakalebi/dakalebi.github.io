@@ -6,10 +6,12 @@ const BASE = 'https://dakalebi-vlc.example.workers.dev/playlist.m3u';
 const S2E9 = 'https://cdn.formula.ge/tvseries/series_1/season_02/episode_9/48e8_9.mp4';
 const S2E10 = 'https://cdn.formula.ge/tvseries/series_1/season_02/episode_10/4f6d_10.mp4';
 
-/** A query of `u`/`t` pairs, plus `start` when given. */
-function query(items, start) {
+/** A query of `u`/`t` pairs, plus `start`, `base` and `title` when given. */
+function query(items, start, shared = {}) {
   const params = new URLSearchParams();
   if (start !== undefined) params.append('start', String(start));
+  if (shared.base !== undefined) params.append('base', shared.base);
+  if (shared.title !== undefined) params.append('title', shared.title);
   for (const [url, title] of items) {
     params.append('u', url);
     params.append('t', title);
@@ -92,6 +94,40 @@ test('refuses a query it cannot pair or bound', () => {
   }
 });
 
+test('puts the shared folder in front of every link and fills the shared title', () => {
+  const folder = 'https://cdn.formula.ge/tvseries/series_1/season_02/';
+  assert.equal(
+    buildPlaylist(query([['episode_9/48e8_9.mp4', '9'], ['episode_10/4f6d_10.mp4', '10']], 60, {
+      base: folder,
+      title: 'სეზონი 2 · სერია {}',
+    })),
+    buildPlaylist(query([[S2E9, 'სეზონი 2 · სერია 9'], [S2E10, 'სეზონი 2 · სერია 10']], 60)),
+  );
+});
+
+test('fills only the first {} and takes the part literally', () => {
+  const titles = buildPlaylist(query([[S2E9, '$&'], [S2E10, '{}']], undefined, { title: 'a {} b {}' }))
+    .split('\n')
+    .filter((line) => line.startsWith('#EXTINF'));
+  assert.deepEqual(titles, ['#EXTINF:-1,a $& b {}', '#EXTINF:-1,a {} b {}']);
+});
+
+test('refuses a shared title without {}', () => {
+  assert.throws(() => buildPlaylist(query([[S2E9, '9']], undefined, { title: 'სეზონი 2' })), /title needs/);
+});
+
+test('checks each link after the shared folder is put in front', () => {
+  const refused = [
+    ['https://example.com/', 'a.mp4'],
+    ['https://cdn.formula.ge', '.example.com/a.mp4'],
+    ['https://cdn.formula.ge', '@evil.example/a.mp4'],
+    ['http://cdn.formula.ge/', 'a.mp4'],
+  ];
+  for (const [base, url] of refused) {
+    assert.throws(() => buildPlaylist(query([[url, 'a']], undefined, { base })), /https|link/, base + url);
+  }
+});
+
 test('serves the playlist as audio/x-mpegurl, the type VLC was tested with', async () => {
   const response = await get(query([[S2E9, 'a']], 60));
   assert.equal(response.status, 200);
@@ -119,6 +155,18 @@ test('answers 400, 404 and 405 where it should', async () => {
  */
 const SITE_LINK = 'vlc-x-callback://x-callback-url/stream?url=' +
   'https%3A%2F%2Fdakalebi-vlc.example.workers.dev%2Fplaylist.m3u%3Fstart%3D754' +
+  '%26base%3Dhttps%253A%252F%252Fcdn.formula.ge%252Ftvseries%252Fseries_1%252Fseason_16%252F' +
+  '%26title%3D%25E1%2583%25A1%25E1%2583%2594%25E1%2583%2596%25E1%2583%259D%25E1%2583%259C%25E1%2583%2598' +
+  '%252016%2520%25C2%25B7%2520%25E1%2583%25A1%25E1%2583%2594%25E1%2583%25A0%25E1%2583%2598%25E1%2583%2590%2520%257B%257D' +
+  '%26u%3Depisode_01%252F78d9_CHCD%2520SE16%2520E%25201%2520HD.mp4%26t%3D1' +
+  '%26u%3Depisode_02%252Fa1_2.mp4%26t%3D2';
+
+/**
+ * The same playlist as the first site build sent it, every link and title in
+ * full. A page still open from before keeps working.
+ */
+const FIRST_SITE_LINK = 'vlc-x-callback://x-callback-url/stream?url=' +
+  'https%3A%2F%2Fdakalebi-vlc.example.workers.dev%2Fplaylist.m3u%3Fstart%3D754' +
   '%26u%3Dhttps%253A%252F%252Fcdn.formula.ge%252Ftvseries%252Fseries_1%252Fseason_16%252Fepisode_01' +
   '%252F78d9_CHCD%2520SE16%2520E%25201%2520HD.mp4' +
   '%26t%3D%25E1%2583%25A1%25E1%2583%2594%25E1%2583%2596%25E1%2583%259D%25E1%2583%259C%25E1%2583%2598' +
@@ -127,28 +175,35 @@ const SITE_LINK = 'vlc-x-callback://x-callback-url/stream?url=' +
   '%26t%3D%25E1%2583%25A1%25E1%2583%2594%25E1%2583%2596%25E1%2583%259D%25E1%2583%259C%25E1%2583%2598' +
   '%252016%2520%25C2%25B7%2520%25E1%2583%25A1%25E1%2583%2594%25E1%2583%25A0%25E1%2583%2598%25E1%2583%2590%25202';
 
-test("the site's link, opened the way VLC opens it, gives the expected playlist", async () => {
-  // VLC for iOS (URLHandler.swift): split its own query on raw `&` and `=`, take
-  // the `url` value, and percent-decode it once because it starts with an
-  // encoded `://`.
-  const value = SITE_LINK.split('?').slice(1).join('?').split('&')
+/**
+ * VLC for iOS (URLHandler.swift): split its own query on raw `&` and `=`, take
+ * the `url` value, and percent-decode it once because it starts with an encoded
+ * `://`. Then fetch what that names.
+ */
+async function openInVlc(link) {
+  const value = link.split('?').slice(1).join('?').split('&')
     .map((entry) => entry.split('='))
     .find(([key]) => key === 'url')[1];
   const playlistUrl = decodeURIComponent(value);
   assert.ok(playlistUrl.startsWith(`${BASE}?`), playlistUrl);
-
   const response = await worker.fetch(new Request(playlistUrl));
   assert.equal(response.status, 200);
-  assert.equal(
-    await response.text(),
-    [
-      '#EXTM3U',
-      '#EXTINF:-1,სეზონი 16 · სერია 1',
-      '#EXTVLCOPT:start-time=754',
-      'https://cdn.formula.ge/tvseries/series_1/season_16/episode_01/78d9_CHCD%20SE16%20E%201%20HD.mp4',
-      '#EXTINF:-1,სეზონი 16 · სერია 2',
-      'https://cdn.formula.ge/tvseries/series_1/season_16/episode_02/a1_2.mp4',
-      '',
-    ].join('\n'),
-  );
-});
+  return response.text();
+}
+
+/** What both links must give. */
+const EXPECTED = [
+  '#EXTM3U',
+  '#EXTINF:-1,სეზონი 16 · სერია 1',
+  '#EXTVLCOPT:start-time=754',
+  'https://cdn.formula.ge/tvseries/series_1/season_16/episode_01/78d9_CHCD%20SE16%20E%201%20HD.mp4',
+  '#EXTINF:-1,სეზონი 16 · სერია 2',
+  'https://cdn.formula.ge/tvseries/series_1/season_16/episode_02/a1_2.mp4',
+  '',
+].join('\n');
+
+for (const [name, link] of [['site', SITE_LINK], ['first site build', FIRST_SITE_LINK]]) {
+  test(`the ${name}'s link, opened the way VLC opens it, gives the expected playlist`, async () => {
+    assert.equal(await openInVlc(link), EXPECTED);
+  });
+}

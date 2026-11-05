@@ -2,11 +2,11 @@
 
 A Cloudflare Worker that turns a query into an M3U playlist for "Open in VLC" on
 iPhone and iPad. VLC for iOS 3.7.3+ expands the playlist into its queue, so the
-viewer gets the current episode and the next five, with titles, starting at their
-current position.
+viewer gets the current episode and the rest of its season, with titles,
+starting at their current position.
 
 ```
-GET /playlist.m3u?start=754&u=<mp4>&t=<title>&u=<mp4>&t=<title>…
+GET /playlist.m3u?start=754&base=<folder>&title=<words {} words>&u=<mp4>&t=<title>…
 → 200 audio/x-mpegurl
 
 #EXTM3U
@@ -19,8 +19,12 @@ https://cdn.formula.ge/…/10.mp4
 
 - **Stateless.** The site sends the whole list. Nothing is stored, and the video
   never passes through the worker.
-- **Only `https://cdn.formula.ge` links.** Anything else is a 400, so the worker
-  cannot serve playlists of other sites' files.
+- **Short links.** A season is dozens of items, so what they all share goes once.
+  `base` goes in front of every `u`, and each `t` fills the `{}` in `title`. Both
+  are optional, and a link without them still works. Up to 200 items.
+- **Only `https://cdn.formula.ge` links.** Each link is checked after `base` is
+  put in front. Anything else is a 400, so the worker cannot serve playlists of
+  other sites' files.
 - **Why it exists.** VLC 3 cannot read a `data:` URL, and GitHub Pages cannot
   build a file per request.
 
