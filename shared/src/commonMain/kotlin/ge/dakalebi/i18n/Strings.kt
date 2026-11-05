@@ -188,6 +188,7 @@ interface Strings {
     val episodeNotFound: String
     val videoLinkFailed: String
     val videoLoadFailed: String
+    val videoUnsupportedOnAppleMobile: String
     val retryingVideo: String
     val markedAsWatched: String
     val episodeMarkedWatched: String

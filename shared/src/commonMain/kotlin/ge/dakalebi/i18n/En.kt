@@ -130,6 +130,7 @@ object En : Strings {
     override val episodeNotFound = "Episode not found"
     override val videoLinkFailed = "Could not get the video link"
     override val videoLoadFailed = "Could not load the video"
+    override val videoUnsupportedOnAppleMobile = "This video does not play on iPhone or iPad. Try it on a computer."
     override val retryingVideo = "Retrying…"
     override val markedAsWatched = "Marked as watched"
     override val episodeMarkedWatched = "Episode marked as watched"
