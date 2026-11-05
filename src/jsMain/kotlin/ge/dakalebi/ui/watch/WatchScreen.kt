@@ -63,6 +63,7 @@ fun WatchScreen(episodeId: String) {
     val scope = rememberCoroutineScope()
     val uid = session.uid
     val refs = remember(episodeId) { WatchRefs() }
+    val debug = remember(episodeId) { if (watchDebugEnabled) WatchDebug() else null } // TEMPORARY
 
     var videoUrl by remember(episodeId) { mutableStateOf<String?>(null) }
     var quality by remember(episodeId) { mutableStateOf<String?>(null) }
@@ -97,7 +98,13 @@ fun WatchScreen(episodeId: String) {
         val current = episode ?: return@LaunchedEffect
         resolving = true
         error = null
+        val resolveStartedAt = kotlin.js.Date.now() // TEMPORARY
+        debug?.log("resolving ${current.id}")
         val resolved = resolveVideo(current)
+        debug?.log(
+            (if (resolved !== current) "fresh URLs" else "API failed, stored URL") +
+                " after ${(kotlin.js.Date.now() - resolveStartedAt).toInt()} ms",
+        )
         if (resolved !== current) catalog.putEpisode(resolved)
 
         // One map for everything downstream. Previously the label was derived
@@ -114,6 +121,7 @@ fun WatchScreen(episodeId: String) {
         quality = preferred
             ?: defaultQualityLabel(sources, COMPACT_SCREEN_MAX_QUALITY.takeIf { isCompactScreen })
         videoUrl = quality?.let { sources[it] } ?: resolved.videoUrl
+        debug?.log("chose $quality of ${sources.keys}: ${describeUrl(videoUrl)}")
 
         if (videoUrl == null) error = S.videoLinkFailed
         resolving = false
@@ -280,6 +288,16 @@ fun WatchScreen(episodeId: String) {
 
     // ---------------------------------------------------------------- ui
 
+    if (debug != null) { // TEMPORARY
+        WatchDebugPanel(
+            debug,
+            "ep=$episodeId found=${episode != null} catalogLoading=${catalog.loading} " +
+                "resolving=$resolving q=$quality apple=$isAppleMobile compact=$isCompactScreen " +
+                "native=${isAppleMobile && prefs.useNativePlayer} error=$error\n" +
+                "url ${describeUrl(videoUrl)}",
+        )
+    }
+
     if (episode == null) {
         Div {
             WatchNav(null)
@@ -291,7 +309,10 @@ fun WatchScreen(episodeId: String) {
     }
 
     val events = PlayerEvents(
-        onElement = { refs.video = it },
+        onElement = {
+            refs.video = it
+            debug?.attach(it) // TEMPORARY
+        },
         onLoadedMetadata = { video ->
             refs.airplay.sync(video)
             effectiveDuration(video)?.let { duration = it }
