@@ -474,9 +474,10 @@ Local preview is a static server over the built output — see
 `.claude/launch.json`. Do **not** start dev servers from a shell.
 
 Deployment is `.github/workflows/deploy.yml`: every push to `main` builds and
-publishes to the root of the Pages site, and every push to `preview` to
-`/preview/`. Every pull request from this repository is published to
-`/pr/<number>/` by `checks.yml` and removed when it closes. Pages must be set to
+publishes to the root of the Pages site. Every pull request from this repository
+is published to `/pr/<number>/` by `checks.yml` and removed when it closes, so to
+try a branch on the real site, open a draft pull request. The old `preview`
+branch and its `/preview/` folder are retired. Pages must be set to
 **Source: GitHub Actions**; if it ever reverts to `legacy`, the workflow goes
 green while the site 404s. That has happened.
 
