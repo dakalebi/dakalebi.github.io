@@ -122,6 +122,12 @@ fetch — happens in the browser. Consequences that reach everywhere:
   client set `User-Agent`/`Origin`/`Referer`, all forbidden to scripts, and any
   non-safelisted header forces a preflight the API does not advertise
   `Access-Control-Allow-Headers` for.
+- **Fresh episode URLs have five seconds.** The watch screen asks the Formula
+  API for an episode's current URLs before it shows the player, and plays the
+  stored URL when that fails. `fetchEpisode` aborts after
+  `EPISODE_TIMEOUT_MILLIS`, so an API outage costs a few seconds rather than a
+  player that never appears. The abort goes through an `AbortSignal`, which
+  adds no header.
 
 ### Hash routing
 
