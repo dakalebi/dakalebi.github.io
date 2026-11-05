@@ -1,7 +1,7 @@
 # Test plan
 
 The manual test plan for all three shells. Sections A to M were first written
-from the code on `main` at `0a0634e` and cover the signed-in web app. Later
+from the code on `master` at `0a0634e` and cover the signed-in web app. Later
 sections and rows were added as features landed: N is the TV UI, O is guest
 mode, P is driving mode. Login, signup and password reset are out of scope.
 
@@ -13,7 +13,7 @@ mode, P is driving mode. Login, signup and password reset are out of scope.
 | Served from | `http://localhost:4173` (static, `build/dist/js/productionExecutable`), or a pull request's own copy at `https://dakalebi.github.io/pr/<n>/` |
 | Desktop | Chrome, real profile |
 | Mobile | Safari in the iOS Simulator (iPhone and iPad), and a real iPhone for the rows the Simulator cannot prove |
-| Account | `bachanamosulishvili@gmail.com`, an admin (it needs an `admins/{uid}` document for section D) |
+| Account | The owner's account, an admin (it needs an `admins/{uid}` document for section D) |
 | Guest | No account. Sections O and P start from `Continue as guest` on the sign-in screen |
 | Data | Live Firestore `dakalebi-tv`: 932 episodes, 18 seasons |
 

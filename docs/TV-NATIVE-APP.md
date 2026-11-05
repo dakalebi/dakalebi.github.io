@@ -173,7 +173,7 @@ with `:tv` in the build.
 - **Google TV home row.** Its "Your apps" row showed the preview app with the red icon
   even after a reinstall, although the APK carries the amber one (checked with
   `aapt2`). Cause not found. The two apps still differ by name.
-- **The app is only as good as the live site.** A broken deploy to `main` breaks the
+- **The app is only as good as the live site.** A broken deploy to `master` breaks the
   TV app with no reinstall. The preview build (D2) is the mitigation: point it at
   the pull request and try the change on the television before it merges.
 

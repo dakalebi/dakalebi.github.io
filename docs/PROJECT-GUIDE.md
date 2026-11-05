@@ -640,12 +640,12 @@ Rules, in `firebase/firestore.rules`:
 
 **Nothing deploys the rules.** No workflow touches Firebase; the rules are pasted
 into **Firestore → Rules** in the console and published by hand. The live rules
-were last published on 2026-11-05 and match `firebase/firestore.rules` on `main`.
+were last published on 2026-11-05 and match `firebase/firestore.rules` on `master`.
 
 - **Rules first, bundle second.** Publish a rules change before the bundle that
-  depends on it reaches `main` (a new settings key, a newly public path). Until
+  depends on it reaches `master` (a new settings key, a newly public path). Until
   then the app's writes of that key are refused and it toasts "not synced".
-- **Publish the whole file from `main`**, never a branch's copy. Two pull
+- **Publish the whole file from `master`**, never a branch's copy. Two pull
   requests can change different blocks of the same file, and pasting one of them
   drops the other's change. #28 and #29 both changed it; publishing one branch's
   copy left the other's change out until a combined file was published.
@@ -698,7 +698,7 @@ python3 tools/check-css-classes.py   # after the build: every emitted class is s
 
 The CSS check reads the built stylesheets of each shell (`/`, `/tv/`, `/drive/`)
 and fails when a composable emits a class that a page drawing it does not load.
-It runs in CI as `css-classes`, and `main` requires it. That job only builds the
+It runs in CI as `css-classes`, and `master` requires it. That job only builds the
 bundle and runs this check. It does not run the unit tests, so run
 `:shared:jsNodeTest` yourself before opening a pull request.
 
@@ -709,11 +709,12 @@ Local preview is a static server over the built output — see
 
 | Trigger | Publishes to | Workflow |
 |---|---|---|
-| Push to `main` | the site root, with `/tv/` and `/drive/` inside it | `deploy.yml` |
+| Push to `master` | the site root, with `/tv/` and `/drive/` inside it | `deploy.yml` |
 | Pull request from this repository: opened, pushed, reopened | `/pr/<number>/` | `checks.yml`, `preview` job |
 | That pull request closed | removes `/pr/<number>/` | `checks.yml`, `remove-preview` job |
 
-Both callers build, run the CSS check, then call the reusable `publish.yml`:
+`deploy.yml` and the `preview` job build and run the CSS check, then call the
+reusable `publish.yml`; `remove-preview` calls it with no build:
 
 - **`write`** runs `tools/publish-site.sh <folder> <build>`. The site's state is
   the `gh-pages` branch, kept as **one commit with no history**. The script
@@ -734,11 +735,11 @@ Repository settings this depends on:
 
 - **Settings → Pages → Source: GitHub Actions.** If it ever reverts to `legacy`,
   the workflow goes green while the site 404s. That has happened.
-- **Settings → Environments → github-pages → Deployment branches**: `main` and
+- **Settings → Environments → github-pages → Deployment branches**: `master` and
   `refs/pull/*/merge`. Pull request runs are matched by their merge ref.
-- **`main` is protected**: a pull request is required (no approvals), the
+- **`master` is protected**: a pull request is required (no approvals), the
   `css-classes` check must pass, no force pushes or deletion, admins included. A
-  direct push to `main` is refused. By convention, pull requests are squash-merged.
+  direct push to `master` is refused. By convention, pull requests are squash-merged.
 
 Other things worth knowing:
 
@@ -752,7 +753,13 @@ Other things worth knowing:
   site, so the preview jobs are skipped.
 - **A pull request with merge conflicts gets no Checks run**, so its preview stops
   updating until the conflict is resolved.
-- `deploy.yml` refuses a manual run from any branch but `main`.
+- `deploy.yml` refuses a manual run from any branch but `master`.
+- **A failed or stuck deploy can't be fixed by re-running it.** Pages drops a
+  second deployment of a commit it has already seen, and a re-run job also
+  finds the first attempt's `github-pages` artifact and stops. The build is
+  already on `gh-pages`, so the next deploy of any new commit (a merge to
+  `master`, or a push to any open pull request) puts production right. That
+  is how a Pages stall on 2026-11-05 was recovered.
 
 ### The VLC playlist worker
 
@@ -942,8 +949,8 @@ time and autoplay.
 
 ### Code
 
-Everything in this document is merged to `main` and deployed. The live
-Firestore rules match `firebase/firestore.rules` on `main` (published
+Everything in this document is merged to `master` and deployed. The live
+Firestore rules match `firebase/firestore.rules` on `master` (published
 2026-11-05).
 
 ### Admin rights need a console entry
@@ -976,7 +983,7 @@ gcloud CLI is installed on the owner's machine.
   is real data.
 - **A pull request with merge conflicts gets no preview update**, and a closed
   pull request's folder leaves the live site only with the next deploy.
-- **The TV app is only as good as the live site.** A broken deploy to `main`
+- **The TV app is only as good as the live site.** A broken deploy to `master`
   breaks it with no reinstall; try TV changes with the preview build first.
 
 ### Known gaps, unprioritised
@@ -997,7 +1004,7 @@ Observed across the project, and worth matching.
   fixes: *"1. Create a new branch for all bug fixes 2. Check that bug really
   exists, 3. Propose a fixing plan, 4. Fix the bug, retest and commit a bug fix
   if it is fixed, 5. After all bugs are fixed, create pull request and request
-  copilot for review."* Direct commits to `main` happen only when they ask for
+  copilot for review."* Direct commits to `master` happen only when they ask for
   them explicitly.
 - **Confirm a plan before large work.** For the QA sweep they said: *"Do not
   start doing it yet. To make sure you got everything right, tell me what you

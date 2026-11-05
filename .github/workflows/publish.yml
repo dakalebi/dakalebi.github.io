@@ -21,7 +21,7 @@ name: Publish
 #
 # Pages keys a deployment by the run's commit SHA, and a second deployment of a SHA
 # that already deployed is accepted and then dropped. Every caller runs on a commit
-# of its own (a `main` commit, a pull request's merge commit), so this only bites a
+# of its own (a `master` commit, a pull request's merge commit), so this only bites a
 # re-run of the same commit.
 
 on:

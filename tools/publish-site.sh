@@ -14,7 +14,7 @@
 # publish carries a full copy of the bundle, about 0.8 MB packed, and with a
 # preview per pull request that history would grow by megabytes a day for
 # nothing anyone reads: the Deployments page already records what went live and
-# when, and rolling back production is a revert on `main`.
+# when, and rolling back production is a revert on `master`.
 #
 # Writers never coordinate with each other. Each one starts from the newest tip,
 # changes only its own folder, and replaces the tip only if it is still the tip
