@@ -38,6 +38,10 @@ fun MenuSheet(
     onResetAll: () -> Unit,
     onRefresh: () -> Unit,
     onSignOut: () -> Unit,
+    /** A guest's way to an account. */
+    onSignIn: () -> Unit,
+    /** A signed-in viewer's way to guest mode: signs out and continues as a guest. */
+    onSwitchToGuest: () -> Unit,
     busy: Boolean,
 ) {
     val session = session()
@@ -52,7 +56,7 @@ fun MenuSheet(
         Div {
             Div({ classes("eyebrow-mut") }) { Text(S.menu.caps) }
             Div({ style { property("font-size", "13px"); property("color", "var(--tx-dim)") } }) {
-                Text(session.email ?: "")
+                Text(if (session.isGuest) S.guestProgressNote else session.email ?: "")
             }
         }
 
@@ -92,7 +96,14 @@ fun MenuSheet(
                 if (busy) attr("disabled", "")
                 onClick { onResetAll() }
             }) { Text(S.resetAllProgress.caps) }
-            Button({ classes("sheet-item"); onClick { onSignOut() } }) { Text(S.signOut.caps) }
+            if (session.isGuest) {
+                Button({ classes("sheet-item"); onClick { onSignIn() } }) { Text(S.signIn.caps) }
+            } else {
+                Button({ classes("sheet-item"); onClick { onSignOut() } }) { Text(S.signOut.caps) }
+                Button({ classes("sheet-item"); onClick { onSwitchToGuest() } }) {
+                    Text(S.continueAsGuest.caps)
+                }
+            }
         }
 
         SettingsSection()

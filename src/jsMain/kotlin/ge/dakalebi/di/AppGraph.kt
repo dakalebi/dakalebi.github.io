@@ -1,6 +1,7 @@
 package ge.dakalebi.di
 
 import ge.dakalebi.data.SystemClock
+import ge.dakalebi.data.ViewerProgressRepository
 import ge.dakalebi.data.firebase.FirebaseAccountRepository
 import ge.dakalebi.data.firebase.FirestoreAdminRepository
 import ge.dakalebi.data.firebase.FirestoreCatalogRepository
@@ -10,12 +11,15 @@ import ge.dakalebi.data.formula.FormulaApi
 import ge.dakalebi.data.local.BrowserKeyValueStore
 import ge.dakalebi.data.local.BrowserPreferencesRepository
 import ge.dakalebi.data.local.LocalCatalogCache
+import ge.dakalebi.data.local.LocalGuestMode
+import ge.dakalebi.data.local.LocalProgressRepository
 import ge.dakalebi.data.local.LocalSettingsCache
 import ge.dakalebi.domain.Clock
 import ge.dakalebi.domain.repository.AccountRepository
 import ge.dakalebi.domain.repository.AdminRepository
 import ge.dakalebi.domain.repository.CatalogCache
 import ge.dakalebi.domain.repository.CatalogRepository
+import ge.dakalebi.domain.repository.GuestModeRepository
 import ge.dakalebi.domain.repository.PreferencesRepository
 import ge.dakalebi.domain.repository.ProgressRepository
 import ge.dakalebi.domain.repository.SettingsCache
@@ -71,7 +75,16 @@ class AppGraph(
     adminRepository: AdminRepository = FirestoreAdminRepository(),
     preferencesRepository: PreferencesRepository = BrowserPreferencesRepository(),
     settingsCache: SettingsCache = LocalSettingsCache(BrowserKeyValueStore()),
+    /** A guest's progress: on this device, never uploaded. */
+    guestProgressRepository: ProgressRepository = LocalProgressRepository(BrowserKeyValueStore()),
+    guestModeRepository: GuestModeRepository = LocalGuestMode(BrowserKeyValueStore()),
 ) {
+    /** Every progress read and write goes through here, which keeps a guest's off the account backend. */
+    private val viewerProgress = ViewerProgressRepository(
+        member = progressRepository,
+        guest = guestProgressRepository,
+    )
+
     /** Typed as the implementation, because only the entry point calls `start()`. */
     val router = HashRouter()
     val toasts = ToastStore(scope)
@@ -80,13 +93,13 @@ class AppGraph(
 
     val catalog = CatalogStore(
         loadCatalog = LoadCatalog(catalogRepository),
-        loadProgress = LoadProgress(progressRepository),
+        loadProgress = LoadProgress(viewerProgress),
         refreshCatalogUseCase = RefreshCatalog(catalogRepository, clock),
-        saveProgressUseCase = SaveProgress(progressRepository, clock),
-        clearEpisodeProgress = ClearEpisodeProgress(progressRepository),
-        markSeasonWatchedUseCase = MarkSeasonWatched(progressRepository, clock),
-        resetSeasonProgressUseCase = ResetSeasonProgress(progressRepository),
-        resetAllProgressUseCase = ResetAllProgress(progressRepository),
+        saveProgressUseCase = SaveProgress(viewerProgress, clock),
+        clearEpisodeProgress = ClearEpisodeProgress(viewerProgress),
+        markSeasonWatchedUseCase = MarkSeasonWatched(viewerProgress, clock),
+        resetSeasonProgressUseCase = ResetSeasonProgress(viewerProgress),
+        resetAllProgressUseCase = ResetAllProgress(viewerProgress),
         recordEpisodeDuration = RecordEpisodeDuration(catalogRepository),
         cache = catalogCache,
     )
@@ -98,6 +111,7 @@ class AppGraph(
         signUpWithEmail = SignUpWithEmail(accountRepository),
         sendPasswordResetUseCase = SendPasswordReset(accountRepository),
         signOutUseCase = SignOut(accountRepository),
+        guestMode = guestModeRepository,
     )
 
     val settings = SettingsStore(

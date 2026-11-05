@@ -36,6 +36,7 @@ import org.jetbrains.compose.web.dom.Form
 import org.jetbrains.compose.web.dom.H1
 import org.jetbrains.compose.web.dom.Img
 import org.jetbrains.compose.web.dom.Input
+import org.jetbrains.compose.web.dom.P
 import org.jetbrains.compose.web.dom.Span
 import org.jetbrains.compose.web.dom.Text
 import org.w3c.dom.Element
@@ -179,6 +180,25 @@ fun LoginScreen() {
                     }) { Span { Text(S.forgotPassword.caps) } }
                 }
             }
+
+            // Below the form rather than beside the submit button: signing in stays
+            // the main action, and this is the way past it. The note under it says
+            // what a guest gives up before they choose.
+            Button({
+                classNames(buttonClasses(ButtonVariant.Outline))
+                style { property("justify-content", "center") }
+                if (busy) disabled()
+                dpadItem("guest")
+                onClick { session.continueAsGuest() }
+            }) { Text(S.continueAsGuest.caps) }
+            P({
+                style {
+                    property("margin", "0")
+                    property("font-size", "12.5px")
+                    property("color", "var(--mut)")
+                    property("text-align", "center")
+                }
+            }) { Text(S.guestProgressNote) }
         }
     }
 }

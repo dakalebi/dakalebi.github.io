@@ -69,7 +69,8 @@ fun WatchScreen(episodeId: String) {
     val resolveVideo = LocalResolveEpisodeVideo.current
 
     val scope = rememberCoroutineScope()
-    val uid = session.uid
+    // Whose progress this is: the account's, or a guest's on this device.
+    val uid = session.viewerId
     val refs = remember(episodeId) { WatchRefs() }
 
     var videoUrl by remember(episodeId) { mutableStateOf<String?>(null) }

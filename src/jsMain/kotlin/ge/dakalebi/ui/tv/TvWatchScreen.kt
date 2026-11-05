@@ -98,7 +98,8 @@ fun TvWatchScreen(episodeId: String) {
     // must not relabel, or restart, the stream already playing here.
     val preferredQuality = remember(episodeId) { settings[Setting.PreferredQuality] }
 
-    val uid = session.uid
+    // Whose progress this is: the account's, or a guest's on this device.
+    val uid = session.viewerId
     val episode = catalog.byId(episodeId)
     val entry = episode?.let { catalog.progress[it.id] }
     val savedSeconds = entry?.progressSeconds ?: 0
