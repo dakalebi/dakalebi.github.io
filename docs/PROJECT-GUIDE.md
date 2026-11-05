@@ -122,6 +122,12 @@ fetch — happens in the browser. Consequences that reach everywhere:
   client set `User-Agent`/`Origin`/`Referer`, all forbidden to scripts, and any
   non-safelisted header forces a preflight the API does not advertise
   `Access-Control-Allow-Headers` for.
+- **Fresh episode URLs have five seconds.** The watch screen asks the Formula
+  API for an episode's current URLs before it shows the player, and plays the
+  stored URL when that fails. `fetchEpisode` aborts after
+  `EPISODE_TIMEOUT_MILLIS`, so an API outage costs a few seconds rather than a
+  player that never appears. The abort goes through an `AbortSignal`, which
+  adds no header.
 
 ### Hash routing
 
@@ -312,6 +318,21 @@ giving up after eight attempts.
 
 It **never pauses the element while waiting** — pausing breaks the AirPlay
 handshake and leaves the receiver playing while the phone reports 0:00.
+
+On iOS the first source also carries the saved position as a `#t=` media
+fragment (`withStartFragment`), so the first load starts there instead of loading
+0:00 and then seeking. When the element is already at the target before any seek
+of ours, `applyResume` stops there. The fragment is fixed at the first source: the
+saved position changes with every save, and a changed `src` reloads the video.
+
+### Which quality an episode starts in
+
+A quality the viewer picked on this device (`preferred_quality` in
+`localStorage`) wins. Otherwise a phone-sized screen (`isCompactScreen`, shorter
+side under 600 CSS px) starts at 720p and everything else at the best rendition
+(`defaultQualityLabel`). iPads are not compact. The native iOS player has no
+quality menu, so with it on, this default is an iPhone's only way off 1080p. TV
+picks its quality in `TvWatchScreen` and is not affected.
 
 ### The AirPlay clock
 
