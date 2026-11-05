@@ -17,7 +17,9 @@ import ge.dakalebi.di.router
 import ge.dakalebi.di.session
 import ge.dakalebi.di.settings
 import ge.dakalebi.di.toasts
-import ge.dakalebi.domain.service.orderedQualityLabels
+import ge.dakalebi.domain.service.COMPACT_SCREEN_MAX_QUALITY
+import ge.dakalebi.domain.service.defaultQualityLabel
+import ge.dakalebi.domain.service.withStartFragment
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
 import ge.dakalebi.presentation.Route
@@ -29,6 +31,7 @@ import ge.dakalebi.ui.player.CustomVideoPlayer
 import ge.dakalebi.ui.player.NativeVideoPlayer
 import ge.dakalebi.ui.player.PlayerEvents
 import ge.dakalebi.ui.player.isAppleMobile
+import ge.dakalebi.ui.player.isCompactScreen
 import io.github.bchmsl.keel.components.Callout
 import io.github.bchmsl.keel.components.CalloutBody
 import io.github.bchmsl.keel.components.CalloutTone
@@ -104,10 +107,13 @@ fun WatchScreen(episodeId: String) {
         val sources = resolved.sources.ifEmpty { current.sources }
         available = sources
         val preferred = prefs.preferredQuality?.takeIf { sources.containsKey(it) }
-        quality = preferred ?: orderedQualityLabels(sources).firstOrNull()
-        videoUrl = preferred?.let { sources[it] }
-            ?: resolved.videoUrl
-            ?: quality?.let { sources[it] }
+        // A quality picked on this device wins. Otherwise a phone starts at 720p,
+        // because the 1080p file is the slowest to start and the screen hides the
+        // difference. The URL follows the label, so the file that plays is always
+        // the one the quality menu names.
+        quality = preferred
+            ?: defaultQualityLabel(sources, COMPACT_SCREEN_MAX_QUALITY.takeIf { isCompactScreen })
+        videoUrl = quality?.let { sources[it] } ?: resolved.videoUrl
 
         if (videoUrl == null) error = S.videoLinkFailed
         resolving = false
@@ -190,6 +196,23 @@ fun WatchScreen(episodeId: String) {
 
         if (isAppleMobile && stage == "metadata") return
 
+        fun settle() {
+            refs.resumeApplied = true
+            refs.resumeAttempts = 0
+            refs.resumeSeekIssued = false
+            refs.resumeTimer?.let { window.clearTimeout(it) }
+            refs.resumeTimer = null
+        }
+
+        // Already there before any seek of ours: the `#t=` start on the source did it,
+        // and seeking again would only stall the element on a position it has. Once
+        // we have seeked, iOS can report the target while having ignored the seek, so
+        // from then on only the retry loop below decides.
+        if (!refs.resumeSeekIssued && kotlin.math.abs(video.currentTime - target) < 0.75) {
+            settle()
+            return
+        }
+
         fun scheduleRetry(nextStage: String, delay: Int) {
             refs.resumeTimer?.let { window.clearTimeout(it) }
             if (refs.resumeAttempts >= 8) return
@@ -213,11 +236,7 @@ fun WatchScreen(episodeId: String) {
         }
 
         if (kotlin.math.abs(video.currentTime - target) < 0.75) {
-            refs.resumeApplied = true
-            refs.resumeAttempts = 0
-            refs.resumeSeekIssued = false
-            refs.resumeTimer?.let { window.clearTimeout(it) }
-            refs.resumeTimer = null
+            settle()
             return
         }
 
@@ -339,8 +358,11 @@ fun WatchScreen(episodeId: String) {
                 scope.launch {
                     val resolved = resolveVideo(episode)
                     catalog.putEpisode(resolved)
-                    videoUrl = resolved.videoUrl
-                    if (resolved.videoUrl == null) error = S.videoLoadFailed
+                    // Retry the quality that was playing. The fresh best URL would
+                    // undo the viewer's pick and a phone's lower start.
+                    val fresh = resolved.sources.ifEmpty { episode.sources }
+                    videoUrl = quality?.let { fresh[it] } ?: resolved.videoUrl
+                    if (videoUrl == null) error = S.videoLoadFailed
                 }
             } else {
                 error = S.videoLoadFailed
@@ -387,11 +409,17 @@ fun WatchScreen(episodeId: String) {
         val url = videoUrl
         if (url != null && progressReady) {
             key(episode.id) {
+                // iOS resumes through the source itself (see [withStartFragment]).
+                // Fixed at the first source: the saved position moves with every
+                // save while playing, and a changed src reloads the video. A quality
+                // switch changes the URL and does its own seek, so it gets no fragment.
+                val start = remember(episode.id) { url to savedSeconds }
+                val src = if (isAppleMobile && url == start.first) withStartFragment(url, start.second) else url
                 if (nativePlayer) {
-                    NativeVideoPlayer(src = url, autoPlay = shouldAutoplay, events = events)
+                    NativeVideoPlayer(src = src, autoPlay = shouldAutoplay, events = events)
                 } else {
                     CustomVideoPlayer(
-                        src = url,
+                        src = src,
                         autoPlay = shouldAutoplay,
                         sources = available.ifEmpty { episode.sources },
                         quality = quality,
