@@ -6,7 +6,10 @@ import androidx.compose.runtime.setValue
 import ge.dakalebi.core.Log
 import ge.dakalebi.domain.model.Episode
 import ge.dakalebi.domain.service.COMPACT_SCREEN_MAX_QUALITY
+import ge.dakalebi.domain.service.PlaybackFailure
 import ge.dakalebi.domain.service.defaultQualityLabel
+import ge.dakalebi.domain.service.playbackFailure
+import ge.dakalebi.domain.service.retryUrl
 import ge.dakalebi.domain.service.withStartFragment
 import ge.dakalebi.domain.usecase.ResolveEpisodeVideo
 import ge.dakalebi.i18n.S
@@ -103,7 +106,17 @@ internal class DrivePlayer(
         private set
     var duration: Int? by mutableStateOf(null)
         private set
-    var failed: Boolean by mutableStateOf(false)
+
+    /** Why the open episode did not play, which picks the message. Null while it can. */
+    var failure: PlaybackFailure? by mutableStateOf(null)
+        private set
+    val failed: Boolean get() = failure != null
+
+    /**
+     * The open episode's video link, without the `#t=` resume fragment: what "Open in
+     * VLC" hands over. Null when the episode has none.
+     */
+    var sourceUrl: String? by mutableStateOf(null)
         private set
 
     /** Where the episode should start, until the element is confirmed to be there. */
@@ -204,7 +217,7 @@ internal class DrivePlayer(
         val saved = entry?.takeIf { !it.isWatched }?.progressSeconds ?: 0
 
         episodeId = episode.id
-        failed = false
+        failure = null
         retried = false
         buffering = false
         position = saved
@@ -215,8 +228,9 @@ internal class DrivePlayer(
         updateMetadata(episode)
 
         val url = sourceFor(episode)
+        sourceUrl = url
         if (url == null) {
-            fail()
+            fail(PlaybackFailure.LoadFailed)
             wantsToPlay = false
             video.removeAttribute("src")
             video.load()
@@ -226,6 +240,14 @@ internal class DrivePlayer(
         // [withStartFragment]). [resume] stays as the fallback and finds it already there.
         video.src = if (isAppleMobile) withStartFragment(url, saved) else url
         if (play) playNow()
+    }
+
+    /**
+     * Marks the open episode watched, as the web page's button does, at the current
+     * position. Watched is sticky in `SaveProgress`, so the saves that follow keep it.
+     */
+    fun markWatched() {
+        persist(isWatched = true)
     }
 
     fun toggle() {
@@ -301,8 +323,8 @@ internal class DrivePlayer(
      * reporting itself unpaused, and a `play` event may already have arrived, so the
      * screen would otherwise keep saying "Pause" over an episode that is not playing.
      */
-    private fun fail() {
-        failed = true
+    private fun fail(reason: PlaybackFailure) {
+        failure = reason
         playing = false
         buffering = false
         releaseWakeLock()
@@ -360,9 +382,13 @@ internal class DrivePlayer(
         // Emptying the source on sign-out reports an error too. That one is not a failure.
         if (video.getAttribute("src").isNullOrEmpty()) return
         val episode = current ?: return
-        Log.e("drive", "media error for ${episode.id} (code=${video.error?.code})")
+        val code = video.error?.code?.toInt()
+        Log.e("drive", "media error for ${episode.id} (code=$code)")
+        // On an iPhone, code 4 is a file Safari cannot decode (all of season 2), and the
+        // message then points to VLC.
+        val reason = playbackFailure(code, isAppleMobile)
         if (retried) {
-            fail()
+            fail(reason)
             return
         }
         retried = true
@@ -371,16 +397,20 @@ internal class DrivePlayer(
         resumeTarget = resumeTarget ?: video.currentTime.takeIf { it > 1 }
         resumeAttempts = 0
         val id = episode.id
+        val failedUrl = sourceUrl
         scope.launch {
             val fresh = runCatching { resolveVideo(episode) }
                 .onFailure { Log.e("drive", "resolve failed for $id", it) }
                 .getOrNull()
             if (episodeId != id) return@launch
-            val url = fresh?.let { catalog.putEpisode(it); sourceFor(it) }
+            // The same link again starts no new load, so it would wait forever: say so now.
+            // That is the case whenever Formula's API is down, and for a file that cannot play.
+            val url = retryUrl(failedUrl = failedUrl, freshUrl = fresh?.let { catalog.putEpisode(it); sourceFor(it) })
             if (url == null) {
-                fail()
+                fail(reason)
                 return@launch
             }
+            sourceUrl = url
             video.src = url
             if (wantsToPlay) {
                 video.play().catch {

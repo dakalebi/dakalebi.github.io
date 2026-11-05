@@ -303,24 +303,50 @@ button {
   color: var(--tx);
 }
 
-.drive-error {
-  padding: 10px 16px;
-  border-radius: var(--radius);
-  border: 2px solid var(--red);
-  font-size: 1.125rem;
-  font-weight: 700;
+/* The picture and the buttons that belong to the episode rather than to playback. */
+.drive-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--d-gap);
 }
 
-/* The native player's frame. The `<video>` inside is not drawn by Compose (see
-   DrivePlayer.kt), so it is reached through the frame rather than a class of its own.
+/* The picture's box: the native player, and the error over it when there is one.
    Black behind the picture, so letterboxing reads as part of the frame. */
-.drive-video {
+.drive-stage {
+  position: relative;
   width: 100%;
   aspect-ratio: 16 / 9;
   border-radius: var(--d-radius);
   overflow: hidden;
   background: #000;
   border: 2px solid var(--d-edge);
+}
+
+/* The native player's frame. The `<video>` inside is not drawn by Compose (see
+   DrivePlayer.kt), so it is reached through the frame rather than a class of its own. */
+.drive-video {
+  position: absolute;
+  inset: 0;
+}
+
+/* Over the middle of the picture, which is blank whenever this shows, so a failure
+   takes no room from the buttons. Taps pass through to the player under it. */
+.drive-error {
+  position: absolute;
+  z-index: 1;
+  left: 12px;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 10px 16px;
+  border-radius: var(--radius);
+  border: 2px solid var(--red);
+  background: #000;
+  font-size: 1.125rem;
+  font-weight: 700;
+  line-height: 1.25;
+  text-align: center;
+  pointer-events: none;
 }
 
 .drive-video > video {
@@ -415,6 +441,48 @@ button {
   letter-spacing: 0.04em;
 }
 
+/* Mark as watched and Open in VLC, side by side under the picture. Smaller than the
+   playback buttons: they are pressed once a visit, while parked, not while driving.
+   One button alone (no VLC off Apple devices) takes the whole row. */
+.drive-extras {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: var(--d-gap);
+}
+
+.drive-extra {
+  min-height: 64px;
+  padding: 6px 12px;
+  font-size: clamp(1rem, 4.4vw, 1.25rem);
+  line-height: 1.15;
+  text-align: center;
+  text-wrap: balance;
+}
+
+/* Already watched: a state, not a button, so it keeps full strength and the web
+   page's green tick colours. */
+.drive-done:disabled {
+  opacity: 1;
+  color: var(--ok);
+  border-color: rgba(62, 207, 142, 0.45);
+}
+
+/* VLC's own orange, so it reads as "leave for VLC" before the label is read. */
+.drive-vlc {
+  flex-direction: column;
+  gap: 2px;
+  background: #ff8800;
+  border-color: #ff8800;
+  color: #000;
+}
+
+.drive-vlc-time {
+  font-family: var(--f-mono);
+  font-size: 0.85em;
+  font-variant-numeric: tabular-nums;
+}
+
 /* A phone on its side in a mount: about 400px tall, and Safari's own bars can take a
    quarter of that. Nothing on the player may run the full width, so the picture takes
    the left at full height, and the way home, what is playing and the controls stack
@@ -491,9 +559,26 @@ button {
     font-size: 1rem;
   }
 
-  .drive-video {
+  /* The picture fills what the episode buttons under it leave of the left column. */
+  .drive-side {
     grid-area: video;
-    align-self: center;
+    gap: 10px;
+    min-height: 0;
+  }
+
+  .drive-stage {
+    flex: 1;
+    aspect-ratio: auto;
+    min-height: 0;
+  }
+
+  .drive-extras {
+    gap: 10px;
+  }
+
+  .drive-extra {
+    min-height: 48px;
+    font-size: 1rem;
   }
 
   /* Season and episode on one line, the time under them. */
@@ -519,19 +604,6 @@ button {
 
   .drive-time {
     font-size: 1rem;
-  }
-
-  /* Over the middle of the picture, which is blank whenever this shows. Before the
-     video in the page, so it needs lifting to paint above it. */
-  .drive-error {
-    grid-area: video;
-    align-self: center;
-    justify-self: center;
-    position: relative;
-    z-index: 1;
-    max-width: calc(100% - 32px);
-    background: #000;
-    text-align: center;
   }
 
   .drive-controls {

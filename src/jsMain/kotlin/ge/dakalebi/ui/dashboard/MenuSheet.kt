@@ -12,6 +12,7 @@ import ge.dakalebi.di.toasts
 import ge.dakalebi.i18n.I18n
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
+import ge.dakalebi.ui.drive.driveHref
 import ge.dakalebi.ui.player.isAppleMobile
 import io.github.bchmsl.keel.components.Drawer
 import io.github.bchmsl.keel.components.DrawerEdge
@@ -77,9 +78,8 @@ fun MenuSheet(
 
         Div({ classes("sheet-list") }) {
             // A link to another page, not a route: driving mode is its own shell with its
-            // own stylesheet, the way `/tv/` is. Relative, so `/preview/` opens
-            // `/preview/drive/` rather than production's.
-            A(href = "drive/", attrs = { classes("sheet-item") }) { Text(S.driveMode.caps) }
+            // own stylesheet, the way `/tv/` is.
+            A(href = driveHref(), attrs = { classes("sheet-item") }) { Text(S.driveMode.caps) }
             if (session.isAdmin) {
                 Button({
                     classes("sheet-item")

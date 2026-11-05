@@ -35,6 +35,9 @@ internal const val PROMPT_WINDOW = 180.0
 /** Save at most this often during continuous playback. */
 internal const val SAVE_EVERY = 7.0
 
+/** Longest wait for the spot to save before opening driving mode anyway. */
+internal const val DRIVE_SAVE_WAIT_MS = 2_000L
+
 /**
  * Assigning `currentTime` throws on an element that is not seekable yet. That
  * is expected during the resume retry loop, but a seek that keeps failing is

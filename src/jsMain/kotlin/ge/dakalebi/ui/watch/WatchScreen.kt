@@ -32,6 +32,7 @@ import ge.dakalebi.ui.ConfirmDialog
 import ge.dakalebi.ui.EpisodeRow
 import ge.dakalebi.ui.ExternalLink
 import ge.dakalebi.ui.UpNextList
+import ge.dakalebi.ui.drive.driveHref
 import ge.dakalebi.ui.player.CustomVideoPlayer
 import ge.dakalebi.ui.player.NativeVideoPlayer
 import ge.dakalebi.ui.player.PlayerEvents
@@ -46,7 +47,9 @@ import io.github.bchmsl.keel.components.ButtonVariant
 import io.github.bchmsl.keel.dom.classNames
 import kotlinx.browser.document
 import kotlinx.browser.window
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import org.jetbrains.compose.web.dom.Button
 import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.H1
@@ -134,15 +137,15 @@ fun WatchScreen(episodeId: String) {
     fun effectiveTime(video: HTMLVideoElement): Double = refs.airplay.currentTime(video)
     fun effectiveDuration(video: HTMLVideoElement): Double? = refs.airplay.duration(video)
 
-    fun persist(isWatched: Boolean? = null, allowReset: Boolean = false) {
-        val video = refs.video ?: return
-        val current = episode ?: return
-        val id = uid ?: return
+    fun persist(isWatched: Boolean? = null, allowReset: Boolean = false): Job? {
+        val video = refs.video ?: return null
+        val current = episode ?: return null
+        val id = uid ?: return null
         val seconds = floor(effectiveTime(video)).toInt()
-        if (seconds < 1 && isWatched == null && !allowReset) return
+        if (seconds < 1 && isWatched == null && !allowReset) return null
         val dur = effectiveDuration(video)?.let { floor(it).toInt() }
 
-        scope.launch {
+        return scope.launch {
             runCatching {
                 catalog.saveProgress(
                     uid = id,
@@ -563,6 +566,29 @@ fun WatchScreen(episodeId: String) {
                         attrs = { classes("vlc-btn") },
                     )
                 }
+
+                // Car mode, on this episode. It is another page and reads the spot from
+                // the account, so the spot is saved first: a save started while the page
+                // unloads may never reach the server.
+                val driveLink = driveHref(Route.Watch(episode.id))
+                LinkButton(
+                    href = driveLink,
+                    label = S.driveMode.caps,
+                    variant = ButtonVariant.Outline,
+                    attrs = {
+                        onClick { event ->
+                            // A modified click opens a new tab; this page keeps playing.
+                            if (event.metaKey || event.ctrlKey || event.shiftKey) return@onClick
+                            event.preventDefault()
+                            refs.video?.pause()
+                            val save = persist()
+                            scope.launch {
+                                withTimeoutOrNull(DRIVE_SAVE_WAIT_MS) { save?.join() }
+                                window.location.href = driveLink
+                            }
+                        }
+                    },
+                )
 
                 ExternalLink(episode.episodePageUrl, S.openOnFormula.caps)
             }

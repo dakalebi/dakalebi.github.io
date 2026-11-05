@@ -10,9 +10,12 @@ import ge.dakalebi.di.session
 import ge.dakalebi.di.settings
 import ge.dakalebi.di.toasts
 import ge.dakalebi.domain.model.Episode
+import ge.dakalebi.domain.service.PlaybackFailure
+import ge.dakalebi.domain.service.vlcStreamUrl
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
 import ge.dakalebi.presentation.Route
+import ge.dakalebi.ui.player.isAppleMobile
 import ge.dakalebi.ui.useFixtures
 import io.github.bchmsl.keel.dom.classNames
 import io.github.bchmsl.keel.dom.switchClasses
@@ -165,21 +168,36 @@ private fun DrivePlayerBody(episode: Episode, player: DrivePlayer) {
             }
         }
 
-        // Its own box, not part of the title block: on a phone on its side it sits over
-        // the picture, which is blank when this shows, so it costs the controls no room.
-        if (loaded && player.failed) {
-            Div({ classes("drive-error"); attr("role", "alert") }) { Text(S.videoLoadFailed) }
-        }
-
-        // The player's one `<video>` is lent to this frame while the screen is open. It is
-        // not a Compose child: it is the same element for the whole visit (see DrivePlayer).
-        Div({
-            classes("drive-video")
-            ref { slot ->
-                player.attach(slot)
-                onDispose { player.detach(slot) }
+        // The picture and the actions under it. On a phone on its side this is the left
+        // column; upright it sits between the title and the playback controls.
+        Div({ classes("drive-side") }) {
+            Div({ classes("drive-stage") }) {
+                // The player's one `<video>` is lent to this frame while the screen is open.
+                // It is not a Compose child: it is the same element for the whole visit (see
+                // DrivePlayer).
+                Div({
+                    classes("drive-video")
+                    ref { slot ->
+                        player.attach(slot)
+                        onDispose { player.detach(slot) }
+                    }
+                })
+                // Over the picture, which is blank whenever this shows, so it costs the
+                // controls no room.
+                val failure = player.failure
+                if (loaded && failure != null) {
+                    Div({ classes("drive-error"); attr("role", "alert") }) {
+                        Text(
+                            when (failure) {
+                                PlaybackFailure.UnsupportedOnAppleMobile -> S.videoUnsupportedOnAppleMobile
+                                PlaybackFailure.LoadFailed -> S.videoLoadFailed
+                            },
+                        )
+                    }
+                }
             }
-        })
+            DriveExtras(episode, player, loaded)
+        }
 
         Div({ classes("drive-controls") }) {
             Div({ classes("drive-row") }) {
@@ -221,6 +239,59 @@ private fun DrivePlayerBody(episode: Episode, player: DrivePlayer) {
             }) {
                 Span { Text(S.nextEpisodeAction.caps) }
                 Icon(LucideIcon.SkipForward, size = null)
+            }
+        }
+    }
+}
+
+/**
+ * The two actions the web page has under its player, at car size: mark the episode
+ * watched, and on an iPhone or iPad open it in VLC.
+ */
+@Composable
+private fun DriveExtras(episode: Episode, player: DrivePlayer, loaded: Boolean) {
+    val catalog = catalog()
+    val toasts = toasts()
+    val watched = catalog.progress[episode.id]?.isWatched == true
+    val vlcUrl = player.sourceUrl.takeIf { loaded && isAppleMobile }
+
+    Div({ classes("drive-extras") }) {
+        Button({
+            classes("drive-btn", "drive-extra")
+            // Shown as done rather than offered back: undoing it asks for a
+            // confirmation, which belongs on the web page, not in a car.
+            if (watched) {
+                classes("drive-done")
+                disabled()
+            } else if (!loaded) {
+                disabled()
+            }
+            onClick {
+                player.markWatched()
+                toasts.ok(S.episodeMarkedWatched)
+            }
+        }) {
+            if (watched) {
+                Text(S.watchedTick.caps)
+            } else {
+                Icon(LucideIcon.Check, size = null)
+                Span { Text(S.markAsWatched.caps) }
+            }
+        }
+
+        // As on the web page: every episode on an iPhone or iPad, since VLC also plays
+        // what Safari cannot (all of season 2). VLC always starts at 0:00, so the button
+        // carries the time to seek to. The page's own player pauses first, so the two
+        // never play at once.
+        if (vlcUrl != null) {
+            A(href = vlcStreamUrl(vlcUrl), attrs = {
+                classes("drive-btn", "drive-extra", "drive-vlc")
+                onClick { player.pause() }
+            }) {
+                Span { Text(S.openInVlc.caps) }
+                if (player.position >= 1) {
+                    Span({ classes("drive-vlc-time") }) { Text(formatTime(player.position.toDouble())) }
+                }
             }
         }
     }
