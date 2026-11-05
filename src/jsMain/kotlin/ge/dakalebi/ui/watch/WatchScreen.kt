@@ -22,6 +22,7 @@ import ge.dakalebi.domain.service.PlaybackFailure
 import ge.dakalebi.domain.service.defaultQualityLabel
 import ge.dakalebi.domain.service.playbackFailure
 import ge.dakalebi.domain.service.retryUrl
+import ge.dakalebi.domain.service.vlcStreamUrl
 import ge.dakalebi.domain.service.withStartFragment
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
@@ -38,6 +39,7 @@ import ge.dakalebi.ui.player.isCompactScreen
 import io.github.bchmsl.keel.components.Callout
 import io.github.bchmsl.keel.components.CalloutBody
 import io.github.bchmsl.keel.components.CalloutTone
+import io.github.bchmsl.keel.components.LinkButton
 import io.github.bchmsl.keel.dom.buttonClasses
 import io.github.bchmsl.keel.components.ButtonVariant
 import io.github.bchmsl.keel.dom.classNames
@@ -74,6 +76,8 @@ fun WatchScreen(episodeId: String) {
     // always reading the same map — see the resolution effect below.
     var available by remember(episodeId) { mutableStateOf<Map<String, String>>(emptyMap()) }
     var error by remember(episodeId) { mutableStateOf<String?>(null) }
+    // Offered beside [error] when the device's own decoder turned the file down.
+    var vlcLink by remember(episodeId) { mutableStateOf<String?>(null) }
     var ended by remember(episodeId) { mutableStateOf(false) }
     var remaining by remember(episodeId) { mutableStateOf<Double?>(null) }
     var duration by remember(episodeId) { mutableStateOf<Double?>(null) }
@@ -101,6 +105,7 @@ fun WatchScreen(episodeId: String) {
         val current = episode ?: return@LaunchedEffect
         resolving = true
         error = null
+        vlcLink = null
         val resolveStartedAt = kotlin.js.Date.now() // TEMPORARY
         debug?.log("resolving ${current.id}")
         val resolved = resolveVideo(current)
@@ -372,10 +377,18 @@ fun WatchScreen(episodeId: String) {
         },
         onError = {
             val code = refs.video?.asDynamic()?.error?.code as? Int
-            Log.e("player", "media error for ${episode.id} (code=$code, src=$videoUrl)")
-            val failure = when (playbackFailure(code, isAppleMobile)) {
-                PlaybackFailure.UnsupportedOnAppleMobile -> S.videoUnsupportedOnAppleMobile
-                PlaybackFailure.LoadFailed -> S.videoLoadFailed
+            val failedUrl = videoUrl
+            Log.e("player", "media error for ${episode.id} (code=$code, src=$failedUrl)")
+            val failure = playbackFailure(code, isAppleMobile)
+            fun showFailure() {
+                error = when (failure) {
+                    PlaybackFailure.UnsupportedOnAppleMobile -> S.videoUnsupportedOnAppleMobile
+                    PlaybackFailure.LoadFailed -> S.videoLoadFailed
+                }
+                // VLC brings its own decoder, so the same file Safari turned down plays there.
+                vlcLink = failedUrl
+                    ?.takeIf { failure == PlaybackFailure.UnsupportedOnAppleMobile }
+                    ?.let(::vlcStreamUrl)
             }
             if (!refs.retried) {
                 refs.retried = true
@@ -388,10 +401,10 @@ fun WatchScreen(episodeId: String) {
                     val fresh = resolved.sources.ifEmpty { episode.sources }
                     val next = retryUrl(failedUrl = videoUrl, freshUrl = quality?.let { fresh[it] } ?: resolved.videoUrl)
                     // No new link means no new load, so say so now instead of waiting.
-                    if (next != null) videoUrl = next else error = failure
+                    if (next != null) videoUrl = next else showFailure()
                 }
             } else {
-                error = failure
+                showFailure()
             }
         },
         onAirPlayChange = { active, video ->
@@ -456,6 +469,7 @@ fun WatchScreen(episodeId: String) {
                                 videoUrl = it
                                 // A new source, so an error about the old one no longer applies.
                                 error = null
+                                vlcLink = null
                             }
                         },
                         events = events,
@@ -493,7 +507,16 @@ fun WatchScreen(episodeId: String) {
                 // `announce`, because this arrives in response to something the viewer
                 // did - a stream that would not start - rather than sitting on the page
                 // from the beginning. A screen reader says it when it appears.
-                Callout(tone = CalloutTone.Destructive, announce = true) { Text(error!!) }
+                Callout(tone = CalloutTone.Destructive, announce = true) {
+                    val link = vlcLink
+                    if (link == null) {
+                        Text(error!!)
+                    } else {
+                        CalloutBody { Text(error!!) }
+                        // Not `external`: a new tab would only sit empty behind VLC.
+                        LinkButton(href = link, label = S.openInVlc.caps)
+                    }
+                }
             }
 
             if (ended && nextEpisode != null) {
