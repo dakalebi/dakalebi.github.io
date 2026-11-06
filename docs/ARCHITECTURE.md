@@ -16,6 +16,7 @@ layer, with the web app on top.
 | `:domain` | models, repository interfaces, a use case per operation, pure queries | Depends on no other module, not even `:core`, and on one library: kotlinx-coroutines, for `Flow`. So "the domain names no framework" is the compile classpath and not only a convention |
 | `:data` | `commonMain`: the Formula API and DTOs, the settings sync (`SyncedSettingsRepository`), and the storage that is plain Kotlin over a `KeyValueStore`: the catalog cache, the settings device copy, guest progress, the guest choice, and `ViewerProgressRepository`, which routes progress between the account and the device. `jsMain`: `firebase` (Firestore and Auth through the JS SDK), `local` (the browser's `localStorage`), the system clock, and the bare GET | Every implementation of a domain repository. Depends on `:domain` and `:core` only, so it cannot name presentation, `i18n` or UI. Its caches are its own: no interface for them is in `:domain` |
 | `:presentation` | `commonMain`: the stores and ViewModels, the `Route` type, error wording, `i18n`, the composition locals. `jsMain`: `HashRouter` | The screen state and the strings, so a second front end reuses them instead of reimplementing them. Depends on `:domain`, `:core`, Compose runtime and coroutines, and never on Compose HTML or the component library, so a front end with a different look reuses it as it is. Only its tests depend on `:data` |
+| `:presentation-new` | `jsMain`: the redesign's UI (Compose HTML) for all three shells, and its design system: `next/tokens.css`, `next/base.css`, and the `/next/` pages | The redesign, built next to the old UI until the switch. Depends on `:presentation` and `:core`, and never on keel. Its pages and sheets reach the distribution through the root's `jsProcessResources`, like keel's. Phase 1 draws a foundations screen on each page |
 | `:testing` | the fakes the modules' tests share: a clock, in-memory storage, the account's settings document, progress storage, and builders for episodes and progress | Test code only. No module's main code depends on it, so none of it reaches the bundle. A module, because Kotlin Multiplatform gives one module's tests no way to use another module's test code |
 | root | `ui` (Compose HTML) for all three shells (`/`, `/tv/`, `/drive/`), the composition root, `Main.kt` | The web app. It also owns the webpack build, so the GitHub Pages artifact path never moves |
 
@@ -133,7 +134,7 @@ New state goes into a ViewModel. The stores stay for state the whole app shares
 screen's. What only the markup needs, such as a menu being open or where the
 remote's focus was, stays in the screen.
 
-Two things a build file cannot keep out, so they are still greps. Every one of
+A few things a build file cannot keep out, so they are still greps. Every one of
 these returns nothing.
 
 - **The browser APIs.** Kotlin/JS ships them with the standard library, to every
@@ -143,6 +144,10 @@ these returns nothing.
 - **Compose HTML and the component library in `:presentation`.** An import does
   not resolve today, but only because its build file does not list them, so the
   grep reads the build file too.
+- **keel in `:presentation-new`.** The same reason: keel is in the build, so
+  only the module's build file keeps it out, and the grep reads that file too.
+  A keel class written as a literal is caught by `tools/check-css-classes.py`,
+  because the `/next/` pages link no keel sheet.
 - **`ui/` naming `:data`.** The root module depends on `:data`, because the
   composition roots (`di/`, `Main.kt`) build the repositories. `di/` holds both
   `AppGraph` and the fixture graph. `ui/` reaches data through the domain
@@ -154,6 +159,7 @@ grep -rn "kotlinx.browser\|org.w3c\|dynamic" domain/src/
 grep -rn "kotlinx.browser\|org.w3c\|compose.web\|dynamic" core/src/commonMain/ data/src/commonMain/ $S
 grep -rn "compose.web\|firebase" core/src/commonMain/ data/src/commonMain/ $S
 grep -rn "keel\|compose.web" presentation/ --exclude-dir=build
+grep -rn "io.github.bchmsl" presentation-new/ --exclude-dir=build
 grep -rn "import ge.dakalebi.data" src/jsMain/kotlin/ge/dakalebi/ui
 ```
 
