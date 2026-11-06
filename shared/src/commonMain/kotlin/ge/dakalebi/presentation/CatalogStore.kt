@@ -8,7 +8,6 @@ import ge.dakalebi.domain.model.CatalogMeta
 import ge.dakalebi.domain.model.Episode
 import ge.dakalebi.domain.model.RefreshResult
 import ge.dakalebi.domain.model.WatchProgress
-import ge.dakalebi.domain.repository.CatalogCache
 import ge.dakalebi.domain.service.CatalogQueries
 import ge.dakalebi.domain.service.WatchStats
 import ge.dakalebi.domain.usecase.ClearEpisodeProgress
@@ -43,7 +42,6 @@ class CatalogStore(
     private val resetSeasonProgressUseCase: ResetSeasonProgress,
     private val resetAllProgressUseCase: ResetAllProgress,
     private val recordEpisodeDuration: RecordEpisodeDuration,
-    private val cache: CatalogCache,
 ) {
     var episodes: List<Episode> by mutableStateOf(emptyList())
         private set
@@ -182,17 +180,16 @@ class CatalogStore(
         episodes = episodes.map { if (it.id == episode.id) episode else it }
     }
 
-    /** Caches a duration the player measured, and mirrors it if we may write. */
+    /**
+     * Shows a duration the player measured. Keeping it, on this device and on
+     * the server where allowed, is the repository's job.
+     */
     private suspend fun rememberDuration(episodeId: String, seconds: Int) {
         val episode = byId(episodeId) ?: return
         if (!recordEpisodeDuration(episode, seconds)) return
         episodes = episodes.map {
             if (it.id == episodeId) it.copy(durationSeconds = seconds) else it
         }
-        // Durations are learned locally and do not move the catalog's refresh
-        // stamp, so without this the cache keeps serving the old value and
-        // every reload forgets the runtime it just measured.
-        cache.write(meta?.lastRefreshAtMillis, episodes)
     }
 
     // -------------------------------------------------------------- derived

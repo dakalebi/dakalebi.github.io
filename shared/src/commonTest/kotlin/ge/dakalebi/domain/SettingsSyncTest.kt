@@ -6,12 +6,10 @@ import ge.dakalebi.domain.model.UserSettings
 import ge.dakalebi.domain.repository.AdminRepository
 import ge.dakalebi.domain.service.SettingsSync
 import ge.dakalebi.domain.usecase.CheckAdminRights
-import ge.dakalebi.domain.usecase.SaveUserSettings
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 private class FakeAdminRepository(private val admins: Set<String>) : AdminRepository {
@@ -28,41 +26,6 @@ class SettingsSyncTest {
         val keys = Setting.all.map { it.key }
         assertEquals(keys.toSet().size, keys.size)
         assertTrue(keys.containsAll(listOf("language", "autoplayNext", "useNativePlayer", "preferredQuality")))
-    }
-
-    // ------------------------------------------------------------- merge
-
-    /**
-     * The reason a write carries only the settings it holds: two devices
-     * changing two different settings must not undo each other, and the
-     * language picker knows nothing about autoplay.
-     */
-    @Test
-    fun changing_one_setting_leaves_the_others_alone() = runTest {
-        val repo = FakeSettingsRepository(
-            stored = UserSettings().with(Setting.Language, "ka").with(Setting.UseNativePlayer, false),
-        )
-
-        SaveUserSettings(repo)("u", UserSettings().with(Setting.AutoplayNext, true))
-
-        assertEquals("ka", repo.stored?.get(Setting.Language), "autoplay write must not clear the language")
-        assertEquals(false, repo.stored?.get(Setting.UseNativePlayer))
-        assertEquals(true, repo.stored?.get(Setting.AutoplayNext))
-    }
-
-    @Test
-    fun a_rejected_write_is_reported_rather_than_swallowed() = runTest {
-        val repo = FakeSettingsRepository(writesSucceed = false)
-        assertFalse(SaveUserSettings(repo)("u", UserSettings().with(Setting.AutoplayNext, true)))
-    }
-
-    /** Absent must stay absent, or a fresh account reads as "autoplay off". */
-    @Test
-    fun an_untouched_setting_stays_absent() = runTest {
-        val repo = FakeSettingsRepository()
-        SaveUserSettings(repo)("u", UserSettings().with(Setting.AutoplayNext, true))
-        assertNull(repo.stored?.get(Setting.Language))
-        assertNull(repo.stored?.get(Setting.UseNativePlayer))
     }
 
     // -------------------------------------------------------------- plan

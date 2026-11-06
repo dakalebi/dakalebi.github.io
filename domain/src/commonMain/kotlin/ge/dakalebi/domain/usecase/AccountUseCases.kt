@@ -3,9 +3,10 @@ package ge.dakalebi.domain.usecase
 import ge.dakalebi.domain.model.Account
 import ge.dakalebi.domain.repository.AccountRepository
 import ge.dakalebi.domain.repository.AdminRepository
+import kotlinx.coroutines.flow.Flow
 
 class ObserveAccount(private val accounts: AccountRepository) {
-    operator fun invoke(onChange: (Account?) -> Unit) = accounts.observe(onChange)
+    operator fun invoke(): Flow<Account?> = accounts.account
 }
 
 class SignInWithEmail(private val accounts: AccountRepository) {

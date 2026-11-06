@@ -1,17 +1,20 @@
 package ge.dakalebi.data.firebase
 
 import ge.dakalebi.core.Log
+import ge.dakalebi.data.AccountSettingsSource
 import ge.dakalebi.domain.Clock
 import ge.dakalebi.domain.model.Setting
 import ge.dakalebi.domain.model.SettingsLoad
 import ge.dakalebi.domain.model.UserSettings
-import ge.dakalebi.domain.repository.SettingsRepository
 import ge.dakalebi.data.firebase.externals.DocumentSnapshot
 import ge.dakalebi.data.firebase.externals.doc
 import ge.dakalebi.data.firebase.externals.getDoc
 import ge.dakalebi.data.firebase.externals.onSnapshot
 import ge.dakalebi.data.firebase.externals.setDoc
 import kotlinx.coroutines.await
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlin.coroutines.cancellation.CancellationException
 
 /**
@@ -21,7 +24,7 @@ import kotlin.coroutines.cancellation.CancellationException
  * progress is a document per episode written constantly during playback, while
  * this is one small document written only when someone flips a switch.
  */
-class FirestoreSettingsRepository(private val clock: Clock) : SettingsRepository {
+class FirestoreSettingsSource(private val clock: Clock) : AccountSettingsSource {
 
     override suspend fun load(uid: String): SettingsLoad = runCatching {
         val snapshot = getDoc(ref(uid)).await()
@@ -55,16 +58,21 @@ class FirestoreSettingsRepository(private val clock: Clock) : SettingsRepository
     }
 
     /**
-     * Returns the unsubscribe function; the caller must invoke it on sign-out,
-     * or the listener keeps running against a uid that is no longer allowed to
-     * read it and produces a permission error on every reconnect.
+     * Cancelling the collection calls the unsubscribe function, which has to
+     * happen on sign-out: left running against a uid that is no longer allowed
+     * to read it, the listener produces a permission error on every reconnect.
+     *
+     * A listener error ends the listener, as Firestore does, but not the flow: it
+     * is logged, and the flow goes quiet until it is cancelled.
      */
-    override fun observe(uid: String, onChange: (UserSettings) -> Unit): () -> Unit =
-        onSnapshot(
+    override fun observe(uid: String): Flow<UserSettings> = callbackFlow {
+        val unsubscribe = onSnapshot(
             ref(uid),
-            { snapshot -> if (snapshot.exists()) onChange(read(snapshot)) },
+            { snapshot -> if (snapshot.exists()) trySend(read(snapshot)) },
             { error -> Log.w("settings", "settings listener dropped for $uid: $error") },
         )
+        awaitClose { unsubscribe() }
+    }
 
     private fun ref(uid: String) = doc(Firebase.db, USERS, uid)
 

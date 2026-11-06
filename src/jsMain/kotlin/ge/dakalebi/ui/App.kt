@@ -2,7 +2,6 @@ package ge.dakalebi.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.rememberCoroutineScope
 import ge.dakalebi.di.catalog
 import ge.dakalebi.di.router
 import ge.dakalebi.di.session
@@ -65,10 +64,9 @@ fun App() {
     // document the signed-out client may no longer read. The account's uid, not
     // the viewer's: a guest has no settings document and no admin entry, so for
     // a guest this stops sync and settings stay on the device.
-    val scope = rememberCoroutineScope()
     LaunchedEffect(account?.uid) {
         val uid = account?.uid
-        if (uid == null) settings.stop() else settings.start(scope, uid)
+        if (uid == null) settings.stop() else settings.start(uid)
         // Costs one document read, and only on sign-in or sign-out.
         session.refreshAdminRights()
     }

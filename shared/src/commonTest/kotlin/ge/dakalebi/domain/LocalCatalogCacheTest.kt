@@ -109,6 +109,42 @@ class LocalCatalogCacheTest {
         assertNull(cache(FakeKeyValueStore(readsFail = true)).read(stamp = 100.0))
     }
 
+    /**
+     * A runtime the player measured is patched into the cached copy, so the next
+     * load shows it without a Firestore read. The stamp stays: the catalog has
+     * not changed, only this device's copy of one episode.
+     */
+    @Test
+    fun a_recorded_duration_patches_the_cached_episode() {
+        val store = FakeKeyValueStore()
+        val cache = cache(store)
+        cache.write(stamp = 100.0, episodes = listOf(episode(1, 1, durationSeconds = null), episode(1, 2)))
+
+        cache.recordDuration(episodeId = "s1e1", durationSeconds = 1_444)
+
+        assertEquals(
+            listOf(episode(1, 1, durationSeconds = 1_444), episode(1, 2)),
+            cache.read(stamp = 100.0),
+        )
+    }
+
+    /** Nothing cached, or an episode the copy does not have: nothing to patch, nothing written. */
+    @Test
+    fun a_duration_for_nothing_cached_writes_nothing() {
+        val empty = FakeKeyValueStore()
+        cache(empty).recordDuration(episodeId = "s1e1", durationSeconds = 1_444)
+        assertTrue(empty.entries.isEmpty())
+
+        val store = FakeKeyValueStore()
+        val cache = cache(store)
+        cache.write(stamp = 100.0, episodes = listOf(episode(1, 1)))
+        val before = store.entries.toMap()
+
+        cache.recordDuration(episodeId = "s9e9", durationSeconds = 1_444)
+
+        assertEquals(before, store.entries)
+    }
+
     /** Private mode and a full quota both land here. It costs reads, not the load. */
     @Test
     fun storage_that_refuses_to_write_costs_only_the_cache() {

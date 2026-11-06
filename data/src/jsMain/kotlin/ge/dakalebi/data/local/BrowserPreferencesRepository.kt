@@ -6,6 +6,10 @@ import ge.dakalebi.domain.repository.PreferencesRepository
 import kotlinx.browser.localStorage
 import kotlinx.browser.sessionStorage
 import kotlinx.browser.window
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
+import org.w3c.dom.events.Event
 
 /**
  * Per-device preferences in `localStorage`, with the play intent in
@@ -45,9 +49,11 @@ class BrowserPreferencesRepository : PreferencesRepository {
             .orWarn("write session $episodeId")
     }
 
-    /** Fires when another tab writes to storage. */
-    override fun onExternalChange(listener: () -> Unit) {
-        window.addEventListener("storage", { listener() })
+    /** Another tab writing to storage. Cancelling the collection removes the listener. */
+    override val externalChanges: Flow<Unit> = callbackFlow {
+        val listener: (Event) -> Unit = { trySend(Unit) }
+        window.addEventListener("storage", listener)
+        awaitClose { window.removeEventListener("storage", listener) }
     }
 
     private fun read(key: String): String? =

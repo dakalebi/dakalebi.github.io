@@ -3,7 +3,6 @@ package ge.dakalebi.data.local
 import ge.dakalebi.core.Log
 import ge.dakalebi.domain.model.Setting
 import ge.dakalebi.domain.model.UserSettings
-import ge.dakalebi.domain.repository.SettingsCache
 
 /**
  * The account settings as this device last knew them, one key per setting.

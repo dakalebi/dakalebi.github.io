@@ -5,7 +5,6 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import ge.dakalebi.di.catalog
 import ge.dakalebi.di.router
 import ge.dakalebi.di.session
@@ -59,7 +58,6 @@ fun TvApp() {
     val catalog = catalog()
     val settings = settings()
     val toasts = toasts()
-    val scope = rememberCoroutineScope()
 
     val route = router.current
     val account = session.account
@@ -238,7 +236,7 @@ fun TvApp() {
             BrowseState.clear()
         } else {
             val uid = account?.uid
-            if (uid != null) settings.start(scope, uid) else settings.stop()
+            if (uid != null) settings.start(uid) else settings.stop()
             session.refreshAdminRights()
             catalog.ensureLoaded(viewerId)
         }

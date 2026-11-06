@@ -22,8 +22,8 @@ external fun getDoc(reference: DocumentReference): Promise<DocumentSnapshot>
 
 /**
  * Live document listener. Returns the unsubscribe function — typed as a plain
- * `() -> Unit` rather than an opaque marker, because this one actually has to
- * be called when the user signs out.
+ * `() -> Unit` rather than an opaque marker, because it has to be called when
+ * the user signs out.
  */
 external fun onSnapshot(
     reference: DocumentReference,

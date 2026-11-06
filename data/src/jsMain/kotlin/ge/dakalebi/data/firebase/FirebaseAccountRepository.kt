@@ -8,6 +8,9 @@ import ge.dakalebi.data.firebase.externals.signOut
 import ge.dakalebi.domain.model.Account
 import ge.dakalebi.domain.repository.AccountRepository
 import kotlinx.coroutines.await
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 
 /**
  * Firebase Authentication, mapped down to [Account].
@@ -18,14 +21,15 @@ import kotlinx.coroutines.await
  */
 class FirebaseAccountRepository : AccountRepository {
 
-    override fun observe(onChange: (Account?) -> Unit) {
-        onAuthStateChanged(Firebase.auth) { user ->
-            onChange(
+    override val account: Flow<Account?> = callbackFlow {
+        val unsubscribe = onAuthStateChanged(Firebase.auth) { user ->
+            trySend(
                 user?.let {
                     Account(uid = it.uid, email = it.email, emailVerified = it.emailVerified)
                 },
             )
         }
+        awaitClose { unsubscribe() }
     }
 
     override suspend fun signIn(email: String, password: String) {

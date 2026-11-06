@@ -6,9 +6,10 @@ import ge.dakalebi.domain.model.CatalogMeta
 import ge.dakalebi.domain.model.Episode
 import ge.dakalebi.domain.model.RefreshResult
 import ge.dakalebi.domain.model.Setting
-import ge.dakalebi.domain.model.SettingsLoad
 import ge.dakalebi.domain.model.UserSettings
 import ge.dakalebi.domain.model.WatchProgress
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.StateFlow
 
 /**
  * Everything the app needs from the outside world, stated as the domain sees
@@ -55,7 +56,11 @@ interface CatalogRepository {
     /** Re-reads one episode's video URLs, falling back to the stored copy. */
     suspend fun resolveVideo(episode: Episode): Episode
 
-    /** Persists a duration the player discovered. Silently ignored for non-admins. */
+    /**
+     * Remembers a duration the player measured: in this device's copy of the
+     * catalog always, and on the server when the rules allow it, which is for
+     * admins only. Silently skipped on the server for everyone else.
+     */
     suspend fun recordDuration(episodeId: String, durationSeconds: Int)
 }
 
@@ -74,26 +79,47 @@ interface ProgressRepository {
     suspend fun deleteAll(uid: String)
 }
 
+/**
+ * The account settings, kept in step between this device and the account.
+ *
+ * How the two meet is the implementation's business, by the rules in
+ * [ge.dakalebi.domain.service.SettingsSync]. What a caller sees is one value that
+ * starts as this device's copy and follows the account once one is attached.
+ */
 interface SettingsRepository {
-    suspend fun load(uid: String): SettingsLoad
+    /**
+     * The values someone actually chose, here or on another device. Starts as
+     * this device's copy, so the first frame renders the real values instead of
+     * flashing defaults while the network answers.
+     */
+    val settings: StateFlow<UserSettings>
 
     /**
-     * Writes the settings [settings] holds and leaves the rest alone.
-     *
-     * A setting with no value means "no opinion", not "clear it" — two devices
-     * changing two different settings must not overwrite each other, and the
-     * language picker knows nothing about autoplay. Returns false when the write
-     * was rejected: the rules said no, or the network failed it.
+     * Keeps this device and [uid]'s account in step until [stop], or until a
+     * start for another account. Starting the attached account again does nothing.
      */
-    suspend fun save(uid: String, settings: UserSettings): Boolean
+    fun start(uid: String)
 
-    /** Live updates from other devices. Returns the unsubscribe function. */
-    fun observe(uid: String, onChange: (UserSettings) -> Unit): () -> Unit
+    /** Detaches. This device's changes the account has not confirmed stay marked for it. */
+    fun stop()
+
+    /**
+     * Changes [setting] on this device, then records it on the attached account.
+     *
+     * The change is in [settings] before this first suspends. Returns false when
+     * the account write was rejected: the rules said no, or the network failed
+     * it. The device keeps the change either way, marked unconfirmed, so the next
+     * sync uploads it. Returns true when it landed, or when no account is attached.
+     *
+     * The write runs in the implementation's own long-lived scope, so a caller
+     * that stops waiting does not lose the account's confirmation.
+     */
+    suspend fun <T : Any> set(setting: Setting<T>, value: T): Boolean
 }
 
 interface AccountRepository {
-    /** Fires with the restored session, then on every sign-in and sign-out. */
-    fun observe(onChange: (Account?) -> Unit)
+    /** The restored session, then every sign-in and sign-out. Null is nobody. */
+    val account: Flow<Account?>
 
     suspend fun signIn(email: String, password: String)
 
@@ -128,50 +154,6 @@ interface GuestModeRepository {
 }
 
 /**
- * Local copy of the catalog, keyed by the server's last-refresh stamp.
- *
- * A port rather than an implementation detail of the repository so the caching
- * decision — which is about cost, not correctness — is visible in the
- * composition root and can be switched off there.
- */
-interface CatalogCache {
-    /** The cached catalog, but only when [stamp] proves it is still current. */
-    fun read(stamp: Double?): List<Episode>?
-
-    fun write(stamp: Double?, episodes: List<Episode>)
-
-    fun clear()
-}
-
-/**
- * This device's copy of the account settings.
- *
- * It renders the first frame with the right values instead of flashing defaults
- * while the network answers, and it is the only copy that works offline. It also
- * remembers which of this device's changes the account has not confirmed yet,
- * per account, so a change made offline survives a reload and is uploaded on
- * the next sync instead of being overwritten. See
- * [ge.dakalebi.domain.service.SettingsSync].
- *
- * Synchronous for the same reason as [PreferencesRepository]: the first frame
- * reads it.
- */
-interface SettingsCache {
-    /** What this device last knew, holding only settings that were actually set. */
-    fun read(): UserSettings
-
-    /** Stores the settings [settings] holds and leaves the rest alone. */
-    fun write(settings: UserSettings)
-
-    /** This device's changes for [uid] that the account has not confirmed. */
-    fun unsynced(uid: String): Set<Setting<*>>
-
-    fun markUnsynced(uid: String, setting: Setting<*>)
-
-    fun markSynced(uid: String, settings: Set<Setting<*>>)
-}
-
-/**
  * Per-device preferences: what describes this screen rather than the person
  * watching it. Anything that describes the person is a [Setting] and syncs.
  *
@@ -194,6 +176,6 @@ interface PreferencesRepository {
     fun playIntent(episodeId: String): String?
     fun setPlayIntent(episodeId: String, intent: String)
 
-    /** Called when another tab writes to storage, so state can be re-read. */
-    fun onExternalChange(listener: () -> Unit)
+    /** Emits when another tab writes to storage, so state can be re-read. */
+    val externalChanges: Flow<Unit>
 }

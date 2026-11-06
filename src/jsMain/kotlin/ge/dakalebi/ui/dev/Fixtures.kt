@@ -1,5 +1,6 @@
 package ge.dakalebi.ui.dev
 
+import ge.dakalebi.data.AccountSettingsSource
 import ge.dakalebi.data.local.BrowserKeyValueStore
 import ge.dakalebi.data.local.BrowserPreferencesRepository
 import ge.dakalebi.data.local.InMemoryKeyValueStore
@@ -17,12 +18,13 @@ import ge.dakalebi.domain.model.UserSettings
 import ge.dakalebi.domain.model.WatchProgress
 import ge.dakalebi.domain.repository.AccountRepository
 import ge.dakalebi.domain.repository.AdminRepository
-import ge.dakalebi.domain.repository.CatalogCache
 import ge.dakalebi.domain.repository.CatalogRepository
 import ge.dakalebi.domain.repository.GuestModeRepository
 import ge.dakalebi.domain.repository.ProgressRepository
-import ge.dakalebi.domain.repository.SettingsRepository
 import kotlinx.browser.window
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.emptyFlow
 import org.w3c.dom.url.URLSearchParams
 
 /**
@@ -46,14 +48,15 @@ import org.w3c.dom.url.URLSearchParams
 internal fun fixtureGraph(): AppGraph {
     val episodes = fixtureEpisodes()
     return AppGraph(
-        catalogCache = NoCatalogCache,
+        // No cache behind it: caching a fake catalog would only let a stale
+        // fixture outlive a code change.
         catalogRepository = FixtureCatalogRepository(episodes),
         progressRepository = FixtureProgressRepository(fixtureProgress(episodes)),
         // The real device store over memory: a guest starts with no progress and
         // forgets it with the page, so every run starts from the same place.
         guestProgressRepository = LocalProgressRepository(InMemoryKeyValueStore()),
         guestModeRepository = FixtureGuestMode(startAsGuest = fixtureGuest()),
-        settingsRepository = FixtureSettingsRepository(),
+        accountSettings = FixtureAccountSettings(),
         // `&signedout` starts with no account, so the sign-in screen — otherwise
         // unreachable without a real recomposition to swap it in — renders on the
         // first paint and can be driven like every other screen. `&guest` starts
@@ -205,7 +208,7 @@ private class FixtureProgressRepository(initial: Map<String, WatchProgress>) : P
  * every [Setting] behaves here with no change to this class. Autoplay starts on so
  * the account visibly wins over a fresh device on the first paint.
  */
-private class FixtureSettingsRepository : SettingsRepository {
+private class FixtureAccountSettings : AccountSettingsSource {
     private var stored = UserSettings().with(Setting.AutoplayNext, true)
 
     override suspend fun load(uid: String): SettingsLoad = SettingsLoad.Found(stored)
@@ -215,7 +218,8 @@ private class FixtureSettingsRepository : SettingsRepository {
         return true
     }
 
-    override fun observe(uid: String, onChange: (UserSettings) -> Unit): () -> Unit = {}
+    /** No other device, so nothing ever arrives. */
+    override fun observe(uid: String): Flow<UserSettings> = emptyFlow()
 }
 
 /**
@@ -247,25 +251,18 @@ private class FixtureGuestMode(startAsGuest: Boolean) : GuestModeRepository {
 }
 
 private class FixtureAccountRepository(startSignedOut: Boolean) : AccountRepository {
-    private var listener: ((Account?) -> Unit)? = null
-    private var account: Account? = if (startSignedOut) null else DEMO
-
-    override fun observe(onChange: (Account?) -> Unit) {
-        listener = onChange
-        onChange(account)
-    }
+    /** A state flow, so a collector gets the account at once, as the real one does. */
+    override val account = MutableStateFlow(if (startSignedOut) null else DEMO)
 
     override suspend fun signIn(email: String, password: String) {
-        account = DEMO
-        listener?.invoke(account)
+        account.value = DEMO
     }
 
     override suspend fun signUp(email: String, password: String) = signIn(email, password)
     override suspend fun sendPasswordReset(email: String) = Unit
 
     override suspend fun signOut() {
-        account = null
-        listener?.invoke(null)
+        account.value = null
     }
 
     private companion object {
@@ -276,11 +273,4 @@ private class FixtureAccountRepository(startSignedOut: Boolean) : AccountReposit
 /** Not an admin: the TV UI has no admin surface, and this proves none appears. */
 private object FixtureAdminRepository : AdminRepository {
     override suspend fun isAdmin(uid: String) = false
-}
-
-/** Caching a fake catalog would only let a stale fixture outlive a code change. */
-private object NoCatalogCache : CatalogCache {
-    override fun read(stamp: Double?): List<Episode>? = null
-    override fun write(stamp: Double?, episodes: List<Episode>) = Unit
-    override fun clear() = Unit
 }
