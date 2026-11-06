@@ -1,0 +1,18 @@
+/* =============================================================================
+   The TV shell's own layout (`next/tv/TvRoot.kt`). Linked on /next/tv/ only, after the
+   shared sheets. The TV sizes themselves are tokens, in tokens.css.
+   ========================================================================== */
+
+/* The one scroller. A remote scrolls only by moving the ring, and the focus engine
+   centres the ring in its nearest overflowing ancestor, so the stage is that ancestor
+   and the page itself never scrolls. No scrollbar: there is no pointer to drag it. */
+.tv-stage {
+  height: 100vh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.tv-stage::-webkit-scrollbar {
+  display: none;
+}

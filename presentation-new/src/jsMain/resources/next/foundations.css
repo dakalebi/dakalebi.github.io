@@ -1,80 +1,9 @@
 /* =============================================================================
-   The foundations screen (`next/foundations/Foundations.kt`): what every /next/ page
-   shows until its shell has real screens. Goes when the last shell gets its screens.
+   The foundations (`next/foundations/Foundations.kt`): the type roles, the colour roles
+   and one surface, shown on the gallery's Base tab. Goes with the gallery.
 
-   Semantic tokens only. On TV it must fit a 960x540 panel without scrolling: a remote
-   cannot scroll a page with nothing focusable on it.
+   Semantic tokens only.
    ========================================================================== */
-
-.fd {
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap-group);
-  width: 100%;
-  max-width: 90rem;
-  min-height: 100vh;
-  min-height: 100dvh;
-  margin-inline: auto;
-  padding: calc(var(--pad-page-y) + var(--safe-top)) max(var(--pad-page-x), var(--safe-right))
-    calc(var(--pad-page-y) + var(--safe-bottom)) max(var(--pad-page-x), var(--safe-left));
-}
-
-/* ----- header ----------------------------------------------------------------- */
-
-/* One row when it fits (TV, desktop, landscape); on a narrow screen the side group wraps
-   under the title instead of squeezing it. */
-.fd-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-2) var(--gap-group);
-  padding-bottom: var(--gap-stack);
-  border-bottom: 1px solid var(--color-line);
-}
-
-.fd-head-side {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--space-1) var(--gap-control);
-}
-
-.fd-eyebrow {
-  font: var(--type-meta);
-  font-stretch: var(--type-meta-stretch);
-  color: var(--color-accent-text);
-}
-
-.fd-title {
-  flex: 0 1 auto;
-  min-width: 0;
-  font: var(--type-headline);
-  font-stretch: var(--type-headline-stretch);
-  letter-spacing: var(--type-headline-tracking);
-  color: var(--color-text);
-}
-
-.fd-badge {
-  display: inline-flex;
-  flex: none;
-  align-items: baseline;
-  gap: var(--gap-inline);
-  padding: var(--space-1) var(--space-3);
-  border-radius: var(--radius-pill);
-  background: var(--color-accent-soft);
-  color: var(--color-accent-text);
-  font: var(--type-label-s);
-  font-stretch: var(--type-label-s-stretch);
-  line-height: var(--lh-140);
-}
-
-.fd-badge-figure {
-  font: var(--type-figure-s);
-  font-stretch: var(--type-figure-stretch);
-  font-variant-numeric: var(--type-figure-numeric);
-  color: var(--color-text-2);
-}
 
 /* ----- layout ----------------------------------------------------------------- */
 
@@ -258,11 +187,10 @@
   color: var(--color-text-2);
 }
 
-/* ----- TV: one screen --------------------------------------------------------- */
+/* ----- TV --------------------------------------------------------------------- */
 
-/* A remote cannot scroll a page with nothing focusable on it, so on TV the whole screen
-   fits 960x540 at the default interface size: tighter gaps, nothing else changes. */
-:root[data-shell="tv"] .fd,
+/* Nothing here takes focus, and a remote only scrolls by moving focus, so on TV the
+   foundations fit under the gallery's tabs on a 960x540 panel: tighter gaps. */
 :root[data-shell="tv"] .fd-column {
   gap: var(--gap-stack);
 }

@@ -149,10 +149,19 @@ object SpatialNav {
      */
     private var lastFocused: HTMLElement? = null
 
-    /** Every group inside [scope], in DOM order. */
-    fun groupsIn(scope: Element): List<HTMLElement> =
-        scope.querySelectorAll("[$GROUP_ATTR]").asList()
+    /**
+     * Every group inside [scope], in DOM order, [scope] first when it is a group itself.
+     *
+     * `querySelectorAll` only searches below the element it is called on. A menu's panel
+     * is both its layer's root and its one group, so without the second half the panel
+     * had no groups at all: measured, the second opening of a menu found nowhere to land
+     * and the D-pad did nothing until Back.
+     */
+    fun groupsIn(scope: Element): List<HTMLElement> {
+        val inside = scope.querySelectorAll("[$GROUP_ATTR]").asList()
             .filterIsInstance<HTMLElement>()
+        return if (scope is HTMLElement && scope.hasAttribute(GROUP_ATTR)) listOf(scope) + inside else inside
+    }
 
     /** The navigable items of one group, excluding any nested group's items. */
     fun itemsOf(group: HTMLElement): List<HTMLElement> =
@@ -432,10 +441,21 @@ object SpatialNav {
             entry?.let { return it }
         }
 
-        return candidates
-            .filter { it.group == nearest }
-            .minByOrNull { if (stacked) it.along else it.cross }
-            ?.box?.el
+        val inBand = candidates.filter { it.group == nearest }
+        val landing = when {
+            stacked -> inBand.minByOrNull { it.along }
+            direction.isHorizontal -> inBand.minByOrNull { it.cross }
+            // Up or Down into a row: the items under the source, then the one lined up
+            // with its start. Nearest centre picked wrongly when widths differ, measured
+            // on the gallery: Down from a full-width password field landed on the wide
+            // Guest button rather than Sign in, the first button under it. With nothing
+            // under the source, the nearest centre still decides. A row of equal-width
+            // tiles lands where it did before, since there the two measures agree.
+            else -> inBand.filter { overlaps(from, it.box, direction) }
+                .minByOrNull { startGap(from, it.box, direction) }
+                ?: inBand.minByOrNull { it.cross }
+        }
+        return landing?.box?.el
     }
 
     /**
@@ -502,7 +522,7 @@ object SpatialNav {
         // Any landing chosen deliberately is final; only the fallback in
         // [ensureFocused] marks itself provisional, and it does so after calling this.
         provisional = false
-        val group = mark(item, scope)
+        val group = mark(item)
 
         when {
             direction == null -> centre(item, setOf(Axis.X, Axis.Y), scope)
@@ -524,12 +544,14 @@ object SpatialNav {
      * without scrolling anything. Returns the item's group, which the caller needs
      * anyway and which is one `closest()` call.
      */
-    private fun mark(item: HTMLElement, scope: Element): HTMLElement? {
+    private fun mark(item: HTMLElement): HTMLElement? {
         (document.activeElement as? HTMLElement)
             ?.takeIf { it.hasAttribute(ITEM_ATTR) }
             ?.let { it.tabIndex = -1 }
         // The ring does not depend on the document being frontmost. See FOCUS_ATTR.
-        scope.querySelectorAll("[$FOCUS_ATTR]").asList()
+        // Cleared in the whole document, not only in [scope]: a dialog or menu is its own
+        // scope, and the control that opened it kept a second ring behind the scrim.
+        document.querySelectorAll("[$FOCUS_ATTR]").asList()
             .filterIsInstance<HTMLElement>()
             .forEach { it.removeAttribute(FOCUS_ATTR) }
         item.setAttribute(FOCUS_ATTR, "")
@@ -574,7 +596,16 @@ object SpatialNav {
      */
     fun ensureFocused(scope: Element): HTMLElement? {
         val active = document.activeElement as? HTMLElement
-        if (active != null && active.hasAttribute(ITEM_ATTR) && scope.contains(active)) return active
+        if (active != null && active.hasAttribute(ITEM_ATTR) && scope.contains(active)) {
+            // Focus survived, the ring may not have: a recomposition of the focused control
+            // (a switch flipping, a segment chosen) clears the attributes written outside
+            // Compose and leaves the node, and its focus, where they were. See [lastFocused].
+            if (!active.hasAttribute(FOCUS_ATTR)) {
+                mark(active)
+                notifyFocus(active)
+            }
+            return active
+        }
 
         // The element is still there and still navigable, so nothing was lost but the
         // two attributes a recomposition cleared off it. Put them back where they were
@@ -584,7 +615,7 @@ object SpatialNav {
                 it.isConnected && scope.contains(it) &&
                     it.hasAttribute(ITEM_ATTR) && it.isNavigable()
             }
-            ?.let { mark(it, scope); notifyFocus(it); return it }
+            ?.let { mark(it); notifyFocus(it); return it }
 
         val restored = landingSpot(scope) ?: return null
         focus(restored, direction = null, scope = scope)
