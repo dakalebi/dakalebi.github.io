@@ -26,6 +26,7 @@ import ge.dakalebi.next.components.MenuButton
 import ge.dakalebi.next.components.MenuEntry
 import ge.dakalebi.next.components.MenuPlacement
 import ge.dakalebi.next.components.Notice
+import ge.dakalebi.next.components.Scrubber
 import ge.dakalebi.next.components.ProgressBar
 import ge.dakalebi.next.components.SegmentOption
 import ge.dakalebi.next.components.Segmented
@@ -37,6 +38,7 @@ import ge.dakalebi.next.components.Switch
 import ge.dakalebi.next.components.TextField
 import ge.dakalebi.next.components.TextFieldKind
 import ge.dakalebi.next.components.ToastRegion
+import ge.dakalebi.next.components.Transport
 import ge.dakalebi.next.components.tvItem
 import ge.dakalebi.next.foundations.FoundationsGrid
 import ge.dakalebi.next.tv.applyInterfaceScale
@@ -507,6 +509,37 @@ private fun StatusPanel(toasts: ToastStore) {
                     onClick = { toasts.show(S.dataLoadFailed, ToastKind.Error) },
                     attrs = tvItem("toast-error"),
                 )
+            }
+        }
+
+        // The web player's parts. TV gets its own player in phase 7.
+        if (!tv) {
+            Block("Player", wide = true) {
+                var position by remember { mutableStateOf(620.0) }
+                var playing by remember { mutableStateOf(false) }
+                Div({ classes("gl-stack") }) {
+                    Scrubber(position, duration = 1648.0, onSeek = { position = it })
+                    Transport(
+                        playing = playing,
+                        onToggle = { playing = !playing },
+                        onBack = { position = (position - 10).coerceAtLeast(0.0) },
+                        onForward = { position = (position + 10).coerceAtMost(1648.0) },
+                        onPrevious = { position = 0.0 },
+                        onNext = null,
+                    )
+                    Div({ classes("gl-media-panel") }) {
+                        Scrubber(position, duration = 1648.0, onSeek = { position = it }, onMedia = true)
+                        Transport(
+                            playing = playing,
+                            onToggle = { playing = !playing },
+                            onBack = { position = (position - 10).coerceAtLeast(0.0) },
+                            onForward = { position = (position + 10).coerceAtMost(1648.0) },
+                            onPrevious = { position = 0.0 },
+                            onNext = { position = 0.0 },
+                            compact = true,
+                        )
+                    }
+                }
             }
         }
 

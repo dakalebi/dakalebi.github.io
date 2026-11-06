@@ -353,6 +353,7 @@
   --chip-bg-hover: var(--color-secondary-hover);
   --chip-fg: var(--color-text);
   --chip-radius: var(--radius-control);
+  --chip-done: var(--color-success); /* the check on "Watched" */
 
   /* tab bar (phone, concept 3) */
   --tabbar-h: 3.5rem; /* plus --safe-bottom */

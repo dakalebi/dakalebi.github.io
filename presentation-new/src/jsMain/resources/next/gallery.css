@@ -252,6 +252,16 @@
   background: var(--gradient-fallback);
 }
 
+/* The player's parts as they sit over a picture. */
+.gl-media-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-6);
+  border-radius: var(--radius-card);
+  background: var(--gradient-fallback);
+}
+
 /* ----- TV --------------------------------------------------------------------- */
 
 /* A 960x540 panel: tighter rhythm, so a section and its neighbour fit one screen. */

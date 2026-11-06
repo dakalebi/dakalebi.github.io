@@ -145,9 +145,9 @@ presentation-new/src/jsMain/kotlin/ge/dakalebi/next/
                  the redesign's UI on the /next/ pages, and the engines the old UI
                  shares with it until the switch:
   Shell.kt       which UI a page is; PageZoom.kt stops pinch zoom
-  components/    the redesign's components and its 24 icons, for all three shells
-  web/           the web screens: sign-in, Home, Seasons, Settings, and the tab bar
-                 and side menu around them
+  components/    the redesign's components and its 25 icons, for all three shells
+  web/           the web screens: sign-in, Home, Seasons, Settings, the tab bar and
+                 side menu around them, and the player (mini-player, sheet, panel)
   gallery/       every component in every state, on any /next/ page with ?gallery,
                  and on the pages that have no screens yet
   tv/focus/      D-pad navigation — geometry within a band, memory across bands

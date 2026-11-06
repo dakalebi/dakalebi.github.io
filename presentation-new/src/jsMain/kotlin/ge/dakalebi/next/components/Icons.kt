@@ -5,12 +5,13 @@ import androidx.compose.runtime.DisposableEffect
 import org.jetbrains.compose.web.dom.Span
 
 /**
- * The redesign's icon set: 24 glyphs on a 24-unit grid, drawn with a round 2-unit stroke
+ * The redesign's icon set: 25 glyphs on a 24-unit grid, drawn with a round 2-unit stroke
  * in `currentColor`, so an icon takes the colour of the text around it.
  *
  * Each entry is the inner markup of one `<svg>`. [Icon] adds the wrapper once.
  *
- * 22 glyphs are Lucide's, copied from lucide 1.34.0 (the version keel generates from).
+ * 23 glyphs are Lucide's: 22 copied from lucide 1.34.0 (the version keel generates from),
+ * and [PictureInPicture], which is `picture-in-picture-2` from lucide-static 0.469.0.
  * [Back10] and [Forward10] are this app's: Lucide has the arcs but not the "10", and an
  * arc alone does not say how far it seeks.
  *
@@ -41,6 +42,7 @@ enum class Glyph(internal val body: String) {
     Volume2("""$SPEAKER<path d="M16 9a5 5 0 0 1 0 6" /><path d="M19.364 18.364a9 9 0 0 0 0-12.728" />"""),
     VolumeX("""$SPEAKER<line x1="22" x2="16" y1="9" y2="15" /><line x1="16" x2="22" y1="9" y2="15" />"""),
     Cast("""<path d="M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6" /><path d="M2 12a9 9 0 0 1 8 8" /><path d="M2 16a5 5 0 0 1 4 4" /><line x1="2" x2="2.01" y1="20" y2="20" />"""),
+    PictureInPicture("""<path d="M21 9V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v10c0 1.1.9 2 2 2h4" /><rect width="10" height="7" x="12" y="13" rx="2" />"""),
 
     // Navigation
     House("""<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8" /><path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />"""),
