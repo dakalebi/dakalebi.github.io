@@ -13,6 +13,7 @@ import ge.dakalebi.presentation.DashboardViewModel
 import ge.dakalebi.presentation.DashboardViewModelFactory
 import ge.dakalebi.presentation.LoginViewModel
 import ge.dakalebi.presentation.LoginViewModelFactory
+import ge.dakalebi.presentation.NowPlayingViewModel
 import ge.dakalebi.presentation.PlaybackUiState
 import ge.dakalebi.presentation.PlaybackViewModel
 import ge.dakalebi.presentation.PlaybackViewModelFactory
@@ -84,6 +85,23 @@ fun rememberPlaybackViewModel(episodeId: String, maxQuality: Int?, appleMobile: 
     val viewModel = remember(episodeId) { factory.create(episodeId, maxQuality, appleMobile) }
     DisposableEffect(viewModel) { onDispose { viewModel.close() } }
     return viewModel
+}
+
+/**
+ * The redesigned app's [NowPlayingViewModel], one per viewer. A new viewer gets a
+ * new one, because a playback saves under whoever is watching. The last one is
+ * closed without a save when it goes: by then the session names the new viewer.
+ */
+@Composable
+fun rememberNowPlaying(viewerId: String?, maxQuality: Int?, appleMobile: Boolean): NowPlayingViewModel {
+    val factory = LocalPlayback.current
+    val catalog = LocalCatalog.current
+    val router = LocalRouter.current
+    val nowPlaying = remember(viewerId) {
+        NowPlayingViewModel(catalog, router) { episodeId -> factory.create(episodeId, maxQuality, appleMobile) }
+    }
+    DisposableEffect(nowPlaying) { onDispose { nowPlaying.close() } }
+    return nowPlaying
 }
 
 /**
