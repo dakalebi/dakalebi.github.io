@@ -386,6 +386,15 @@ Saves happen at most every 7 seconds during playback, plus on pause, on
 `visibilitychange` to hidden (mobile often never fires `beforeunload`), and on
 unmount.
 
+On the web watch screen these decisions are made by `PlaybackViewModel`
+(`presentation/`), which has tests and no browser: which file plays, when to save
+and with what flag, the one retry after a media error, where to resume, when the
+next-episode card is due, and leaving for the next episode. `WatchScreen` keeps the
+element and the browser workarounds below (the resume retry loop, the `#t=`
+fragment, the AirPlay clock). A save already sent still lands after the screen has
+gone, because saves run in the app scope. TV and driving mode still keep their own
+copy of these rules.
+
 ### Choosing a player
 
 ```
@@ -960,13 +969,14 @@ retry.
 
 ## 8. What is verified, and what is not
 
-**Automated.** `./gradlew allTests`, on Node, in `:presentation` for now (191 tests
+**Automated.** `./gradlew allTests`, on Node, in `:presentation` for now (217 tests
 on 2026-11-06, covering `:core`, `:domain` and `:data` too), run by CI on every pull request and before every publish: the watched threshold, the never-rewind guard, "continue watching"
 and the next episode to play, ordering across season boundaries and the rest of a
 season, hash-route parsing, settings sync (the merge rules, the repository, the
 store, the device copy), the session (guest choice, admin rights, and the
-settings sync and catalog reset that follow it), guest storage, playback-failure classification, the
-quality default, the iOS resume fragment, the VLC links and playlist encoding,
+settings sync and catalog reset that follow it), guest storage, playback-failure classification,
+the web player's playback rules (the file, saves, the one retry, resume and the
+next-episode card), the quality default, the iOS resume fragment, the VLC links and playlist encoding,
 TV seeking and interface size, timestamp formatting, toast dismissal, the catalog
 cache's stamp rule, its thirteen-field round trip and its duration patch, the bare
 GET, and the

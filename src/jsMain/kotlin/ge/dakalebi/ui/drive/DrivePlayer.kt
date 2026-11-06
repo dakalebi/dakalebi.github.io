@@ -17,11 +17,11 @@ import ge.dakalebi.i18n.S
 import ge.dakalebi.presentation.CatalogStore
 import ge.dakalebi.presentation.Route
 import ge.dakalebi.presentation.Router
+import ge.dakalebi.presentation.SAVE_EVERY
 import ge.dakalebi.presentation.SettingsStore
 import ge.dakalebi.ui.assetBase
 import ge.dakalebi.ui.player.isAppleMobile
 import ge.dakalebi.ui.player.isCompactScreen
-import ge.dakalebi.ui.watch.SAVE_EVERY
 import kotlinx.browser.document
 import kotlinx.browser.window
 import kotlinx.coroutines.MainScope
