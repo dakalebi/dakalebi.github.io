@@ -68,9 +68,6 @@ private class PlayerRefs {
      */
     var clickToggled: Boolean = false
 
-    /** Undoes the pause iOS makes when its fullscreen player closes. */
-    var fullscreenExit: FullscreenExitResumer? = null
-
     /** Position to restore after a quality swap. */
     var pendingSeek: Double? = null
     var pendingPlay: Boolean = false
@@ -207,12 +204,7 @@ fun CustomVideoPlayer(
 
     fun togglePlay() {
         val v = refs.video ?: return
-        if (v.paused) {
-            v.play()
-        } else {
-            refs.fullscreenExit?.viewerPaused()
-            v.pause()
-        }
+        if (v.paused) v.play() else v.pause()
         revealControls()
     }
 
@@ -371,14 +363,7 @@ fun CustomVideoPlayer(
             ref { element ->
                 refs.video = element
                 events.onElement(element)
-                // On an iPhone this player's fullscreen is Apple's own, which pauses on
-                // the way out. `togglePlay` tells it which pauses are the viewer's.
-                val fullscreenExit = FullscreenExitResumer(element)
-                refs.fullscreenExit = fullscreenExit
-                val removeFullscreenExit = fullscreenExit.install()
                 onDispose {
-                    removeFullscreenExit()
-                    refs.fullscreenExit = null
                     events.onElement(null)
                     refs.video = null
                 }

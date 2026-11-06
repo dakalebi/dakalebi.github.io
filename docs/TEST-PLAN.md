@@ -23,7 +23,7 @@ Not verifiable in the Simulator, and deliberately not claimed as passing:
 - **VLC and season 2** (`I11` to `I16`, `P7`, `P14`) need a real iPhone or iPad.
   The Simulator has no VLC, and fixture links are not on `cdn.formula.ge`, so
   there the button falls back to the single-file link.
-- **Picture in picture** (`I19`, `I20`, `P22`). The Simulator has none:
+- **Picture in picture** (`I20`, `I21`, `P22`). The Simulator has none:
   `document.pictureInPictureEnabled` is false there.
 
 A real phone is easiest to test against a pull request's copy at `/pr/<n>/`.
@@ -138,7 +138,7 @@ rather than the absence of it.
 | F20 | While controls are hidden | The thin bar is visible — never no indicator |
 | F21 | Move the mouse | Controls reappear |
 | F22 | Move the pointer out of the player while playing | Controls hide |
-| F23 | Fullscreen button | Enters and exits; icon swaps; layout correct; playing stays playing |
+| F23 | Fullscreen button | Enters and exits; icon swaps; layout correct |
 | F24 | Quality menu | Lists 1080p / 720p / 360p; choice written to `localStorage` (`preferred_quality`) and, signed in, to the account |
 | F25 | Switch quality mid-playback | Position and play/pause state preserved |
 | F26 | Cast button | Present in Chrome; click opens the picker |
@@ -196,13 +196,11 @@ rather than the absence of it.
 | I13 | Press it | VLC gets this episode alone, from that spot, titled `სეზონი N · სერია M`. No queue: it is autoplay, and the web has none for now |
 | I16 | A season 2 episode in Safari | The message that points to VLC, not a generic playback error |
 | I17 | A phone with no quality picked yet | Starts at 720p or the best rendition below it. A quality picked on any device wins |
-| I18 | iPhone, playing in Apple's fullscreen player, close it with X | Keeps playing inline. Both with System player on and off |
-| I19 | iPhone, playing in Apple's fullscreen player, swipe home | Picture in picture opens and keeps playing. **Real iPhone only** |
-| I20 | iPhone, playing inline (not full screen), swipe home | No picture in picture. iOS starts it by itself only from its fullscreen player, so this is expected. **Real iPhone only** |
-| I21 | Pinch or double-tap the page, on `/`, `/drive/` and `/tv/` | The page does not zoom. A pinch out on the video still opens Apple's fullscreen player |
-| I19 | Same, close it with a swipe down | Keeps playing inline |
-| I20 | Pause inside the fullscreen player, wait a moment, then close it | Stays paused |
-| I21 | Close it, then tap pause on the inline controls at once | Stays paused |
+| I18 | iPhone, playing in Apple's fullscreen player, close it with X | Paused inline. iOS pauses it and the app does not play it again. Both with System player on and off |
+| I19 | Same, close it with a swipe down | Paused inline, as in I18 |
+| I20 | iPhone, playing in Apple's fullscreen player, swipe home | Picture in picture opens and keeps playing. **Real iPhone only** |
+| I21 | iPhone, playing inline (not full screen), swipe home | No picture in picture. iOS starts it by itself only from its fullscreen player, so this is expected. **Real iPhone only** |
+| I22 | Pinch or double-tap the page, on `/`, `/drive/` and `/tv/` | The page does not zoom. A pinch out on the video still opens Apple's fullscreen player |
 
 ## J — Failure and resilience
 
@@ -479,8 +477,8 @@ the car buttons need a real iPhone.
 | P15 | As a guest | Car mode without signing in. Progress stays on the device |
 | P16 | Back from the player | The player pauses; home offers the same episode |
 | P17 | Full screen | Disabled until the video has loaded. Then opens the video full screen: Safari's own player on an iPhone, the browser's fullscreen elsewhere. Works with Tab and Enter, and a screen reader reads its label |
-| P18 | Leave full screen while playing (X, swipe down, Escape) | Keeps playing; the big button still shows Pause |
+| P18 | Leave full screen while playing (X, swipe down, Escape) | On an iPhone it is paused, as in I18, and the big button shows Play. On a computer or Android it keeps playing |
 | P19 | Pause inside full screen, then leave | Stays paused; the big button shows Play |
 | P20 | An episode ends while full screen | Nothing starts by itself. **Real iPhone only** |
 | P21 | Previous episode | Opens the episode before, from its saved spot, and plays. Disabled on the very first episode and until the video has loaded |
-| P22 | Swipe home while playing | From full screen: picture in picture. From the inline player: none, as in I20. **Real iPhone only** |
+| P22 | Swipe home while playing | From full screen: picture in picture. From the inline player: none, as in I21. **Real iPhone only** |

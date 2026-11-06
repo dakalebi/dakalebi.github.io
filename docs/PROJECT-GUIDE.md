@@ -407,22 +407,13 @@ measured in the iOS Simulator:
 - **Swiping the player down**: `webkitendfullscreen` while still playing, then one
   pause 0.3 to 0.4 s later.
 
-`FullscreenExitResumer` (`ui/player/`) undoes them, on iPhone and iPad only, for
-all three players: `NativeVideoPlayer`, `CustomVideoPlayer` (whose fullscreen is
-Apple's own on an iPhone) and `DrivePlayer`. Which pause is the browser's is a
-timing rule, `FullscreenExitResume` (`domain/service/`, unit tested), because the
-events carry nothing else to tell them apart. What keeps a real pause a pause:
+The app leaves that pause alone, by the owner's choice. A version that played the
+video again after these pauses (`FullscreenExitResumer`, with its timing rule
+`FullscreenExitResume`, in commit 82408dc) was taken out before it shipped. Bring
+it back from there if that changes.
 
-- a pause made inside the fullscreen player well before closing it stays;
-- every pause the page itself makes goes through `viewerPaused()` first;
-- any touch on the page resets the rule. Touches inside Apple's fullscreen player
-  never reach the page, so a touch means the viewer is back on it, and a tap on the
-  inline controls right after closing is theirs;
-- an episode that ended (`pause`, then `ended`), a failed load and a hidden page
-  are never played again, so an episode that ended stays ended.
-
-Desktop browsers do not pause on leaving fullscreen, so nothing is installed there.
-TV has no fullscreen exit of this kind.
+Desktop browsers do not pause on leaving fullscreen. TV has no fullscreen exit of
+this kind.
 
 ### Resume, and why it is a state machine
 
@@ -518,8 +509,8 @@ player screen is the native player with big controls around it.
   none for a page, so there it opens Safari's own player with
   `webkitEnterFullscreen`. The button stays disabled until `loadedmetadata`: an
   iPhone asked earlier opens nothing, and then ignores the next request too.
-  Leaving is the browser's own X, swipe or Escape, and playback carries on (see
-  "Leaving fullscreen on iOS" below).
+  Leaving is the browser's own X, swipe or Escape. On an iPhone that pauses the
+  video (see "Leaving fullscreen on iOS" below).
 - **One `<video>` for the whole visit** (`DrivePlayer`). iOS lets an element start
   without a tap only after a tap has started it once. The home button starts it
   inside its tap, before the player screen exists; the player screen only lends it

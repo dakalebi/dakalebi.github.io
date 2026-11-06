@@ -19,7 +19,6 @@ import ge.dakalebi.presentation.Route
 import ge.dakalebi.presentation.Router
 import ge.dakalebi.presentation.SettingsStore
 import ge.dakalebi.ui.assetBase
-import ge.dakalebi.ui.player.FullscreenExitResumer
 import ge.dakalebi.ui.player.isAppleMobile
 import ge.dakalebi.ui.player.isCompactScreen
 import ge.dakalebi.ui.watch.SAVE_EVERY
@@ -97,9 +96,6 @@ internal class DrivePlayer(
         setAttribute("playsinline", "")
         setAttribute("x-webkit-airplay", "allow")
     }
-
-    /** Undoes the pause iOS makes when its fullscreen player closes. */
-    private val fullscreenExit = FullscreenExitResumer(video)
 
     var episodeId: String? by mutableStateOf(null)
         private set
@@ -193,10 +189,8 @@ internal class DrivePlayer(
         window.addEventListener("pagehide", onPageHide)
 
         installMediaSession()
-        val removeFullscreenExit = fullscreenExit.install()
 
         return {
-            removeFullscreenExit()
             persist()
             wantsToPlay = false
             video.pause()
@@ -298,10 +292,8 @@ internal class DrivePlayer(
         if (video.paused) playNow() else pause()
     }
 
-    /** Every pause the page asks for: the big button, the steering wheel, VLC, leaving the screen. */
     fun pause() {
         wantsToPlay = false
-        fullscreenExit.viewerPaused()
         video.pause()
     }
 
@@ -378,7 +370,6 @@ internal class DrivePlayer(
     /** Signed out: nothing may keep playing, or saving, for an account that is gone. */
     fun stop() {
         wantsToPlay = false
-        fullscreenExit.viewerPaused()
         video.pause()
         video.removeAttribute("src")
         video.load()
