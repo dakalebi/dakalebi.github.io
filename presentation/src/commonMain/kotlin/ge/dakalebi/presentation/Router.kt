@@ -19,6 +19,18 @@ sealed interface Route {
      * dashboard, which is what the web app does with this one.
      */
     data object Settings : Route
+
+    /**
+     * Every season, as a list. The redesigned web app's second tab; the old UI has
+     * no screen for it and falls back to the dashboard.
+     */
+    data object Seasons : Route
+
+    /**
+     * One season's episodes. A number that is not a positive whole number parses to
+     * [Seasons], so a mistyped address still lands on the list.
+     */
+    data class Season(val number: Int) : Route
 }
 
 /**
@@ -56,6 +68,8 @@ interface Router {
             Route.Login -> "#/login"
             Route.Settings -> "#/settings"
             is Route.Watch -> "#/watch/${route.episodeId}"
+            Route.Seasons -> "#/seasons"
+            is Route.Season -> "#/seasons/${route.number}"
         }
 
         /** Pure, so the parsing rules can be checked without a browser. */
@@ -67,6 +81,8 @@ interface Router {
                 parts[0] == "login" -> Route.Login
                 parts[0] == "settings" -> Route.Settings
                 parts[0] == "watch" && parts.size >= 2 -> Route.Watch(parts[1])
+                parts[0] == "seasons" -> parts.getOrNull(1)?.toIntOrNull()?.takeIf { it > 0 }
+                    ?.let { Route.Season(it) } ?: Route.Seasons
                 else -> Route.Dashboard
             }
         }

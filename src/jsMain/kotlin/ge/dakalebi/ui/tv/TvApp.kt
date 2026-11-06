@@ -277,6 +277,9 @@ private fun screenKeyOf(route: Route): String = when (route) {
     Route.Settings -> "settings"
     Route.Login -> "login"
     is Route.Watch -> "watch"
+    // The redesign's season routes. This app has no screen for them and draws the
+    // browse screen, so they share its place.
+    Route.Seasons, is Route.Season -> "dashboard"
 }
 
 /**

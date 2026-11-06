@@ -10,7 +10,6 @@ import ge.dakalebi.domain.model.Setting
 import ge.dakalebi.domain.model.UserSettings
 import ge.dakalebi.domain.model.WatchProgress
 import ge.dakalebi.domain.repository.CatalogRepository
-import ge.dakalebi.domain.repository.PreferencesRepository
 import ge.dakalebi.domain.service.MEDIA_ERR_SRC_NOT_SUPPORTED
 import ge.dakalebi.domain.usecase.ChangeUserSetting
 import ge.dakalebi.domain.usecase.ClearEpisodeProgress
@@ -32,7 +31,6 @@ import ge.dakalebi.testing.FakeProgressRepository
 import ge.dakalebi.testing.episode
 import ge.dakalebi.testing.progress
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -588,32 +586,6 @@ class PlaybackViewModelTest {
         vm.attach(head)
         return Rig(vm, catalog, settings, progress, prefs, router, head, catalogSource, this)
     }
-}
-
-private class FakePlayhead(
-    override var position: Double = 0.0,
-    override var duration: Double? = 1_500.0,
-) : Playhead
-
-private class RecordingRouter : Router {
-    val went = mutableListOf<Route>()
-    override val current: Route get() = went.lastOrNull() ?: Route.Dashboard
-    override fun go(route: Route) {
-        went += route
-    }
-    override fun replace(route: Route) = Unit
-    override fun absolute(route: Route) = Router.href(route)
-}
-
-private class FakePreferences : PreferencesRepository {
-    val intents = mutableMapOf<String, String>()
-    override fun interfaceScale() = 100
-    override fun setInterfaceScale(percent: Int) = Unit
-    override fun playIntent(episodeId: String) = intents[episodeId]
-    override fun setPlayIntent(episodeId: String, intent: String) {
-        intents[episodeId] = intent
-    }
-    override val externalChanges = emptyFlow<Unit>()
 }
 
 /** A catalog whose live resolve the test can change between calls. */

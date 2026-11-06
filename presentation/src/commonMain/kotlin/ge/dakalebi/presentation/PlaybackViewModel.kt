@@ -394,14 +394,28 @@ class PlaybackViewModel(
      * viewer leaves near its end, or after it ended.
      */
     fun goToNext() {
-        val next = catalog.byId(episodeId)?.let { catalog.next(it) } ?: return
-        if (navigated) return
+        val next = leaveForNext() ?: return
+        router.go(Route.Watch(next))
+    }
+
+    /**
+     * Saves this episode on the way to the next one, and returns the next one's id
+     * for the caller to play. Once: null after the first call, and when there is no
+     * next episode. Counts this one as watched when the viewer leaves near its end,
+     * or after it ended.
+     *
+     * [goToNext] for a player that is a page of its own; the now-playing holder,
+     * which swaps the episode in place, calls this.
+     */
+    fun leaveForNext(): String? {
+        val next = catalog.byId(episodeId)?.let { catalog.next(it) } ?: return null
+        if (navigated) return null
         navigated = true
         val head = playhead
         val duration = head?.duration
         val nearEnd = head != null && duration != null && duration > 0 && head.position / duration >= NEAR_END
         save(isWatched = if (nearEnd || state.value.ended) true else null)
-        router.go(Route.Watch(next.id))
+        return next.id
     }
 
     /**

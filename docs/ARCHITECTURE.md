@@ -16,7 +16,7 @@ layer, with the web app on top.
 | `:domain` | models, repository interfaces, a use case per operation, pure queries | Depends on no other module, not even `:core`, and on one library: kotlinx-coroutines, for `Flow`. So "the domain names no framework" is the compile classpath and not only a convention |
 | `:data` | `commonMain`: the Formula API and DTOs, the settings sync (`SyncedSettingsRepository`), and the storage that is plain Kotlin over a `KeyValueStore`: the catalog cache, the settings device copy, guest progress, the guest choice, and `ViewerProgressRepository`, which routes progress between the account and the device. `jsMain`: `firebase` (Firestore and Auth through the JS SDK), `local` (the browser's `localStorage`), the system clock, and the bare GET | Every implementation of a domain repository. Depends on `:domain` and `:core` only, so it cannot name presentation, `i18n` or UI. Its caches are its own: no interface for them is in `:domain` |
 | `:presentation` | `commonMain`: the stores and ViewModels, the `Route` type, error wording, `i18n`, the composition locals. `jsMain`: `HashRouter` | The screen state and the strings, so a second front end reuses them instead of reimplementing them. Depends on `:domain`, `:core`, Compose runtime and coroutines, and never on Compose HTML or the component library, so a front end with a different look reuses it as it is. Only its tests depend on `:data` |
-| `:presentation-new` | `jsMain`: the redesign's UI (Compose HTML) for all three shells, and its design system: `next/tokens.css`, `next/base.css`, and the `/next/` pages. Also the engines both UIs use: `Shell`, `PageZoom`, TV focus and input, the TV and driving-mode players' state, and the media helpers | The redesign, built next to the old UI until the switch. Depends on `:presentation` and `:core`, and never on keel. The old UI in root imports the engines from here, so there is one copy of each. Its pages and sheets reach the distribution through the root's `jsProcessResources`, like keel's. Phase 1 draws a foundations screen on each page |
+| `:presentation-new` | `jsMain`: the redesign's UI (Compose HTML) for all three shells, and its design system: `next/tokens.css`, `next/base.css`, `next/components.css`, the components and icons, and the `/next/` pages. Also the engines both UIs use: `Shell`, `PageZoom`, TV focus and input, the TV and driving-mode players' state, and the media helpers | The redesign, built next to the old UI until the switch. Depends on `:presentation` and `:core`, and never on keel. The old UI in root imports the engines from here, so there is one copy of each. Its pages and sheets reach the distribution through the root's `jsProcessResources`, like keel's. Until the screens arrive, each page draws a gallery of every component |
 | `:testing` | the fakes the modules' tests share: a clock, in-memory storage, the account's settings document, progress storage, and builders for episodes and progress | Test code only. No module's main code depends on it, so none of it reaches the bundle. A module, because Kotlin Multiplatform gives one module's tests no way to use another module's test code |
 | root | `ui` (Compose HTML) for all three shells (`/`, `/tv/`, `/drive/`), the composition root, `Main.kt` | The web app. It also owns the webpack build, so the GitHub Pages artifact path never moves |
 
@@ -119,6 +119,24 @@ fragment; on TV, the one resume seek; in driving mode, its own resume and the me
 session. Saves run in the app scope, so a save already sent still lands after the
 player has moved on; the resolve and the retry stop with it. All three players use
 it: the web, TV and driving mode.
+
+`NowPlayingViewModel` is the redesign's player across screens, one per viewer, from
+`rememberNowPlaying`. The old players are pages, so leaving `#/watch/…` closes them;
+the redesign keeps playing under a mini-player while the viewer browses, so the
+episode and its `PlaybackViewModel` live in this holder instead of in a screen.
+Whether the full player is open is the route's business: a watch route is open,
+anything else shows the mini-player. The screen passes the episode a watch route
+names to `play`, which keeps the playback when the episode is the same and saves
+the spot in the last one when it is not. `skipToNext` (through
+`PlaybackViewModel.leaveForNext`, the same rules as `goToNext`), `skipToPrevious` and
+a queue row replace the route while the player is open, so the address names what
+plays and Back still closes the player. `queue` lists the next `QUEUE_LENGTH`
+episodes across seasons. `stop` saves and lets go; `close`, used when the viewer
+changes, lets go without saving, because a playback reads the viewer at each save.
+
+The redesign adds two routes: `Route.Seasons` (`#/seasons`) and `Route.Season`
+(`#/seasons/3`). A season that is not a positive number parses to the list. The
+old UI has no screen for either and draws its dashboard or browse screen.
 
 `DashboardViewModel` and `LoginViewModel` are one per visit to their screen, made
 by a factory the same way. The dashboard's holds the picked season, the question
