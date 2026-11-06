@@ -410,6 +410,8 @@
   --thumb-radius: var(--radius-thumb);
   --thumb-fallback: var(--gradient-fallback);
   --thumb-number-shadow: var(--shadow-on-media);
+  /* episode tile (a sideways row on Home). TV sets its own. */
+  --tile-w: 9.5rem;
 
   /* season ring */
   --ring-size: var(--target-min);
@@ -418,6 +420,7 @@
   --ring-fill: var(--color-fill);
   --ring-current-bg: var(--color-accent);
   --ring-current-fg: var(--color-text-on-accent);
+  --ring-size-l: 3.25rem; /* the Seasons tab's strip and Home's season cards */
 
   /* progress bar and scrubber */
   --progress-h: 0.25rem;
@@ -487,6 +490,7 @@
     --pad-page-x: var(--space-8);
     --pad-page-y: var(--space-6);
     --gap-section: var(--space-10);
+    --tile-w: 11rem;
   }
 }
 

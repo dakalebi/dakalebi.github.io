@@ -1,0 +1,722 @@
+/* =============================================================================
+   The redesign's web screens (`next/web/`): sign-in, the app frame (tab bar on a
+   phone, side menu from 64rem), and the Home, Seasons and Settings tabs. Linked
+   after components.css on `/next/` only.
+
+   Semantic (layer 2) and component (layer 3) tokens only, like the components.
+   Phone first; the desktop changes sit in one block at the end.
+
+   Sign-in, Settings, and the loading, error and empty states were not drawn by the
+   design pass. They are built from the same tokens and components and need a design
+   review.
+   ========================================================================== */
+
+/* ----- starting ---------------------------------------------------------------- */
+
+.web-starting {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* ----- sign-in ----------------------------------------------------------------- */
+
+.signin {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: calc(var(--pad-page-y) + var(--safe-top)) calc(var(--pad-page-x) + var(--safe-right))
+    calc(var(--pad-page-y) + var(--safe-bottom)) calc(var(--pad-page-x) + var(--safe-left));
+}
+
+.signin-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-group);
+  width: min(100%, 24rem);
+}
+
+.signin-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  text-align: center;
+}
+
+.signin-mark {
+  width: 4.5rem;
+  height: auto;
+  margin-bottom: var(--space-2);
+}
+
+.signin-eyebrow {
+  color: var(--color-accent-text);
+  font: var(--type-section);
+  font-stretch: var(--type-section-stretch);
+  letter-spacing: var(--type-section-tracking);
+}
+
+.signin-title {
+  font: var(--type-display);
+  font-stretch: var(--type-display-stretch);
+  letter-spacing: var(--type-display-tracking);
+}
+
+.signin-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-stack);
+}
+
+.signin-submit,
+.signin-guest-button {
+  width: 100%;
+  margin-top: var(--space-2);
+}
+
+.signin-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-1);
+  margin-top: calc(-1 * var(--space-3));
+}
+
+.signin-guest {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-top: var(--gap-group);
+  border-top: 1px solid var(--color-line);
+}
+
+.signin-note {
+  color: var(--color-text-3);
+  font: var(--type-body-s);
+  font-stretch: var(--type-body-s-stretch);
+  text-align: center;
+}
+
+/* ----- app frame --------------------------------------------------------------- */
+
+/* The toasts sit above the tab bar. */
+.app {
+  --toast-offset: var(--tabbar-h);
+}
+
+.app-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-section);
+  min-width: 0;
+  padding: calc(var(--pad-page-y) + var(--safe-top)) calc(var(--pad-page-x) + var(--safe-right))
+    calc(var(--tabbar-h) + var(--safe-bottom) + var(--gap-section)) calc(var(--pad-page-x) + var(--safe-left));
+}
+
+.tabbar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: var(--z-tabbar);
+  display: flex;
+  height: calc(var(--tabbar-h) + var(--safe-bottom));
+  padding: 0 var(--safe-right) var(--safe-bottom) var(--safe-left);
+  border-top: 1px solid var(--tabbar-line);
+  background: var(--tabbar-bg);
+  -webkit-backdrop-filter: blur(var(--tabbar-blur));
+  backdrop-filter: blur(var(--tabbar-blur));
+}
+
+.tabbar-tab {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  color: var(--tabbar-fg);
+  transition: color var(--dur-state) var(--ease-out);
+}
+
+.tabbar-tab .icon {
+  width: var(--tabbar-icon);
+  height: var(--tabbar-icon);
+}
+
+.tabbar-tab[aria-current="page"] {
+  color: var(--tabbar-fg-active);
+}
+
+.tabbar-label {
+  font: var(--type-label-s);
+  font-stretch: var(--type-label-s-stretch);
+  letter-spacing: var(--type-label-s-tracking);
+}
+
+/* The desktop's menu. Hidden on a phone, where the tab bar does its job. */
+.sidenav {
+  display: none;
+}
+
+/* ----- page parts -------------------------------------------------------------- */
+
+.page-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: var(--target-min);
+  /* The title is the page's first line; sections keep their own, wider gap. */
+  margin-bottom: calc(var(--gap-group) - var(--gap-section));
+}
+
+.page-title {
+  font: var(--type-display);
+  font-stretch: var(--type-display-stretch);
+  letter-spacing: var(--type-display-tracking);
+}
+
+.page-head-end {
+  display: flex;
+  flex: none;
+  gap: var(--gap-control);
+}
+
+.page-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.section-title {
+  color: var(--color-text-2);
+  font: var(--type-section);
+  font-stretch: var(--type-section-stretch);
+  letter-spacing: var(--type-section-tracking);
+}
+
+.section-meta {
+  color: var(--color-text-3);
+  font: var(--type-figure-s);
+  font-stretch: var(--type-figure-stretch);
+  font-variant-numeric: var(--type-figure-numeric);
+}
+
+.section-end {
+  display: flex;
+  flex: none;
+  margin-left: auto;
+}
+
+/* A text link at a section's end. As tall as a target, though it reads small. */
+.section-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--target-min);
+  margin-block: calc((var(--target-min) - 1em) / -2);
+  color: var(--color-accent-text);
+  font: var(--type-section);
+  font-stretch: var(--type-section-stretch);
+  letter-spacing: var(--type-section-tracking);
+}
+
+@media (hover: hover) {
+  .section-link:hover {
+    color: var(--color-accent-hover);
+  }
+}
+
+.page-loading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-section);
+}
+
+/* ----- home -------------------------------------------------------------------- */
+
+/* The episode to continue. */
+.continue {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--pad-card);
+  border-radius: var(--radius-card);
+  background: var(--color-surface-1);
+}
+
+.continue-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.continue-eyebrow {
+  color: var(--color-accent-text);
+  font: var(--type-section);
+  font-stretch: var(--type-section-stretch);
+  letter-spacing: var(--type-section-tracking);
+}
+
+.continue-title {
+  font: var(--type-headline);
+  font-stretch: var(--type-headline-stretch);
+  letter-spacing: var(--type-headline-tracking);
+}
+
+.continue-meta,
+.continue-note {
+  color: var(--color-text-3);
+  font: var(--type-body-s);
+  font-stretch: var(--type-body-s-stretch);
+  font-variant-numeric: var(--type-figure-numeric);
+}
+
+.continue-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap-control);
+  margin-top: var(--space-2);
+}
+
+/* The still is a link too, for a tap on the picture. Out of the tab order: the
+   button below goes to the same place. */
+.continue-still {
+  display: block;
+  border-radius: var(--thumb-radius);
+}
+
+/* One main action, as wide as the card on a phone. */
+.continue-actions .button {
+  flex: 1;
+}
+
+.continue--loading .skeleton-tile {
+  --tile-w: 100%;
+}
+
+/* Episodes in a sideways row, edge to edge: the row runs under the page gutter, and
+   the first and last tiles line up with the text. */
+.tile-row {
+  display: flex;
+  gap: var(--space-3);
+  margin-inline: calc(-1 * var(--pad-page-x));
+  padding-inline: var(--pad-page-x);
+  overflow-x: auto;
+  scroll-padding-inline: var(--pad-page-x);
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+}
+
+.tile-row::-webkit-scrollbar {
+  display: none;
+}
+
+.tile-row > * {
+  scroll-snap-align: start;
+}
+
+/* Nothing to scroll to while it loads. */
+.tile-row--loading {
+  overflow: hidden;
+}
+
+/* Every season as a card: its ring and how many are watched. */
+.season-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(4.5rem, 1fr));
+  gap: var(--space-2);
+}
+
+.season-card {
+  --ring-size: var(--ring-size-l);
+  --ring-hole: var(--color-surface-1);
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-1);
+  border-radius: var(--radius-card);
+  background: var(--color-surface-1);
+  transition: background-color var(--dur-press) var(--ease-out);
+}
+
+@media (hover: hover) {
+  .season-card:hover {
+    --ring-hole: var(--color-surface-2);
+    background: var(--color-surface-2);
+  }
+}
+
+.season-card-meta {
+  color: var(--color-text-3);
+  font: var(--type-figure-s);
+  font-stretch: var(--type-figure-stretch);
+  font-variant-numeric: var(--type-figure-numeric);
+}
+
+.season-grid--loading {
+  justify-items: center;
+}
+
+.season-grid--loading .skeleton--ring {
+  width: var(--ring-size-l);
+  height: var(--ring-size-l);
+}
+
+/* ----- seasons ----------------------------------------------------------------- */
+
+/* The seasons as rings, scrolling sideways on a phone like the tile row. */
+.ring-strip {
+  display: flex;
+  gap: var(--space-3);
+  margin-inline: calc(-1 * var(--pad-page-x));
+  /* Room for the picked ring's outline and the focus ring. */
+  padding: var(--space-2) var(--pad-page-x);
+  overflow-x: auto;
+  scroll-padding-inline: var(--pad-page-x);
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+}
+
+.ring-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.ring-link {
+  --ring-size: var(--ring-size-l);
+  flex: none;
+  border-radius: 50%;
+  transition: box-shadow var(--dur-state) var(--ease-out);
+}
+
+/* The season on screen: a cream outline around its ring. Amber is taken by the season
+   you are on, which may be a different one. */
+.ring-link[aria-current="page"] {
+  box-shadow: 0 0 0 var(--focus-gap) var(--color-bg), 0 0 0 calc(var(--focus-gap) + var(--focus-width)) var(--color-text-2);
+}
+
+.ring-strip--loading .skeleton--ring {
+  width: var(--ring-size-l);
+  height: var(--ring-size-l);
+}
+
+.season-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.season-head-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.season-title {
+  font: var(--type-title);
+  font-stretch: var(--type-title-stretch);
+  letter-spacing: var(--type-title-tracking);
+}
+
+.season-meta {
+  color: var(--color-text-3);
+  font: var(--type-body-s);
+  font-stretch: var(--type-body-s-stretch);
+  font-variant-numeric: var(--type-figure-numeric);
+}
+
+/* ----- settings ---------------------------------------------------------------- */
+
+.settings-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--gap-stack);
+  padding: var(--pad-card);
+  border-radius: var(--radius-card);
+  background: var(--color-surface-1);
+}
+
+/* The switch and the language choice run the card's width. */
+.settings-group > .switch,
+.settings-group > .segmented-field {
+  align-self: stretch;
+}
+
+.settings-email {
+  max-width: 100%;
+  font: var(--type-item);
+  font-stretch: var(--type-item-stretch);
+  overflow-wrap: anywhere;
+}
+
+.settings-note {
+  color: var(--color-text-3);
+  font: var(--type-body-s);
+  font-stretch: var(--type-body-s-stretch);
+}
+
+.settings-buttons {
+  display: flex;
+  flex-flow: row wrap;
+  gap: var(--gap-control);
+}
+
+/* On a phone the actions are a column of full-width buttons, like a list. */
+.settings-actions {
+  align-items: stretch;
+  gap: var(--gap-control);
+}
+
+.settings-progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.stat-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-card);
+  background: var(--color-surface-1);
+}
+
+.stat-value {
+  font: var(--type-figure-l);
+  font-stretch: var(--type-figure-stretch);
+  font-variant-numeric: var(--type-figure-numeric);
+}
+
+.stat-label {
+  color: var(--color-text-3);
+  font: var(--type-label-s);
+  font-stretch: var(--type-label-s-stretch);
+  letter-spacing: var(--type-label-s-tracking);
+}
+
+.settings-foot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  color: var(--color-text-3);
+  font: var(--type-body-s);
+  font-stretch: var(--type-body-s-stretch);
+}
+
+.build-stamp {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.build-stamp a {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.build-commit {
+  font: var(--type-figure-s);
+  font-stretch: var(--type-figure-stretch);
+}
+
+/* ----- desktop: the side menu takes over from the tab bar ---------------------- */
+
+@media (min-width: 64rem) {
+  .app {
+    --toast-offset: 0px;
+    display: grid;
+    grid-template-columns: var(--sidenav-w) minmax(0, 1fr);
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+
+  .tabbar {
+    display: none;
+  }
+
+  .app-main {
+    width: 100%;
+    max-width: 72rem;
+    padding: var(--pad-page-y) var(--pad-page-x) var(--gap-section);
+  }
+
+  .sidenav {
+    position: sticky;
+    top: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    height: 100vh;
+    height: 100dvh;
+    padding: var(--space-6) var(--space-4);
+    border-right: 1px solid var(--color-line);
+    background: var(--sidenav-bg);
+  }
+
+  .sidenav-mark {
+    align-self: flex-start;
+    padding: 0 var(--space-3) var(--space-6);
+    color: var(--color-accent-text);
+    font: var(--type-headline);
+    font-stretch: var(--type-headline-stretch);
+    letter-spacing: var(--type-headline-tracking);
+  }
+
+  .sidenav-items {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .sidenav-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-height: var(--sidenav-item-h);
+    padding: 0 var(--space-4);
+    border-radius: var(--sidenav-item-radius);
+    color: var(--sidenav-item-fg);
+    font: var(--type-item);
+    font-stretch: var(--type-item-stretch);
+    transition: background-color var(--dur-press) var(--ease-out), color var(--dur-press) var(--ease-out);
+  }
+
+  .sidenav-item:hover {
+    background: var(--color-hover);
+    color: var(--sidenav-item-fg-active);
+  }
+
+  .sidenav-item[aria-current="page"] {
+    background: var(--sidenav-item-bg-active);
+    color: var(--sidenav-item-fg-active);
+  }
+
+  .sidenav-item[aria-current="page"] .icon {
+    color: var(--sidenav-indicator);
+  }
+
+  .sidenav-account {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    border-radius: var(--radius-card);
+    background: var(--color-surface-1);
+  }
+
+  .sidenav-account .button {
+    width: 100%;
+  }
+
+  .sidenav-note,
+  .sidenav-email {
+    max-width: 100%;
+    color: var(--color-text-3);
+    font: var(--type-body-s);
+    font-stretch: var(--type-body-s-stretch);
+    overflow-wrap: anywhere;
+  }
+
+  .sidenav-email {
+    color: var(--color-text-2);
+  }
+
+  /* The side menu has the guest's sign-in. */
+  .home-signin {
+    display: none;
+  }
+
+  /* The still beside the words, not above them. */
+  .continue {
+    display: grid;
+    grid-template-columns: minmax(0, 24rem) minmax(0, 1fr);
+    align-items: center;
+    gap: var(--space-6);
+  }
+
+  .continue-actions .button {
+    flex: none;
+  }
+
+  /* Still one row, as the design draws it, inside the page's width. A thin scroll bar
+     shows a mouse there is more; a trackpad or the keyboard (focus scrolls) gets there
+     too, and "All episodes" is beside the title. */
+  .tile-row {
+    margin-inline: 0;
+    padding: 0 0 var(--space-3);
+    scroll-padding-inline: 0;
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-line-strong) transparent;
+  }
+
+  .tile-row::-webkit-scrollbar {
+    display: block;
+    height: 0.375rem;
+  }
+
+  .tile-row::-webkit-scrollbar-thumb {
+    border-radius: var(--radius-pill);
+    background: var(--color-line-strong);
+  }
+
+  /* A row of episodes reads best at about a line's length. The phase 6 dock will sit
+     to its right. */
+  .season-section {
+    max-width: 48rem;
+  }
+
+  .season-grid {
+    grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
+  }
+
+  .ring-strip {
+    flex-wrap: wrap;
+    margin-inline: calc(-1 * var(--space-2));
+    padding-inline: var(--space-2);
+    overflow: visible;
+  }
+
+  .settings-group,
+  .settings-progress {
+    max-width: 40rem;
+  }
+
+  .settings-actions {
+    flex-flow: row wrap;
+    align-items: flex-start;
+  }
+
+  .season-grid {
+    gap: var(--space-3);
+  }
+
+  .season-card {
+    padding: var(--space-4) var(--space-2) var(--space-3);
+  }
+}

@@ -82,6 +82,16 @@ val useFixtures: Boolean by lazy {
 private val FIXTURE_UI = setOf("demo", "tv-demo", "drive-demo")
 
 /**
+ * True when the address has `?gallery`: the redesign's web page draws the component
+ * gallery instead of the app, so the components can still be looked at on their own
+ * now that the screens have taken the page. It combines with fixtures:
+ * `/next/?ui=demo&gallery`.
+ */
+val showGallery: Boolean by lazy {
+    runCatching { URLSearchParams(window.location.search).has("gallery") }.getOrDefault(false)
+}
+
+/**
  * Prefix for the images that sit at the site root.
  *
  * `logo.png` is referenced relatively, so from `/tv/` it would resolve to

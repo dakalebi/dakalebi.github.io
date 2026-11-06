@@ -30,6 +30,9 @@ enum class ButtonVariant { Primary, Secondary, Quiet, Danger }
  *
  * [busy] shows a spinner in place of the icon and ignores presses until it clears, for
  * an action that is waiting on the network. [external] opens [href] in a new tab.
+ *
+ * [submit] makes it the form's submit button, so Enter in a field of the form presses
+ * it. A form with two fields and no submit button does not submit on Enter at all.
  */
 @Composable
 fun Button(
@@ -41,6 +44,7 @@ fun Button(
     external: Boolean = false,
     disabled: Boolean = false,
     busy: Boolean = false,
+    submit: Boolean = false,
     attrs: ExtraAttrs? = null,
 ) {
     val look: AttrsScope<HTMLElement>.() -> Unit = {
@@ -74,11 +78,14 @@ fun Button(
         }) { content() }
     } else {
         HtmlButton({
-            type(ButtonType.Button)
+            type(if (submit) ButtonType.Submit else ButtonType.Button)
             look()
             if (disabled) disabled()
             if (busy) attr("aria-busy", "true")
-            onClick { if (!busy) onClick() }
+            onClick { event ->
+                // A busy submit button must not submit the form a second time either.
+                if (busy) event.preventDefault() else onClick()
+            }
             attrs?.invoke(this)
         }) { content() }
     }
