@@ -113,7 +113,7 @@ remote reaches the page, and what was verified:
 ## Layout
 
 Five Gradle modules, on the way to one per layer. The root is the web app. `:core`
-and `:domain` depend on nothing, and `:data` implements the domain's
+and `:domain` depend on no other module, and `:data` implements the domain's
 repositories. `:shared` is the rest of what is not about being a web page, until
 `:presentation` takes it over.
 
@@ -125,6 +125,7 @@ core/src/jsMain/kotlin/ge/dakalebi/core/
 domain/src/commonMain/kotlin/ge/dakalebi/domain/
                  models, repository interfaces, use cases, pure queries
 data/src/commonMain/kotlin/ge/dakalebi/data/
+                 the settings sync, and progress routed by viewer
   formula/       the Formula API and its DTOs
   local/         the catalog cache and device storage over a `KeyValueStore`
                  (settings copy, guest progress, guest choice)
@@ -155,7 +156,7 @@ tools/                   the CSS check and the site publish script
 ```
 
 Dependencies point inwards, and no `commonMain` names a framework at all.
-`:domain` cannot: nothing but Kotlin is on its classpath. The greps that check the
+`:domain` cannot: nothing but Kotlin and kotlinx-coroutines is on its classpath. The greps that check the
 rest are in
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 

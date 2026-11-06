@@ -1,12 +1,14 @@
 package ge.dakalebi.di
 
+import ge.dakalebi.data.AccountSettingsSource
+import ge.dakalebi.data.SyncedSettingsRepository
 import ge.dakalebi.data.SystemClock
 import ge.dakalebi.data.ViewerProgressRepository
 import ge.dakalebi.data.firebase.FirebaseAccountRepository
 import ge.dakalebi.data.firebase.FirestoreAdminRepository
 import ge.dakalebi.data.firebase.FirestoreCatalogRepository
 import ge.dakalebi.data.firebase.FirestoreProgressRepository
-import ge.dakalebi.data.firebase.FirestoreSettingsRepository
+import ge.dakalebi.data.firebase.FirestoreSettingsSource
 import ge.dakalebi.data.formula.FormulaApi
 import ge.dakalebi.data.local.BrowserKeyValueStore
 import ge.dakalebi.data.local.BrowserPreferencesRepository
@@ -14,21 +16,19 @@ import ge.dakalebi.data.local.LocalCatalogCache
 import ge.dakalebi.data.local.LocalGuestMode
 import ge.dakalebi.data.local.LocalProgressRepository
 import ge.dakalebi.data.local.LocalSettingsCache
+import ge.dakalebi.data.local.SettingsCache
 import ge.dakalebi.domain.Clock
 import ge.dakalebi.domain.repository.AccountRepository
 import ge.dakalebi.domain.repository.AdminRepository
-import ge.dakalebi.domain.repository.CatalogCache
 import ge.dakalebi.domain.repository.CatalogRepository
 import ge.dakalebi.domain.repository.GuestModeRepository
 import ge.dakalebi.domain.repository.PreferencesRepository
 import ge.dakalebi.domain.repository.ProgressRepository
-import ge.dakalebi.domain.repository.SettingsCache
-import ge.dakalebi.domain.repository.SettingsRepository
+import ge.dakalebi.domain.usecase.ChangeUserSetting
 import ge.dakalebi.domain.usecase.CheckAdminRights
 import ge.dakalebi.domain.usecase.ClearEpisodeProgress
 import ge.dakalebi.domain.usecase.LoadCatalog
 import ge.dakalebi.domain.usecase.LoadProgress
-import ge.dakalebi.domain.usecase.LoadUserSettings
 import ge.dakalebi.domain.usecase.MarkSeasonWatched
 import ge.dakalebi.domain.usecase.ObserveAccount
 import ge.dakalebi.domain.usecase.ObserveUserSettings
@@ -38,11 +38,11 @@ import ge.dakalebi.domain.usecase.ResetAllProgress
 import ge.dakalebi.domain.usecase.ResetSeasonProgress
 import ge.dakalebi.domain.usecase.ResolveEpisodeVideo
 import ge.dakalebi.domain.usecase.SaveProgress
-import ge.dakalebi.domain.usecase.SaveUserSettings
 import ge.dakalebi.domain.usecase.SendPasswordReset
 import ge.dakalebi.domain.usecase.SignInWithEmail
 import ge.dakalebi.domain.usecase.SignOut
 import ge.dakalebi.domain.usecase.SignUpWithEmail
+import ge.dakalebi.domain.usecase.SyncUserSettings
 import ge.dakalebi.presentation.CatalogStore
 import ge.dakalebi.presentation.PreferencesStore
 import ge.dakalebi.presentation.HashRouter
@@ -67,13 +67,15 @@ class AppGraph(
     clock: Clock = SystemClock,
     /** Lives as long as the graph, which is as long as the page. */
     scope: CoroutineScope = MainScope(),
-    catalogCache: CatalogCache = LocalCatalogCache(BrowserKeyValueStore()),
-    catalogRepository: CatalogRepository = FirestoreCatalogRepository(FormulaApi(), catalogCache),
+    /** The catalog cache is here, in plain sight, so it can be switched off in one place. */
+    catalogRepository: CatalogRepository = FirestoreCatalogRepository(FormulaApi(), LocalCatalogCache(BrowserKeyValueStore())),
     progressRepository: ProgressRepository = FirestoreProgressRepository(),
-    settingsRepository: SettingsRepository = FirestoreSettingsRepository(clock),
+    /** The account's half of the settings sync. */
+    accountSettings: AccountSettingsSource = FirestoreSettingsSource(clock),
     accountRepository: AccountRepository = FirebaseAccountRepository(),
     adminRepository: AdminRepository = FirestoreAdminRepository(),
     preferencesRepository: PreferencesRepository = BrowserPreferencesRepository(),
+    /** This device's half of the settings sync. */
     settingsCache: SettingsCache = LocalSettingsCache(BrowserKeyValueStore()),
     /** A guest's progress: on this device, never uploaded. */
     guestProgressRepository: ProgressRepository = LocalProgressRepository(BrowserKeyValueStore()),
@@ -85,11 +87,14 @@ class AppGraph(
         guest = guestProgressRepository,
     )
 
+    /** Where this device's copy of the settings and the account's meet. Its writes run in [scope]. */
+    private val settingsRepository = SyncedSettingsRepository(accountSettings, settingsCache, scope)
+
     /** Typed as the implementation, because only the entry point calls `start()`. */
     val router = HashRouter()
     val toasts = ToastStore(scope)
 
-    val preferences = PreferencesStore(preferencesRepository)
+    val preferences = PreferencesStore(preferencesRepository, scope)
 
     val catalog = CatalogStore(
         loadCatalog = LoadCatalog(catalogRepository),
@@ -101,7 +106,6 @@ class AppGraph(
         resetSeasonProgressUseCase = ResetSeasonProgress(viewerProgress),
         resetAllProgressUseCase = ResetAllProgress(viewerProgress),
         recordEpisodeDuration = RecordEpisodeDuration(catalogRepository),
-        cache = catalogCache,
     )
 
     val session = SessionStore(
@@ -112,13 +116,14 @@ class AppGraph(
         sendPasswordResetUseCase = SendPasswordReset(accountRepository),
         signOutUseCase = SignOut(accountRepository),
         guestMode = guestModeRepository,
+        scope = scope,
     )
 
     val settings = SettingsStore(
-        loadUserSettings = LoadUserSettings(settingsRepository),
         observeUserSettings = ObserveUserSettings(settingsRepository),
-        saveUserSettings = SaveUserSettings(settingsRepository),
-        cache = settingsCache,
+        syncUserSettings = SyncUserSettings(settingsRepository),
+        changeUserSetting = ChangeUserSetting(settingsRepository),
+        scope = scope,
     )
 
     /** Used by the watch screen, which resolves a URL without going via a store. */

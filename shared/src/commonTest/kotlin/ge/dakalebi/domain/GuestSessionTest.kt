@@ -8,7 +8,6 @@ import ge.dakalebi.domain.model.RefreshResult
 import ge.dakalebi.domain.model.Viewer
 import ge.dakalebi.domain.repository.AccountRepository
 import ge.dakalebi.domain.repository.AdminRepository
-import ge.dakalebi.domain.repository.CatalogCache
 import ge.dakalebi.domain.repository.CatalogRepository
 import ge.dakalebi.domain.repository.GuestModeRepository
 import ge.dakalebi.domain.usecase.CheckAdminRights
@@ -28,6 +27,9 @@ import ge.dakalebi.domain.usecase.SignOut
 import ge.dakalebi.domain.usecase.SignUpWithEmail
 import ge.dakalebi.presentation.CatalogStore
 import ge.dakalebi.presentation.SessionStore
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -59,6 +61,9 @@ class GuestSessionTest {
         sendPasswordResetUseCase = SendPasswordReset(accounts),
         signOutUseCase = SignOut(accounts),
         guestMode = guestMode,
+        // The store follows the account unconfined, so it needs nothing from
+        // the scope but a place to live.
+        scope = CoroutineScope(Dispatchers.Unconfined),
     ).also { it.start() }
 
     @Test
@@ -197,7 +202,6 @@ class GuestSessionTest {
             resetSeasonProgressUseCase = ResetSeasonProgress(progress),
             resetAllProgressUseCase = ResetAllProgress(progress),
             recordEpisodeDuration = RecordEpisodeDuration(catalog),
-            cache = NoCache,
         )
     }
 }
@@ -207,8 +211,7 @@ private class ScriptedAccountRepository(
     initial: Account? = null,
     private val signOutFails: Boolean = false,
 ) : AccountRepository {
-    private var current: Account? = initial
-    private var listener: ((Account?) -> Unit)? = null
+    override val account = MutableStateFlow(initial)
     var signOuts = 0
         private set
 
@@ -216,13 +219,7 @@ private class ScriptedAccountRepository(
     var onSignOut: () -> Unit = {}
 
     fun emit(account: Account?) {
-        current = account
-        listener?.invoke(account)
-    }
-
-    override fun observe(onChange: (Account?) -> Unit) {
-        listener = onChange
-        onChange(current)
+        this.account.value = account
     }
 
     override suspend fun signIn(email: String, password: String) = Unit
@@ -270,10 +267,4 @@ private class StubCatalogRepository : CatalogRepository {
 
     override suspend fun resolveVideo(episode: Episode) = episode
     override suspend fun recordDuration(episodeId: String, durationSeconds: Int) = Unit
-}
-
-private object NoCache : CatalogCache {
-    override fun read(stamp: Double?): List<Episode>? = null
-    override fun write(stamp: Double?, episodes: List<Episode>) = Unit
-    override fun clear() = Unit
 }

@@ -12,6 +12,7 @@ import ge.dakalebi.domain.usecase.SendPasswordReset
 import ge.dakalebi.domain.usecase.SignInWithEmail
 import ge.dakalebi.domain.usecase.SignOut
 import ge.dakalebi.domain.usecase.SignUpWithEmail
+import kotlinx.coroutines.CoroutineScope
 
 /** Who is signed in, or browsing as a guest, as Compose state. */
 class SessionStore(
@@ -22,6 +23,8 @@ class SessionStore(
     private val sendPasswordResetUseCase: SendPasswordReset,
     private val signOutUseCase: SignOut,
     private val guestMode: GuestModeRepository,
+    /** The app's own scope, which the account is followed in. */
+    private val scope: CoroutineScope,
 ) {
     var account: Account? by mutableStateOf(null)
         private set
@@ -63,7 +66,7 @@ class SessionStore(
         private set
 
     fun start() {
-        observeAccount { next ->
+        scope.follow(observeAccount()) { next ->
             account = next
             // Signing in ends guest mode, so a later sign-out returns to the
             // sign-in screen instead of silently dropping back into guest mode.

@@ -1,5 +1,6 @@
 package ge.dakalebi.domain
 
+import ge.dakalebi.data.AccountSettingsSource
 import ge.dakalebi.data.local.KeyValueStore
 import ge.dakalebi.domain.model.Episode
 import ge.dakalebi.domain.model.Setting
@@ -7,7 +8,9 @@ import ge.dakalebi.domain.model.SettingsLoad
 import ge.dakalebi.domain.model.UserSettings
 import ge.dakalebi.domain.model.WatchProgress
 import ge.dakalebi.domain.repository.ProgressRepository
-import ge.dakalebi.domain.repository.SettingsRepository
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 
 /** A clock that only moves when a test says so. */
 class FakeClock(var now: Double = 1_000_000.0) : Clock {
@@ -41,7 +44,7 @@ class FakeKeyValueStore(
  * a write lays the values it holds over what is stored and leaves the rest.
  * `null` is "no document yet".
  */
-class FakeSettingsRepository(
+class FakeAccountSettings(
     var stored: UserSettings? = null,
     var readsFail: Boolean = false,
     var writesSucceed: Boolean = true,
@@ -50,10 +53,22 @@ class FakeSettingsRepository(
      * whole document, one of them anywhere in a write refuses all of it.
      */
     private val refused: Set<Setting<*>> = emptySet(),
-) : SettingsRepository {
+) : AccountSettingsSource {
     /** Every write attempted, accepted or not. */
     val writes = mutableListOf<UserSettings>()
-    private var listener: ((UserSettings) -> Unit)? = null
+
+    /**
+     * The live listener. Buffered so [emit] never has to suspend; a collector
+     * gets the snapshot when the test dispatcher next runs.
+     */
+    val snapshots = MutableSharedFlow<UserSettings>(extraBufferCapacity = 16)
+
+    /**
+     * When set, a write lands at once but its answer waits for this, like a
+     * slow network. Firestore sends a write whether or not anyone waits for the
+     * answer, so a caller that stops waiting loses only the confirmation.
+     */
+    var answer: CompletableDeferred<Unit>? = null
 
     override suspend fun load(uid: String): SettingsLoad = when {
         readsFail -> SettingsLoad.Failed
@@ -64,16 +79,16 @@ class FakeSettingsRepository(
         writes += settings
         if (!writesSucceed || settings.present.any { it in refused }) return false
         stored = (stored ?: UserSettings()) + settings
+        answer?.await()
         return true
     }
 
-    override fun observe(uid: String, onChange: (UserSettings) -> Unit): () -> Unit {
-        listener = onChange
-        return { listener = null }
-    }
+    override fun observe(uid: String): Flow<UserSettings> = snapshots
 
     /** A snapshot of the document as it now stands, as the live listener delivers one. */
-    fun emit(settings: UserSettings) = listener?.invoke(settings)
+    fun emit(settings: UserSettings) {
+        check(snapshots.tryEmit(settings)) { "snapshot buffer full" }
+    }
 
     /** Another device writing to the account, then the listener hearing of it. */
     fun changeElsewhere(settings: UserSettings) {

@@ -32,7 +32,8 @@ sealed class Setting<T : Any>(
     /**
      * [into] plus this setting's value from [from], when [from] has one.
      *
-     * Public because `SettingsStore` uploads one setting at a time with it.
+     * Public because the settings repository in `:data` uploads one setting at a
+     * time with it.
      */
     fun copy(from: UserSettings, into: UserSettings): UserSettings =
         from[this]?.let { into.with(this, it) } ?: into

@@ -6,7 +6,11 @@ import kotlin.js.Promise
 
 external fun getAuth(app: FirebaseApp): Auth
 
-external fun onAuthStateChanged(auth: Auth, next: (FirebaseUser?) -> Unit): Unsubscribe
+/**
+ * Returns the unsubscribe function, typed as one because the account flow calls
+ * it when its collection is cancelled. See `onSnapshot`.
+ */
+external fun onAuthStateChanged(auth: Auth, next: (FirebaseUser?) -> Unit): () -> Unit
 
 external fun signInWithEmailAndPassword(
     auth: Auth,

@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import ge.dakalebi.domain.model.InterfaceScale
 import ge.dakalebi.domain.repository.PreferencesRepository
+import kotlinx.coroutines.CoroutineScope
 
 /**
  * Observable view of the per-device preferences.
@@ -16,7 +17,11 @@ import ge.dakalebi.domain.repository.PreferencesRepository
  * Only what describes this screen lives here. Settings that describe the person
  * watching follow the account, through [SettingsStore].
  */
-class PreferencesStore(private val prefs: PreferencesRepository) {
+class PreferencesStore(
+    private val prefs: PreferencesRepository,
+    /** The app's own scope, which other tabs' changes are followed in. */
+    private val scope: CoroutineScope,
+) {
 
     /**
      * How large the television interface is drawn, as a percentage.
@@ -30,7 +35,7 @@ class PreferencesStore(private val prefs: PreferencesRepository) {
 
     /** Keeps several tabs of the app in agreement. */
     fun start() {
-        prefs.onExternalChange {
+        scope.follow(prefs.externalChanges) {
             interfaceScale = prefs.interfaceScale()
         }
     }

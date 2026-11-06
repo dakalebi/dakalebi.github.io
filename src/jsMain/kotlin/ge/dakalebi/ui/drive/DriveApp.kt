@@ -4,7 +4,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import ge.dakalebi.di.LocalResolveEpisodeVideo
 import ge.dakalebi.di.catalog
 import ge.dakalebi.di.router
@@ -40,7 +39,6 @@ fun DriveApp() {
     val catalog = catalog()
     val settings = settings()
     val resolveVideo = LocalResolveEpisodeVideo.current
-    val scope = rememberCoroutineScope()
 
     val player = remember {
         DrivePlayer(
@@ -75,7 +73,7 @@ fun DriveApp() {
             settings.stop()
         } else {
             val uid = account?.uid
-            if (uid != null) settings.start(scope, uid) else settings.stop()
+            if (uid != null) settings.start(uid) else settings.stop()
             catalog.ensureLoaded(viewerId)
         }
     }

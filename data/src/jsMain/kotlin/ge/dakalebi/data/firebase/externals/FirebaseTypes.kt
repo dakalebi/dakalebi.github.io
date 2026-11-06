@@ -61,9 +61,6 @@ external interface AuthError {
     val message: String
 }
 
-/** Unsubscribe handle returned by `onAuthStateChanged`. */
-external interface Unsubscribe
-
 // ------------------------------------------------------------ firestore
 
 external interface Firestore

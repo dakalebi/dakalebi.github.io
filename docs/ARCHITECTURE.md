@@ -14,8 +14,8 @@ done, and `:shared` is what is left to become `:presentation`.
 | Module | Holds | Why |
 |---|---|---|
 | `:core` | `commonMain`: logging and formatting policy. `jsMain`: the console and the clock, two `.js.kt` files | Depends on nothing. Every other module may use it |
-| `:domain` | models, repository interfaces, a use case per operation, pure queries | Depends on nothing, not even `:core`, so "the domain names no framework" is the compile classpath and not only a convention |
-| `:data` | `commonMain`: the Formula API and DTOs, and the storage that is plain Kotlin over a `KeyValueStore`: the catalog cache, the settings device copy, guest progress, the guest choice, and `ViewerProgressRepository`, which routes progress between the account and the device. `jsMain`: `firebase` (Firestore and Auth through the JS SDK), `local` (the browser's `localStorage`), the system clock, and the bare GET | Every implementation of a domain repository. Depends on `:domain` and `:core` only, so it cannot name presentation, `i18n` or UI |
+| `:domain` | models, repository interfaces, a use case per operation, pure queries | Depends on no other module, not even `:core`, and on one library: kotlinx-coroutines, for `Flow`. So "the domain names no framework" is the compile classpath and not only a convention |
+| `:data` | `commonMain`: the Formula API and DTOs, the settings sync (`SyncedSettingsRepository`), and the storage that is plain Kotlin over a `KeyValueStore`: the catalog cache, the settings device copy, guest progress, the guest choice, and `ViewerProgressRepository`, which routes progress between the account and the device. `jsMain`: `firebase` (Firestore and Auth through the JS SDK), `local` (the browser's `localStorage`), the system clock, and the bare GET | Every implementation of a domain repository. Depends on `:domain` and `:core` only, so it cannot name presentation, `i18n` or UI. Its caches are its own: no interface for them is in `:domain` |
 | `:shared` | `commonMain`: `presentation`, `i18n`, the composition locals. `commonTest`: every unit test, for now | The state holders and strings, so a second front end reuses them instead of reimplementing them. Depends on `:domain` and `:core`; only its tests depend on `:data` |
 | root | `ui` (Compose HTML) for all three shells (`/`, `/tv/`, `/drive/`), the composition root, `Main.kt` | The web app. It also owns the webpack build, so the GitHub Pages artifact path never moves |
 
@@ -52,7 +52,7 @@ Arrows point inwards. Nothing on an inner ring knows a name from an outer one.
 
 | Package | May import | Contains |
 |---|---|---|
-| `domain` | nothing but Kotlin | models, repository **interfaces**, a use case per operation, pure queries |
+| `domain` | Kotlin and kotlinx-coroutines | models, repository **interfaces**, a use case per operation, pure queries |
 | `data` | `domain`, `core` | Firestore, the Formula API, `localStorage` |
 | `presentation` | `domain`, `core`, `i18n` | Compose state holders, error→text mapping, the `Route` type |
 | `ui` | `presentation`, `domain`, `core`, `i18n`, `di` | Compose HTML, and nothing else |
@@ -68,11 +68,17 @@ Two rules carry most of the weight:
   restructure every repository built its own message, so translating the app
   meant editing Firestore code.
 
-Most of the rules are now module boundaries. `:domain` and `:core` depend on
-nothing, `:data` depends on those two only, and none of the modules depends on
-the root, so a reference the wrong way round does not compile. In `:domain`, a
-Compose, Firebase, coroutines or `i18n` import does not resolve, and in `:data`
-neither does anything from `presentation` or `i18n`.
+Most of the rules are now module boundaries. `:domain` and `:core` depend on no
+other module, `:data` depends on those two only, and none of the modules depends
+on the root, so a reference the wrong way round does not compile. In `:domain`, a
+Compose, Firebase or `i18n` import does not resolve, and in `:data` neither does
+anything from `presentation` or `i18n`.
+
+Coroutines are the one library `:domain` has, because a repository reports change
+as a `Flow`: the signed-in account, the account's settings, and preference
+changes made in another tab. There are no listener-registration methods. The
+stores collect those flows unconfined (`presentation/Follow.kt`), so a change
+still reaches Compose state in the same call that made it.
 
 Two things a build file cannot keep out, so they are still greps. Every one of
 these returns nothing.
@@ -107,6 +113,9 @@ paths are in `:shared` unless they say root.
   code, plus its key and type in the `users/{uid}` allowlist in
   `firebase/firestore.rules` (publish the rules first). Only a preference that
   describes a screen rather than a person goes on `PreferencesRepository` instead.
+- **A cache, or anything else about where data is kept** → `data/` only. Nothing
+  above `:data` names the catalog cache or the settings device copy: the
+  repository that owns one reads and writes it.
 - **A new rule about existing data** → a use case in `domain/usecase/`, with a
   test. This is the case worth being strict about: rules that live in a
   repository or a composable can only be checked by running the app.
@@ -131,8 +140,8 @@ paths are in `:shared` unless they say root.
 and they move to their modules before `:shared` is deleted. It covers
 the watched-threshold and never-rewind-a-finished-episode rules, the "continue
 watching" and next-to-play choices, episode ordering across season boundaries,
-hash-route parsing, settings sync (the merge rules, `SettingsStore`, the device
-copy), guest sessions and guest storage, playback-failure classification, the
+hash-route parsing, settings sync (the merge rules, `SyncedSettingsRepository`,
+`SettingsStore`, the device copy), guest sessions and guest storage, playback-failure classification, the
 quality default, the iOS resume fragment, the VLC links and playlist, TV seeking
 and interface size, timestamp formatting, toast dismissal, and the catalog cache.
 

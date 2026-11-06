@@ -15,12 +15,12 @@ import ge.dakalebi.data.formula.bestVideoUrl
 import ge.dakalebi.data.formula.episodePageUrl
 import ge.dakalebi.data.formula.qualitySources
 import ge.dakalebi.data.formula.thumbnailUrl
+import ge.dakalebi.data.local.CatalogCache
 import ge.dakalebi.domain.model.Catalog
 import ge.dakalebi.domain.model.CatalogMeta
 import ge.dakalebi.domain.model.CatalogUnavailableException
 import ge.dakalebi.domain.model.Episode
 import ge.dakalebi.domain.model.RefreshResult
-import ge.dakalebi.domain.repository.CatalogCache
 import ge.dakalebi.domain.repository.CatalogRepository
 import kotlinx.coroutines.await
 
@@ -163,11 +163,15 @@ class FirestoreCatalogRepository(
     }.getOrDefault(episode)
 
     /**
+     * This device's cache first, for everyone: it is what the next page load
+     * reads, and it costs nothing.
+     *
      * Only admins may write the `episodes` collection, so `permission-denied`
      * here is the normal path for everyone else and stays at debug. Anything
      * else is worth seeing.
      */
     override suspend fun recordDuration(episodeId: String, durationSeconds: Int) {
+        cache.recordDuration(episodeId, durationSeconds)
         val payload = jsObject()
         payload.durationSeconds = durationSeconds
         runCatching {

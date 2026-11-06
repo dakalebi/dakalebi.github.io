@@ -223,8 +223,9 @@ slower and more fragile for no gain. The browser-facing code is tested by hand �
 see §8.
 
 That split is now Gradle modules rather than a convention, so the property is
-enforced by the compiler: no module depends on the root, `:domain` depends on
-nothing at all, and `:data` cannot see presentation or `i18n`. From `commonMain`,
+enforced by the compiler: no module depends on the root, `:domain` depends on no
+other module and on one library (kotlinx-coroutines, for `Flow`), and `:data`
+cannot see presentation or `i18n`. From `commonMain`,
 the browser is reachable only through three `expect` functions. See
 [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
@@ -310,8 +311,8 @@ and files progress under `session.viewerId`.
 
 - **`uid` still means the account.** `SessionStore.uid` is null for a guest, and
   settings sync starts only with an account uid. That is the whole reason a
-  guest's settings stay on the device: `SettingsStore` changes the device copy and
-  has no account to write to.
+  guest's settings stay on the device: the settings repository changes the device
+  copy and has no account to write to.
 - **Guest progress never reaches Firestore.** `ViewerProgressRepository` routes
   each call by the owner id it names: `guest:device` goes to
   `LocalProgressRepository` (`localStorage` key `progress_v1:guest:device`),
@@ -361,7 +362,9 @@ Writes are chunked at 450; Firestore caps a batch at 500.
 
 `durationSeconds` is deliberately **omitted** from the write. Formula does not
 expose durations, so they are only ever learned from the player, and a refresh
-must not clobber them.
+must not clobber them. A runtime the player measures goes into this device's
+catalog cache for everyone, and into Firestore where the rules allow it (admins):
+both are `FirestoreCatalogRepository.recordDuration`.
 
 ### Watch progress
 
@@ -544,14 +547,17 @@ Every setting that follows the account is one line in the `Setting` registry
 (`domain/.../domain/model/UserSettings.kt`): language, autoplay, System player,
 preferred quality.
 Everything that moves settings around iterates that registry — the Firestore
-document, the device copy (`LocalSettingsCache`), `SettingsStore` and the
-fixtures — so **a new setting syncs with no other code change**. The one other
+document, the device copy (`LocalSettingsCache`), the sync
+(`SyncedSettingsRepository`) and the fixtures — so **a new setting syncs with no other code change**. The one other
 edit is the field allowlist in `firebase/firestore.rules`, deliberately by hand:
 the rules are the security boundary. Publish them before the bundle ships, or
 writes of the new key are rejected and the app toasts "not synced".
 
 UI reads `settings[Setting.X]` and writes `settings.set(...)` or
 `settings.toggle(...)`. The language is applied to `I18n.current` as it arrives.
+`SettingsStore` is only that Compose state and the language; the sync described
+below is `SyncedSettingsRepository` in `:data`, and the store follows its
+`StateFlow`.
 
 The device copy is a cache, not a second source of truth. It renders the first
 frame with the right values instead of flashing defaults while the network
@@ -584,7 +590,7 @@ toasts. Losing the sync should not cost you the setting, but failing silently
 looks exactly like "my other phone never updates". The marks live in
 `localStorage` under `settings_unconfirmed`, per account.
 
-A guest has no account, so `SettingsStore.start` is never called for one. Their
+A guest has no account, so the settings sync never starts for one. Their
 changes go to the device copy only, and nothing is marked or uploaded.
 
 Each setting is uploaded in its own write. The rules check the whole document,
@@ -949,14 +955,15 @@ retry.
 
 ## 8. What is verified, and what is not
 
-**Automated.** `./gradlew allTests`, on Node, in `:shared` for now (175 tests
+**Automated.** `./gradlew allTests`, on Node, in `:shared` for now (184 tests
 on 2026-11-06, covering `:core`, `:domain` and `:data` too), run by CI on every pull request and before every publish: the watched threshold, the never-rewind guard, "continue watching"
 and the next episode to play, ordering across season boundaries and the rest of a
-season, hash-route parsing, settings sync (the merge rules, the store, the device
-copy), guest sessions and guest storage, playback-failure classification, the
+season, hash-route parsing, settings sync (the merge rules, the repository, the
+store, the device copy), guest sessions and guest storage, playback-failure classification, the
 quality default, the iOS resume fragment, the VLC links and playlist encoding,
 TV seeking and interface size, timestamp formatting, toast dismissal, the catalog
-cache's stamp rule and its thirteen-field round trip, the bare GET, and the
+cache's stamp rule, its thirteen-field round trip and its duration patch, the bare
+GET, and the
 Firebase error-code spellings.
 
 The worker has its own tests (`node --test` in `workers/vlc-playlist`). One of them

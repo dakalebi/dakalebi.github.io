@@ -2,9 +2,11 @@ import org.jetbrains.kotlin.gradle.dsl.JsModuleKind
 
 // The data layer: every implementation of a `:domain` repository interface.
 //
-//   commonMain  the Formula API and its DTOs, and the storage that is plain Kotlin
-//               over a `KeyValueStore`: the catalog cache, the settings device
-//               copy, guest progress, the guest choice, `ViewerProgressRepository`
+//   commonMain  the Formula API and its DTOs, the storage that is plain Kotlin
+//               over a `KeyValueStore` (the catalog cache, the settings device
+//               copy, guest progress, the guest choice), `ViewerProgressRepository`,
+//               and `SyncedSettingsRepository`, where the device copy and the
+//               account's settings meet
 //   jsMain      Firestore and Auth through the Firebase JS SDK, `localStorage`,
 //               the system clock, and the bare GET behind the Formula API
 //
@@ -42,11 +44,13 @@ kotlin {
             implementation(project(":core"))
             // Private: only the Formula DTOs and the catalog cache serialise.
             implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
+            // The settings sync's scope and flows, and in `jsMain` `await()` on the
+            // SDK's and `fetch`'s promises. `:domain` exposes it too; named here
+            // because this module uses it directly.
+            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
         }
 
         jsMain.dependencies {
-            // `await()` on the SDK's and `fetch`'s promises.
-            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
             // npm dependencies are only legal in a Kotlin/JS source set, and the
             // `@JsModule` externals that use it are browser-only anyway.
             implementation(npm("firebase", "12.17.0"))

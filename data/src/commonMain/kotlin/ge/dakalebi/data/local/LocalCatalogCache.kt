@@ -2,7 +2,6 @@ package ge.dakalebi.data.local
 
 import ge.dakalebi.core.Log
 import ge.dakalebi.domain.model.Episode
-import ge.dakalebi.domain.repository.CatalogCache
 import kotlinx.serialization.json.Json
 
 /**
@@ -47,25 +46,44 @@ class LocalCatalogCache(private val store: KeyValueStore) : CatalogCache {
         // A null stamp on either side means we cannot prove the cache is
         // current, so it is not used.
         if (stamp == null) return null
+        val entry = readEntry() ?: return null
+        return if (entry.stamp == stamp) entry.episodes.map { it.toDomain() } else null
+    }
+
+    override fun write(stamp: Double?, episodes: List<Episode>) {
+        if (stamp == null || episodes.isEmpty()) return
+        save(CachedCatalog(stamp, episodes.map { CachedEpisode.of(it) }))
+    }
+
+    /**
+     * Patches the entry in place, under the stamp it already has: a duration
+     * says nothing about whether the rest is current, which is the stamp's job.
+     */
+    override fun recordDuration(episodeId: String, durationSeconds: Int) {
+        val entry = readEntry() ?: return
+        if (entry.episodes.none { it.id == episodeId }) return
+        val episodes = entry.episodes.map {
+            if (it.id == episodeId) it.copy(durationSeconds = durationSeconds) else it
+        }
+        save(entry.copy(episodes = episodes))
+    }
+
+    private fun readEntry(): CachedCatalog? {
         val raw = runCatching { store.get(KEY) }
             .onFailure { Log.w("cache", "device storage unreadable", it) }
             .getOrNull() ?: return null
 
-        val entry = runCatching { json.decodeFromString(CachedCatalog.serializer(), raw) }
+        return runCatching { json.decodeFromString(CachedCatalog.serializer(), raw) }
             .onFailure {
                 // A shape change or a truncated write — not something to fail
                 // over. Drop it and fall back to the network.
                 Log.w("cache", "discarding unreadable catalog cache", it)
                 clear()
             }
-            .getOrNull() ?: return null
-
-        return if (entry.stamp == stamp) entry.episodes.map { it.toDomain() } else null
+            .getOrNull()
     }
 
-    override fun write(stamp: Double?, episodes: List<Episode>) {
-        if (stamp == null || episodes.isEmpty()) return
-        val entry = CachedCatalog(stamp, episodes.map { CachedEpisode.of(it) })
+    private fun save(entry: CachedCatalog) {
         val payload = runCatching { json.encodeToString(CachedCatalog.serializer(), entry) }
             .onFailure { Log.w("cache", "could not serialise catalog", it) }
             .getOrNull() ?: return
