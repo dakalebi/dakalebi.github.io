@@ -256,10 +256,11 @@ interface Strings {
 
     fun refreshSeasonProgress(done: Int, total: Int): String
     /**
-     * The rebuild's outcome. [caveaListed] is null when Cavea Plus's list could not
-     * be updated, and [caveaOnly] counts the episodes only Cavea has.
+     * The rebuild's outcome. [changed] is null when Formula's list could not be
+     * updated, [caveaListed] is null when Cavea Plus's could not, and [caveaOnly]
+     * counts the episodes only Cavea has.
      */
-    fun refreshed(episodes: Int, changed: Int, withoutVideo: Int, caveaListed: Int?, caveaOnly: Int): String
+    fun refreshed(episodes: Int, changed: Int?, withoutVideo: Int, caveaListed: Int?, caveaOnly: Int): String
 
     // ----------------------------------------------------------- player
     val play: String

@@ -182,14 +182,15 @@ object Ka : Strings {
     override val dataLoadFailed = "მონაცემები ვერ ჩაიტვირთა"
 
     override fun refreshSeasonProgress(done: Int, total: Int) = "სეზონი $done / $total"
-    override fun refreshed(episodes: Int, changed: Int, withoutVideo: Int, caveaListed: Int?, caveaOnly: Int): String {
+    override fun refreshed(episodes: Int, changed: Int?, withoutVideo: Int, caveaListed: Int?, caveaOnly: Int): String {
+        val formula = if (changed == null) "Formula-ს სია ვერ განახლდა" else "$episodes სერია, $changed შეიცვალა"
         val missing = if (withoutVideo > 0) " · $withoutVideo ვიდეოს გარეშე" else ""
         val cavea = when {
             caveaListed == null -> " · Cavea Plus-ის სია ვერ განახლდა"
             caveaOnly > 0 -> " · Cavea Plus: $caveaListed სერია, $caveaOnly მხოლოდ იქ"
             else -> " · Cavea Plus: $caveaListed სერია"
         }
-        return "განახლდა: $episodes სერია, $changed შეიცვალა$missing$cavea"
+        return "განახლდა: $formula$missing$cavea"
     }
 
     // ----------------------------------------------------------- player

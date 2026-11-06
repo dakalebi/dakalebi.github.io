@@ -198,6 +198,20 @@ class DashboardViewModelTest {
         assertEquals(S.refreshed(episodes.size, 0, 0, 990, 58), setup.lastToast?.message)
     }
 
+    /** Formula down and Cavea Plus up is still a rebuild: the toast says which part is old. */
+    @Test
+    fun a_rebuild_says_when_formula_s_list_was_not_updated() = runTest {
+        val setup = setup()
+        setup.catalogRepository.formulaWritten = null
+        setup.catalogRepository.caveaListed = 990
+        setup.catalogRepository.caveaOnly = 58
+
+        setup.dashboard.refreshCatalog()
+
+        assertEquals(S.refreshed(episodes.size, null, 0, 990, 58), setup.lastToast?.message)
+        assertEquals(ToastKind.Ok, setup.lastToast?.kind)
+    }
+
     @Test
     fun a_failed_rebuild_says_why() = runTest {
         val setup = setup()
