@@ -61,6 +61,7 @@ import org.jetbrains.compose.web.dom.Text
 import org.jetbrains.compose.web.dom.Ul
 import org.w3c.dom.HTMLElement
 import org.w3c.dom.Node
+import org.w3c.dom.asList
 import org.w3c.dom.events.Event
 import org.w3c.dom.events.KeyboardEvent
 
@@ -164,12 +165,15 @@ internal fun NowPlaying(
         }
     }
     // After the section, so its element is there to take focus.
-    SheetFocus(root, open = mode == PlayerMode.Sheet)
+    PlayerFocus(root, mode)
 }
 
 /** The player's root element, for the keys and the focus. */
 private class RootRef {
     var element: HTMLElement? = null
+
+    /** What had focus outside the player when it last opened, to go back to on close. */
+    var opener: HTMLElement? = null
 }
 
 /**
@@ -198,19 +202,64 @@ private fun PlayerKeys(player: WebPlayer, root: RootRef, enabled: Boolean, bodyC
 }
 
 /**
- * The sheet covers the app, so the page under it does not scroll, and focus moves into it
- * when it opens. It goes back to the page on its own: the sheet's elements leave.
+ * Focus follows the player, so its keys work as soon as it opens and the keyboard is not
+ * left on the page's body when it goes.
+ *
+ * - **Opening.** The sheet takes focus to its collapse button, its first control. The
+ *   panel takes it to play and pause: it opens beside the page, and its other controls
+ *   are many Tabs away.
+ * - **Shrinking** the sheet to the mini-player puts focus on the mini-player, which opens
+ *   it again.
+ * - **Closing** puts focus back on what opened the player, or, when that has left the
+ *   page, on the current tab's link.
+ *
+ * Focus moves back only when it was lost with the player's elements; a viewer who has
+ * moved on keeps their place. The sheet also covers the app, so the page under it does
+ * not scroll.
  */
 @Composable
-private fun SheetFocus(root: RootRef, open: Boolean) {
-    DisposableEffect(open) {
-        if (!open) return@DisposableEffect onDispose {}
+private fun PlayerFocus(root: RootRef, mode: PlayerMode) {
+    DisposableEffect(mode) {
+        val active = document.activeElement as? HTMLElement
+        if (active != null && active !== document.body && root.element?.contains(active) != true) {
+            root.opener = active
+        }
+        if (mode == PlayerMode.Mini) return@DisposableEffect onDispose {}
+
+        val sheet = mode == PlayerMode.Sheet
         val html = document.documentElement
-        html?.classList?.add("np-sheet-open")
-        root.element?.querySelector(".np-head .icon-button")?.let { (it as HTMLElement).focus() }
-        onDispose { html?.classList?.remove("np-sheet-open") }
+        if (sheet) html?.classList?.add("np-sheet-open")
+        val first = if (sheet) {
+            root.element?.querySelector(".np-head .icon-button")
+        } else {
+            root.element?.querySelector(".transport-primary") ?: root.element?.querySelector(".np-stage[tabindex]")
+        }
+        (first as? HTMLElement)?.focus()
+
+        onDispose {
+            if (sheet) html?.classList?.remove("np-sheet-open")
+            if (focusLost()) {
+                // Still on the page: the sheet shrank to the mini-player.
+                (root.element?.takeIf { it.isConnected }?.querySelector(".np-mini-open") as? HTMLElement)?.focus()
+            }
+        }
+    }
+    DisposableEffect(Unit) {
+        onDispose {
+            if (focusLost()) (root.opener?.takeIf { it.isConnected } ?: currentTabLink())?.focus()
+        }
     }
 }
+
+/** Whether focus went with a removed element and fell back to the page's body. */
+private fun focusLost(): Boolean = document.activeElement.let { it == null || it === document.body }
+
+/** The side menu's or the tab bar's link to the current tab, whichever is drawn. */
+private fun currentTabLink(): HTMLElement? =
+    document.querySelectorAll(".sidenav-item[aria-current=\"page\"], .tabbar-tab[aria-current=\"page\"]")
+        .asList()
+        .filterIsInstance<HTMLElement>()
+        .firstOrNull { it.getClientRects().length > 0 }
 
 /** The sheet's and the panel's top: collapse (phone only), the title, and close. */
 @Composable
@@ -255,7 +304,12 @@ private fun Stage(
             onDispose { player.stageIs(null) }
         }
         if (overlay) {
-            onMouseMove { player.revealControls() }
+            // A moving mouse or pen shows the controls; a finger does not. A tap also sends
+            // a `mousemove` for old pages, before its click, and that one showing the
+            // controls would make the click below pause instead of only showing them.
+            addEventListener("pointermove") { event ->
+                if (event.nativeEvent.asDynamic().pointerType != "touch") player.revealControls()
+            }
             onMouseLeave { player.hideControlsNow() }
         }
     }) {

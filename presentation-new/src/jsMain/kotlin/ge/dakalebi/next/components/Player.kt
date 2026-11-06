@@ -1,6 +1,7 @@
 package ge.dakalebi.next.components
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -35,9 +36,18 @@ fun Scrubber(
     attrs: ExtraAttrs? = null,
 ) {
     var dragging by remember { mutableStateOf<Double?>(null) }
+    val input = remember { InputRef() }
     val end = duration?.takeIf { it > 0 } ?: 0.0
     val shown = (dragging ?: position).coerceIn(0.0, max(end, 0.0))
     val percent = if (end > 0) shown / end * 100 else 0.0
+
+    // Straight on the element, not among the attributes below. Compose HTML answers any
+    // change in the attributes by removing them all and setting them again, `type`
+    // included, and a range that loses its type mid-drag drops the drag: no `change`, no
+    // seek. The spoken time changes every second, so it stays out of that set, which then
+    // only changes with the duration.
+    val spokenTime = "${formatTime(shown)} / ${formatTime(end)}"
+    SideEffect { input.element?.setAttribute("aria-valuetext", spokenTime) }
 
     Div({
         classes("scrub")
@@ -51,7 +61,11 @@ fun Scrubber(
             attr("step", "1")
             value(shown)
             attr("aria-label", S.timeline)
-            attr("aria-valuetext", "${formatTime(shown)} / ${formatTime(end)}")
+            ref { element ->
+                input.element = element
+                element.setAttribute("aria-valuetext", spokenTime)
+                onDispose { input.element = null }
+            }
             if (end <= 0) disabled()
             style { property("--scrub-value", "$percent%") }
             onInput { event -> dragging = event.value?.toDouble() }

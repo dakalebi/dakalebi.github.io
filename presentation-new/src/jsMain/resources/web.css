@@ -399,10 +399,22 @@
   gap: var(--gap-control);
 }
 
-/* On a phone the actions are a column of full-width buttons, like a list. */
+/* On a phone the actions are a column of full-width buttons, like a list. A label
+   longer than the button takes a second line rather than an ellipsis: the words are
+   all the button has. */
 .settings-actions {
   align-items: stretch;
   gap: var(--gap-control);
+}
+
+.settings-actions .button {
+  padding-block: var(--space-2);
+  white-space: normal;
+}
+
+.settings-actions .button-label {
+  line-height: var(--lh-125);
+  text-wrap: balance;
 }
 
 .settings-progress {
@@ -437,6 +449,28 @@
   font: var(--type-label-s);
   font-stretch: var(--type-label-s-stretch);
   letter-spacing: var(--type-label-s-tracking);
+}
+
+/* The longest label is one Georgian word of about 76px, and three cards across leave it
+   less on a narrow phone. Under 24rem the cards' sides give it room; under 22.5rem even
+   that is too little, and the figures stack, each a row with its label first. */
+@media (max-width: 23.99rem) {
+  .stat {
+    padding-inline: var(--space-3);
+  }
+}
+
+@media (max-width: 22.49rem) {
+  .stat-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-2);
+  }
+
+  .stat {
+    flex-direction: row-reverse;
+    align-items: baseline;
+    justify-content: space-between;
+  }
 }
 
 .settings-foot {
@@ -829,6 +863,60 @@
   flex: 1;
 }
 
+/* ----- phone on its side ------------------------------------------------------- */
+
+/* A picture as wide as the screen is taller than the screen here, so the pictures sit
+   beside their words instead of above them. */
+@media (orientation: landscape) and (max-width: 63.99rem) {
+  .continue {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+    align-items: center;
+  }
+
+  .continue-actions .button {
+    flex: none;
+  }
+
+  /* The open player: the picture on the left, the rest on the right in a column that
+     scrolls on its own, like the desktop's panel. The column is never narrower than the
+     transport. */
+  .np--sheet {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) minmax(calc(19rem + var(--safe-right)), 40%);
+  }
+
+  .np--sheet .np-head {
+    grid-column: 1 / -1;
+  }
+
+  /* 16:9 and as wide as its side, unless that is taller than the space below the head.
+     Then it is as tall as the space, and the video keeps its shape inside. */
+  .np--sheet .np-stage {
+    align-self: center;
+    width: calc(100% - var(--safe-left));
+    max-height: calc(100% - var(--safe-bottom));
+    margin: 0 0 var(--safe-bottom) var(--safe-left);
+  }
+
+  .np--sheet .np-stage:fullscreen {
+    width: 100%;
+    max-height: none;
+    margin: 0;
+  }
+
+  .np--sheet .np-stage:-webkit-full-screen {
+    width: 100%;
+    max-height: none;
+    margin: 0;
+  }
+
+  .np--sheet .np-body {
+    padding-left: var(--np-pad);
+  }
+}
+
 @media (min-width: 64rem) {
   .app {
     --toast-offset: 0px;
@@ -965,10 +1053,11 @@
     display: none;
   }
 
-  /* The still beside the words, not above them. */
+  /* The still beside the words, not above them. The words keep a line's width; the
+     still takes what is left, up to 24rem. */
   .continue {
     display: grid;
-    grid-template-columns: minmax(0, 24rem) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 24rem) minmax(17.5rem, 1fr);
     align-items: center;
     gap: var(--space-6);
   }
@@ -1031,5 +1120,19 @@
 
   .season-card {
     padding: var(--space-4) var(--space-2) var(--space-3);
+  }
+}
+
+/* With the panel open, the page between the menu and the panel is too narrow for the
+   still beside the words up to 75rem. The still goes back above them, as on a phone. */
+@media (min-width: 64rem) and (max-width: 74.99rem) {
+  .app--docked .continue {
+    display: flex;
+    align-items: stretch;
+  }
+
+  /* No bigger than beside the words. */
+  .app--docked .continue-still {
+    max-width: 24rem;
   }
 }
