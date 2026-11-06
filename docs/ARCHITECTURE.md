@@ -15,7 +15,8 @@ layer, with the web app on top.
 | `:core` | `commonMain`: logging and formatting policy. `jsMain`: the console and the clock, two `.js.kt` files | Depends on nothing. Every other module may use it |
 | `:domain` | models, repository interfaces, a use case per operation, pure queries | Depends on no other module, not even `:core`, and on one library: kotlinx-coroutines, for `Flow`. So "the domain names no framework" is the compile classpath and not only a convention |
 | `:data` | `commonMain`: the Formula API and DTOs, the settings sync (`SyncedSettingsRepository`), and the storage that is plain Kotlin over a `KeyValueStore`: the catalog cache, the settings device copy, guest progress, the guest choice, and `ViewerProgressRepository`, which routes progress between the account and the device. `jsMain`: `firebase` (Firestore and Auth through the JS SDK), `local` (the browser's `localStorage`), the system clock, and the bare GET | Every implementation of a domain repository. Depends on `:domain` and `:core` only, so it cannot name presentation, `i18n` or UI. Its caches are its own: no interface for them is in `:domain` |
-| `:presentation` | `commonMain`: the stores and ViewModels, the `Route` type, error wording, `i18n`, the composition locals. `jsMain`: `HashRouter`. `commonTest`: every unit test, for now | The screen state and the strings, so a second front end reuses them instead of reimplementing them. Depends on `:domain`, `:core`, Compose runtime and coroutines, and never on Compose HTML or the component library, so a front end with a different look reuses it as it is. Only its tests depend on `:data` |
+| `:presentation` | `commonMain`: the stores and ViewModels, the `Route` type, error wording, `i18n`, the composition locals. `jsMain`: `HashRouter` | The screen state and the strings, so a second front end reuses them instead of reimplementing them. Depends on `:domain`, `:core`, Compose runtime and coroutines, and never on Compose HTML or the component library, so a front end with a different look reuses it as it is. Only its tests depend on `:data` |
+| `:testing` | the fakes the modules' tests share: a clock, in-memory storage, the account's settings document, progress storage, and builders for episodes and progress | Test code only. No module's main code depends on it, so none of it reaches the bundle. A module, because Kotlin Multiplatform gives one module's tests no way to use another module's test code |
 | root | `ui` (Compose HTML) for all three shells (`/`, `/tv/`, `/drive/`), the composition root, `Main.kt` | The web app. It also owns the webpack build, so the GitHub Pages artifact path never moves |
 
 The root project stays the application deliberately: renaming it to `:web` would
@@ -82,7 +83,7 @@ so a change still reaches their state in the same call that made it.
 
 ## State holders
 
-Two kinds, while the refactor moves from one to the other.
+Two kinds, each for its own sort of state (the end of this section says which).
 
 - **Stores** (`CatalogStore`, `SettingsStore`, `PreferencesStore`, `ToastStore`,
   the `Router`) keep Compose `mutableStateOf` fields that a screen reads directly.
@@ -143,9 +144,9 @@ these returns nothing.
   not resolve today, but only because its build file does not list them, so the
   grep reads the build file too.
 - **`ui/` naming `:data`.** The root module depends on `:data`, because the
-  composition root (`di/`, `Main.kt`) builds the repositories. The rest of `ui/`
-  reaches data through the domain interfaces. `ui/dev/` is the fixture graph, a
-  second composition root, so it may.
+  composition roots (`di/`, `Main.kt`) build the repositories. `di/` holds both
+  `AppGraph` and the fixture graph. `ui/` reaches data through the domain
+  interfaces only.
 
 ```bash
 S=presentation/src/commonMain/kotlin/ge/dakalebi
@@ -153,7 +154,7 @@ grep -rn "kotlinx.browser\|org.w3c\|dynamic" domain/src/
 grep -rn "kotlinx.browser\|org.w3c\|compose.web\|dynamic" core/src/commonMain/ data/src/commonMain/ $S
 grep -rn "compose.web\|firebase" core/src/commonMain/ data/src/commonMain/ $S
 grep -rn "keel\|compose.web" presentation/ --exclude-dir=build
-grep -rn "import ge.dakalebi.data" src/jsMain/kotlin/ge/dakalebi/ui --exclude-dir=dev
+grep -rn "import ge.dakalebi.data" src/jsMain/kotlin/ge/dakalebi/ui
 ```
 
 ## Where a change goes
@@ -196,11 +197,12 @@ paths are in `:presentation` unless they say root.
 
 ## Testing
 
-`presentation/src/commonTest` (and one `jsTest` for the bare GET) runs on Node via
-`./gradlew allTests` — no browser, no Karma, about a second. The tests for
-`:domain`, `:core` and `:data` are still there too: they share fakes with the rest,
-and they move to their own modules in the cleanup phase. It covers
-the watched-threshold and never-rewind-a-finished-episode rules, the "continue
+Each module tests itself in its own `src/commonTest`, in the package of the code
+under test, and `./gradlew allTests` runs them all on Node: no browser, no Karma.
+`:data` also has one `jsTest`, for the bare GET. The fakes the modules share are in
+`:testing` (see the table above). `:presentation`'s tests also run the real
+settings sync from `:data` over those fakes, as a test dependency only. Together
+they cover the watched-threshold and never-rewind-a-finished-episode rules, the "continue
 watching" and next-to-play choices, episode ordering across season boundaries,
 hash-route parsing, settings sync (the merge rules, `SyncedSettingsRepository`,
 `SettingsStore`, the device copy), the session (guests, and what follows the
@@ -232,11 +234,14 @@ later state change is.
 - **`i18n.S` is a global.** It is a resource bundle behind an interface, already
   swappable through `I18n.use(tag)`. Routing it through a CompositionLocal
   would rewrite every line of UI text for no gain in substitutability.
-- **`ui/player/CustomVideoPlayer.kt` is still one 600-line composable.** It has
-  no layering violations — it takes a URL and a callback bundle and touches
-  nothing but the DOM. Splitting it means cutting a dense media state machine
-  apart, and it is the one part of this app that cannot be exercised without a
-  signed-in session and a playing video.
+- **Each player is still one large file.** `ui/player/CustomVideoPlayer.kt` (the
+  web, about 700 lines), `ui/tv/player/TvVideoPlayer.kt` (about 1,100) and
+  `ui/drive/DrivePlayer.kt` (about 700). They have no layering violations: the
+  playback rules are in `PlaybackViewModel`, and what is left is each platform's
+  media element, its controls and its timers. Splitting one means cutting a dense
+  media state machine apart, and the players are the one part of this app that
+  cannot be exercised without a real browser and a playing video. That is a change
+  of its own, checked on the devices, not part of a cleanup.
 - **`Firebase` is an object, not injected.** It is a lazily-initialised handle
   to the SDK, held inside `data/firebase` and named by nothing outside it. The
   repositories in front of it are what the rest of the app depends on.
