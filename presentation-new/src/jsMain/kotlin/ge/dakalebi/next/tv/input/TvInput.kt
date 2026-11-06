@@ -235,6 +235,11 @@ class TvInput {
         if (active is HTMLElement && scope.contains(active) &&
             (active.hasAttribute(ITEM_ATTR) || isTextEntry(active))
         ) {
+            // Focus is intact but the ring may have been cleared off it by a
+            // recomposition; this puts it back on the same element and moves nothing.
+            if (active.hasAttribute(ITEM_ATTR) && !active.hasAttribute(FOCUS_ATTR)) {
+                SpatialNav.ensureFocused(scope)
+            }
             // Focus is intact, but it may be sitting on a landing made before the
             // screen had any content to land on — the browse screen mounts with only
             // the navigation rail. This is where that gets finished, because it is the

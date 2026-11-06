@@ -217,6 +217,16 @@ internal fun along(from: Box, to: Box, direction: Direction): Double? {
 internal fun cross(from: Box, to: Box, direction: Direction): Double =
     if (direction.isHorizontal) abs(to.centreY - from.centreY) else abs(to.centreX - from.centreX)
 
+/**
+ * How far [to]'s start edge sits from [from]'s, on the axis the move is not along.
+ *
+ * The tie-break among items that all sit under a source (see [overlaps]): the one that
+ * lines up with its start is the next thing in reading order. Centres cannot say this
+ * when the items differ in width, because a wide item's centre is pulled inwards.
+ */
+internal fun startGap(from: Box, to: Box, direction: Direction): Double =
+    if (direction.isHorizontal) abs(to.top - from.top) else abs(to.left - from.left)
+
 /** Whether the two boxes share any extent on the axis the move is *not* along. */
 internal fun overlaps(from: Box, to: Box, direction: Direction): Boolean =
     if (direction.isHorizontal) {
