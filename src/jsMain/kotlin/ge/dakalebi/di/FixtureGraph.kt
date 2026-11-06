@@ -1,4 +1,4 @@
-package ge.dakalebi.ui.dev
+package ge.dakalebi.di
 
 import ge.dakalebi.data.AccountSettingsSource
 import ge.dakalebi.data.local.BrowserKeyValueStore
@@ -6,7 +6,6 @@ import ge.dakalebi.data.local.BrowserPreferencesRepository
 import ge.dakalebi.data.local.InMemoryKeyValueStore
 import ge.dakalebi.data.local.LocalProgressRepository
 import ge.dakalebi.data.local.LocalSettingsCache
-import ge.dakalebi.di.AppGraph
 import ge.dakalebi.domain.model.Account
 import ge.dakalebi.domain.model.Catalog
 import ge.dakalebi.domain.model.CatalogMeta
@@ -40,10 +39,10 @@ import org.w3c.dom.url.URLSearchParams
  * constructor parameter with a default, so this replaces the outside world and
  * nothing else. The stores, the use cases and the screens are the real ones.
  *
- * Reachable at `/tv/?ui=tv-demo` and `/?ui=demo`. Nothing in it is TV-specific — it
- * is episodes, progress, settings and an account — which is why it no longer lives in
- * the TV package. It ships in the bundle: a few hundred lines of fake data inside
- * 1.9MB is a fair price for two front ends that are otherwise unverifiable.
+ * Reachable at `/?ui=demo`, `/tv/?ui=tv-demo` and `/drive/?ui=drive-demo`. It is the
+ * second composition root, so it lives beside [AppGraph] in `di/` and, like it, may
+ * name `:data`. It ships in the bundle: a few hundred lines of fake data inside
+ * 1.9MB is a fair price for front ends that are otherwise unverifiable.
  */
 internal fun fixtureGraph(): AppGraph {
     val episodes = fixtureEpisodes()

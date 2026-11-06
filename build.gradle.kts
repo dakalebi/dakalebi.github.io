@@ -129,9 +129,9 @@ kotlin {
                 // UI and the composition root use both.
                 implementation(project(":core"))
                 implementation(project(":domain"))
-                // Only the composition root (`di/`, `Main.kt`) and the fixture graph
-                // (`ui/dev/`) may name it. The rest of `ui/` reaches data through
-                // the domain interfaces. docs/ARCHITECTURE.md has the grep.
+                // Only the composition roots (`di/`, with the fixture graph, and
+                // `Main.kt`) may name it. `ui/` reaches data through the domain
+                // interfaces. docs/ARCHITECTURE.md has the grep.
                 implementation(project(":data"))
                 implementation(project(":presentation"))
                 // The icon catalogue and the shared components. See the note on

@@ -9,7 +9,7 @@ import ge.dakalebi.ui.App
 import ge.dakalebi.ui.SetupNotice
 import ge.dakalebi.ui.Shell
 import ge.dakalebi.ui.blockPinchZoom
-import ge.dakalebi.ui.dev.fixtureGraph
+import ge.dakalebi.di.fixtureGraph
 import ge.dakalebi.ui.drive.DriveApp
 import ge.dakalebi.ui.shell
 import ge.dakalebi.ui.tv.TvApp
