@@ -43,7 +43,7 @@ No dependencies. Needs Node 18+.
 node --test
 ```
 
-One test decodes the exact link that `VlcPlaylistTest` in `:shared` pins, so a
+One test decodes the exact link that `VlcPlaylistTest` in `:presentation` pins, so a
 change to the link format has to pass on both sides. CI runs neither, so run both
 by hand.
 

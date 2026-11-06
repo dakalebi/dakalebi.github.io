@@ -46,7 +46,7 @@ import ge.dakalebi.domain.usecase.SyncUserSettings
 import ge.dakalebi.presentation.CatalogStore
 import ge.dakalebi.presentation.PreferencesStore
 import ge.dakalebi.presentation.HashRouter
-import ge.dakalebi.presentation.SessionStore
+import ge.dakalebi.presentation.SessionViewModel
 import ge.dakalebi.presentation.SettingsStore
 import ge.dakalebi.presentation.ToastStore
 import kotlinx.coroutines.CoroutineScope
@@ -108,7 +108,7 @@ class AppGraph(
         recordEpisodeDuration = RecordEpisodeDuration(catalogRepository),
     )
 
-    val session = SessionStore(
+    val session = SessionViewModel(
         observeAccount = ObserveAccount(accountRepository),
         checkAdminRights = CheckAdminRights(adminRepository),
         signInWithEmail = SignInWithEmail(accountRepository),
@@ -116,12 +116,13 @@ class AppGraph(
         sendPasswordResetUseCase = SendPasswordReset(accountRepository),
         signOutUseCase = SignOut(accountRepository),
         guestMode = guestModeRepository,
+        syncUserSettings = SyncUserSettings(settingsRepository),
+        catalog = catalog,
         scope = scope,
     )
 
     val settings = SettingsStore(
         observeUserSettings = ObserveUserSettings(settingsRepository),
-        syncUserSettings = SyncUserSettings(settingsRepository),
         changeUserSetting = ChangeUserSetting(settingsRepository),
         scope = scope,
     )

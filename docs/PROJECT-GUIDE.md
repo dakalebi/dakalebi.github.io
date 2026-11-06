@@ -216,7 +216,7 @@ unambiguous constructor calls.
 
 ### Tests on Node, not in a browser
 
-`:core`, `:domain`, `:shared` and the `commonMain` half of `:data` have no browser
+`:core`, `:domain`, `:presentation` and the `commonMain` half of `:data` have no browser
 in them, so `./gradlew allTests` runs their tests on Node in about a second.
 Standing up Karma and a headless Chrome to assert things about sorting would be
 slower and more fragile for no gain. The browser-facing code is tested by hand —
@@ -283,9 +283,14 @@ second, silently-empty store.
 `Account`. The SDK type never leaves that file, which is what makes the
 signed-in paths expressible in a test.
 
-`SessionStore.loading` is true until the provider reports the restored session.
-`App` waits for it before deciding anything — without that, a page load would
-flash the login screen at an already-signed-in user.
+`SessionViewModel`'s state has `loading` true until the provider reports the
+restored session. `App` waits for it before deciding anything — without that, a
+page load would flash the login screen at an already-signed-in user.
+
+The same ViewModel does what every shell root used to repeat: settings sync
+follows the account's uid, and the catalog is dropped when nobody is using the
+app. Both run in the app scope as the session changes, not in a composition.
+Each shell still loads the catalog itself, when its screens need it.
 
 **Email and password only.** Google sign-in was offered once and is gone: it was
 never used after the account moved to the console (see the admin-rights note
@@ -306,10 +311,10 @@ the code out of the dynamic object.
 ### Guest mode
 
 Who is using the app is a `Viewer` (`domain/model/Viewer.kt`): `Member(account)`
-or `Guest`. Every shell gates on `session.viewer` (null means the sign-in screen)
-and files progress under `session.viewerId`.
+or `Guest`. Every shell gates on the session state's `viewer` (null means the
+sign-in screen) and files progress under its `viewerId`.
 
-- **`uid` still means the account.** `SessionStore.uid` is null for a guest, and
+- **`uid` still means the account.** The session state's `uid` is null for a guest, and
   settings sync starts only with an account uid. That is the whole reason a
   guest's settings stay on the device: the settings repository changes the device
   copy and has no account to write to.
@@ -955,11 +960,12 @@ retry.
 
 ## 8. What is verified, and what is not
 
-**Automated.** `./gradlew allTests`, on Node, in `:shared` for now (184 tests
+**Automated.** `./gradlew allTests`, on Node, in `:presentation` for now (191 tests
 on 2026-11-06, covering `:core`, `:domain` and `:data` too), run by CI on every pull request and before every publish: the watched threshold, the never-rewind guard, "continue watching"
 and the next episode to play, ordering across season boundaries and the rest of a
 season, hash-route parsing, settings sync (the merge rules, the repository, the
-store, the device copy), guest sessions and guest storage, playback-failure classification, the
+store, the device copy), the session (guest choice, admin rights, and the
+settings sync and catalog reset that follow it), guest storage, playback-failure classification, the
 quality default, the iOS resume fragment, the VLC links and playlist encoding,
 TV seeking and interface size, timestamp formatting, toast dismissal, the catalog
 cache's stamp rule, its thirteen-field round trip and its duration patch, the bare

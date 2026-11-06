@@ -4,7 +4,7 @@ import androidx.compose.runtime.Composable
 import ge.dakalebi.core.BuildInfo
 import ge.dakalebi.core.formatDateTime
 import ge.dakalebi.di.catalog
-import ge.dakalebi.di.session
+import ge.dakalebi.di.sessionState
 import ge.dakalebi.di.settings
 import ge.dakalebi.di.toasts
 import ge.dakalebi.domain.model.Setting
@@ -45,7 +45,7 @@ fun MenuSheet(
     onSwitchToGuest: () -> Unit,
     busy: Boolean,
 ) {
-    val session = session()
+    val sessionState = sessionState()
     val catalog = catalog()
     val stats = catalog.stats
 
@@ -57,7 +57,7 @@ fun MenuSheet(
         Div {
             Div({ classes("eyebrow-mut") }) { Text(S.menu.caps) }
             Div({ style { property("font-size", "13px"); property("color", "var(--tx-dim)") } }) {
-                Text(if (session.isGuest) S.guestProgressNote else session.email ?: "")
+                Text(if (sessionState.isGuest) S.guestProgressNote else sessionState.email ?: "")
             }
         }
 
@@ -83,7 +83,7 @@ fun MenuSheet(
             // A link to another page, not a route: driving mode is its own shell with its
             // own stylesheet, the way `/tv/` is.
             A(href = driveHref(), attrs = { classes("sheet-item") }) { Text(S.driveMode.caps) }
-            if (session.isAdmin) {
+            if (sessionState.isAdmin) {
                 Button({
                     classes("sheet-item")
                     if (catalog.refreshing) attr("disabled", "")
@@ -100,7 +100,7 @@ fun MenuSheet(
                 if (busy) attr("disabled", "")
                 onClick { onResetAll() }
             }) { Text(S.resetAllProgress.caps) }
-            if (session.isGuest) {
+            if (sessionState.isGuest) {
                 Button({ classes("sheet-item"); onClick { onSignIn() } }) { Text(S.signIn.caps) }
             } else {
                 Button({ classes("sheet-item"); onClick { onSignOut() } }) { Text(S.signOut.caps) }

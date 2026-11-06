@@ -11,6 +11,7 @@ import ge.dakalebi.core.Log
 import ge.dakalebi.core.formatTime
 import ge.dakalebi.di.catalog
 import ge.dakalebi.di.session
+import ge.dakalebi.di.sessionState
 import ge.dakalebi.di.toasts
 import ge.dakalebi.domain.model.Episode
 import ge.dakalebi.i18n.S
@@ -59,11 +60,12 @@ private enum class Confirm { None, ResetAll, MarkSeason, ResetSeason }
 @Composable
 fun DashboardScreen() {
     val session = session()
+    val sessionState = sessionState()
     val catalog = catalog()
     val toasts = toasts()
     val scope = rememberCoroutineScope()
     // Whose progress this is: the account's, or a guest's on this device.
-    val uid = session.viewerId
+    val uid = sessionState.viewerId
 
     var menuOpen by remember { mutableStateOf(false) }
     var confirm by remember { mutableStateOf(Confirm.None) }
@@ -105,7 +107,7 @@ fun DashboardScreen() {
             )
 
             catalog.episodes.isEmpty() -> EmptyCatalog(
-                canRefresh = session.isAdmin,
+                canRefresh = sessionState.isAdmin,
                 refreshing = catalog.refreshing,
                 note = catalog.refreshNote,
                 onRefresh = { scope.refreshCatalog(catalog, toasts) },
@@ -263,6 +265,7 @@ private fun CoroutineScope.refreshCatalog(catalog: CatalogStore, toasts: ToastSt
 @Composable
 private fun DashboardNav(onMenu: () -> Unit) {
     val session = session()
+    val sessionState = sessionState()
     val catalog = catalog()
 
     Div({ classes("nav") }) {
@@ -279,7 +282,7 @@ private fun DashboardNav(onMenu: () -> Unit) {
                     Text(catalog.refreshNote ?: S.refreshing)
                 }
             }
-            if (session.isGuest) {
+            if (sessionState.isGuest) {
                 // A guest has no initial to show, and the one thing worth offering
                 // them up here is the way to an account.
                 Badge(label = S.guest.caps)
@@ -290,8 +293,8 @@ private fun DashboardNav(onMenu: () -> Unit) {
                     size = ButtonSize.Small,
                 )
             } else {
-                Div({ classes("avatar"); attr("title", session.email ?: "") }) {
-                    Text(session.email?.take(1)?.uppercase() ?: "?")
+                Div({ classes("avatar"); attr("title", sessionState.email ?: "") }) {
+                    Text(sessionState.email?.take(1)?.uppercase() ?: "?")
                 }
             }
         }

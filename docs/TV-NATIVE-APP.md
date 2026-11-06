@@ -15,7 +15,7 @@ finished and verified it rather than starting over.
 
 | Area | What `:tv` had before this work |
 |---|---|
-| Module | `tv/`, plain `Activity`, no AndroidX / Compose / `:shared`. AGP 9.0.0, compile/target SDK 36, min SDK 26. Included only when an Android SDK is visible (`settings.gradle.kts`) |
+| Module | `tv/`, plain `Activity`, no AndroidX / Compose / app modules. AGP 9.0.0, compile/target SDK 36, min SDK 26. Included only when an Android SDK is visible (`settings.gradle.kts`) |
 | Page | Loads `https://dakalebi.github.io/tv/`. JS, DOM storage, autoplay without a gesture, HTTPS only, UA gets a ` DakalebiTV/1.0 (AndroidTV)` suffix |
 | D-pad, OK | Left to the WebView. Chromium turns them into DOM `ArrowUp`/.../`Enter` keydowns |
 | Back | Consumed in `dispatchKeyEvent`, sent on key-up as `window.__tvShell.onBack()` |

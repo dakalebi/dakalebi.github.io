@@ -17,7 +17,7 @@ plugins {
 
 kotlin {
     js(IR) {
-        // As in `:shared`: the browser sub-target exists so the root module's
+        // As in `:presentation`: the browser sub-target exists so the root module's
         // webpack build can consume this klib, and tests run on Node.
         browser {
             testTask { enabled = false }

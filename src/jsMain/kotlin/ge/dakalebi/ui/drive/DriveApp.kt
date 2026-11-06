@@ -8,6 +8,7 @@ import ge.dakalebi.di.LocalResolveEpisodeVideo
 import ge.dakalebi.di.catalog
 import ge.dakalebi.di.router
 import ge.dakalebi.di.session
+import ge.dakalebi.di.sessionState
 import ge.dakalebi.di.settings
 import ge.dakalebi.i18n.S
 import ge.dakalebi.presentation.Route
@@ -46,7 +47,7 @@ fun DriveApp() {
             settings = settings,
             router = router,
             resolveVideo = resolveVideo,
-            viewerId = { session.viewerId },
+            viewerId = { session.state.value.viewerId },
         )
     }
 
@@ -58,24 +59,16 @@ fun DriveApp() {
     }
 
     val route = router.current
-    val account = session.account
+    val sessionState = sessionState()
     // Signed in or a guest: either way car mode, not the sign-in screen.
-    val viewer = session.viewer
+    val viewer = sessionState.viewer
 
     // The same gate and loading the TV root has. Keyed on the viewer, so a guest loads
-    // the catalog and their device progress too. Settings sync stays on the account: a
-    // guest has none, and their settings (autoplay, quality) stay on the device.
+    // the catalog and their device progress too. Settings sync and dropping the catalog
+    // on sign-out follow the session on their own (`SessionViewModel`).
     LaunchedEffect(viewer?.id) {
         val viewerId = viewer?.id
-        if (viewerId == null) {
-            player.stop()
-            catalog.reset()
-            settings.stop()
-        } else {
-            val uid = account?.uid
-            if (uid != null) settings.start(uid) else settings.stop()
-            catalog.ensureLoaded(viewerId)
-        }
+        if (viewerId == null) player.stop() else catalog.ensureLoaded(viewerId)
     }
 
     LaunchedEffect(S.tag) { document.documentElement?.setAttribute("lang", S.tag) }
@@ -83,7 +76,7 @@ fun DriveApp() {
 
     Div({ classes("drive-root") }) {
         when {
-            session.loading -> Div({ classes("drive-note") }) { Text(S.loading) }
+            sessionState.loading -> Div({ classes("drive-note") }) { Text(S.loading) }
             viewer == null -> LoginScreen()
             route is Route.Watch -> DrivePlayerScreen(route.episodeId, player)
             else -> DriveHomeScreen(player)

@@ -33,18 +33,21 @@ class SettingsStoreTest {
     @AfterTest
     fun restoreLanguage() = I18n.use("ka")
 
+    /** Which account it follows is the session's call, so the tests make it here. */
+    private var syncUserSettings: SyncUserSettings? = null
+
     private fun TestScope.store(device: FakeKeyValueStore, account: FakeAccountSettings): SettingsStore {
         val repository = SyncedSettingsRepository(account, LocalSettingsCache(device), backgroundScope)
+        syncUserSettings = SyncUserSettings(repository)
         return SettingsStore(
             observeUserSettings = ObserveUserSettings(repository),
-            syncUserSettings = SyncUserSettings(repository),
             changeUserSetting = ChangeUserSetting(repository),
             scope = backgroundScope,
         )
     }
 
-    private fun TestScope.signIn(store: SettingsStore, uid: String = "u") {
-        store.start(uid)
+    private fun TestScope.signIn(uid: String = "u") {
+        checkNotNull(syncUserSettings)(uid)
         runCurrent()
     }
 
@@ -63,7 +66,7 @@ class SettingsStoreTest {
     fun a_change_is_on_screen_before_set_returns() = runTest {
         val account = FakeAccountSettings(stored = UserSettings())
         val settings = store(FakeKeyValueStore(), account)
-        signIn(settings)
+        signIn()
 
         settings.toggle(Setting.AutoplayNext, off)
 
@@ -76,7 +79,7 @@ class SettingsStoreTest {
     fun a_change_on_another_device_reaches_the_screen() = runTest {
         val account = FakeAccountSettings(stored = UserSettings())
         val settings = store(FakeKeyValueStore(), account)
-        signIn(settings)
+        signIn()
 
         account.changeElsewhere(UserSettings().with(Setting.UseNativePlayer, false))
         runCurrent()
@@ -92,7 +95,7 @@ class SettingsStoreTest {
     fun a_failed_sync_is_reported_and_keeps_the_change() = runTest {
         val account = FakeAccountSettings(stored = UserSettings().with(Setting.AutoplayNext, false))
         val settings = store(FakeKeyValueStore(), account)
-        signIn(settings)
+        signIn()
         account.writesSucceed = false
         var reported = false
 
@@ -107,7 +110,7 @@ class SettingsStoreTest {
     fun the_language_reaches_the_string_catalogue() = runTest {
         val account = FakeAccountSettings(stored = UserSettings())
         val settings = store(FakeKeyValueStore(), account)
-        signIn(settings)
+        signIn()
 
         settings.set(Setting.Language, "en", off)
         runCurrent()
@@ -120,7 +123,7 @@ class SettingsStoreTest {
     fun a_language_picked_on_another_device_reaches_the_string_catalogue() = runTest {
         val account = FakeAccountSettings(stored = UserSettings().with(Setting.Language, "ka"))
         val settings = store(FakeKeyValueStore(), account)
-        signIn(settings)
+        signIn()
 
         account.changeElsewhere(UserSettings().with(Setting.Language, "en"))
         runCurrent()

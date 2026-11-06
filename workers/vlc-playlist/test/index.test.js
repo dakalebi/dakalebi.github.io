@@ -151,7 +151,7 @@ test('answers 400, 404 and 405 where it should', async () => {
 
 /**
  * The link the site builds, character for character, as pinned by
- * `the_link_the_worker_test_reads` in shared/src/commonTest/.../VlcPlaylistTest.kt.
+ * `the_link_the_worker_test_reads` in presentation/src/commonTest/.../VlcPlaylistTest.kt.
  */
 const SITE_LINK = 'vlc-x-callback://x-callback-url/stream?url=' +
   'https%3A%2F%2Fdakalebi-vlc.example.workers.dev%2Fplaylist.m3u%3Fstart%3D754' +

@@ -7,8 +7,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import ge.dakalebi.di.catalog
 import ge.dakalebi.di.router
-import ge.dakalebi.di.session
-import ge.dakalebi.di.settings
+import ge.dakalebi.di.sessionState
 import ge.dakalebi.di.toasts
 import ge.dakalebi.i18n.S
 import ge.dakalebi.presentation.Route
@@ -54,15 +53,13 @@ fun TvApp() {
     val refs = remember { TvRefs() }
     val input = remember { TvInput() }
     val router = router()
-    val session = session()
+    val sessionState = sessionState()
     val catalog = catalog()
-    val settings = settings()
     val toasts = toasts()
 
     val route = router.current
-    val account = session.account
     // Signed in or a guest: either way the app, not the sign-in screen.
-    val viewer = session.viewer
+    val viewer = sessionState.viewer
 
     /*
      * Assigned here rather than in an effect, and read straight off `route`. Focus
@@ -217,27 +214,22 @@ fun TvApp() {
         }
     }
 
-    // The signed-in account's data, and the account's own settings. Both are
-    // LaunchedEffects because both are ordinary app behaviour that wants the real
-    // frame clock; the fixture path pre-loads instead so the screens are complete
-    // on the first paint. See `Main.kt`.
+    // The viewer's data. A LaunchedEffect because it is ordinary app behaviour that
+    // wants the real frame clock; the fixture path pre-loads instead so the screens
+    // are complete on the first paint. See `Main.kt`.
     //
     // Keyed on the viewer, so a guest loads the catalog and their device progress
-    // too. Settings sync and the admin check stay on the account: a guest has
-    // neither, and their settings stay on the device.
+    // too. Settings sync and dropping the catalog on sign-out follow the session on
+    // their own (`SessionViewModel`). No admin check: this shell has no admin
+    // controls to show.
     LaunchedEffect(viewer?.id) {
         val viewerId = viewer?.id
         if (viewerId == null) {
-            catalog.reset()
-            settings.stop()
             // One account's place in a rail is not another's, and neither is the
             // season they were part-way through.
             FocusMemory.clear()
             BrowseState.clear()
         } else {
-            val uid = account?.uid
-            if (uid != null) settings.start(uid) else settings.stop()
-            session.refreshAdminRights()
             catalog.ensureLoaded(viewerId)
         }
     }
@@ -268,7 +260,7 @@ fun TvApp() {
             if (showRail) TvNavRail(route = route)
 
             when {
-                session.loading -> Div({ classes("tv-note") }) { Text(S.loading) }
+                sessionState.loading -> Div({ classes("tv-note") }) { Text(S.loading) }
                 viewer == null -> LoginScreen()
                 route is Route.Settings -> TvSettingsScreen()
                 route is Route.Watch -> TvWatchScreen(route.episodeId)

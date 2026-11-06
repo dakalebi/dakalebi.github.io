@@ -19,15 +19,16 @@ dependencyResolutionManagement {
 // out of `build/dist/js/productionExecutable` and the deploy workflow needs no
 // path change.
 //
-// `:core` (logging, formatting, the clock) and `:domain` (models, repository
-// interfaces, use cases) depend on nothing. `:data` implements the domain's
-// repositories: the Formula API, Firebase, device storage. `:shared` holds the
-// rest of the plain-Kotlin code: the string catalogue and the state holders,
-// until `:presentation` takes it over.
+// `:core` (logging, formatting, the clock) depends on nothing. `:domain` (models,
+// repository interfaces, use cases) depends only on kotlinx-coroutines, for
+// `Flow`. `:data` implements the domain's repositories: the Formula API,
+// Firebase, device storage. `:presentation` holds the state holders, the routes
+// and the string catalogue, on Compose runtime but not Compose HTML, so a second
+// front end can reuse them.
 include(":core")
 include(":domain")
 include(":data")
-include(":shared")
+include(":presentation")
 
 // The icon catalogue, the shared components (`Button`, `Switch`, `Dialog`, ...)
 // and two small utilities (`classNames`, `DismissOnEscape`) that used to be

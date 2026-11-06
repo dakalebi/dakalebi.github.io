@@ -7,7 +7,6 @@ import ge.dakalebi.domain.model.Setting
 import ge.dakalebi.domain.model.UserSettings
 import ge.dakalebi.domain.usecase.ChangeUserSetting
 import ge.dakalebi.domain.usecase.ObserveUserSettings
-import ge.dakalebi.domain.usecase.SyncUserSettings
 import ge.dakalebi.i18n.I18n
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -19,12 +18,12 @@ import kotlinx.coroutines.launch
  * catalogue.
  *
  * The sync itself — this device's copy against the account, offline changes,
- * one write per setting — is the settings repository's, in `:data`. This holds
- * what it reports, so a screen that reads a setting recomposes when it changes.
+ * one write per setting — is the settings repository's, in `:data`, and which
+ * account it follows is [SessionViewModel]'s business. This holds what it
+ * reports, so a screen that reads a setting recomposes when it changes.
  */
 class SettingsStore(
     observeUserSettings: ObserveUserSettings,
-    private val syncUserSettings: SyncUserSettings,
     private val changeUserSetting: ChangeUserSetting,
     /**
      * The app's own scope, never a screen's: [set] runs in it, so closing the
@@ -57,12 +56,6 @@ class SettingsStore(
     fun applyCachedLanguage() {
         current[Setting.Language]?.let(I18n::use)
     }
-
-    /** Attaches to the signed-in account. */
-    fun start(uid: String) = syncUserSettings(uid)
-
-    /** Detaches. This device's unconfirmed changes stay marked for their account. */
-    fun stop() = syncUserSettings(null)
 
     /**
      * Changes [setting] now and records it for the account.
