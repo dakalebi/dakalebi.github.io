@@ -1,45 +1,17 @@
 package ge.dakalebi.domain
 
 import ge.dakalebi.domain.model.Account
-import ge.dakalebi.domain.model.Catalog
-import ge.dakalebi.domain.model.CatalogMeta
-import ge.dakalebi.domain.model.Episode
-import ge.dakalebi.domain.model.RefreshResult
-import ge.dakalebi.domain.model.Setting
-import ge.dakalebi.domain.model.UserSettings
 import ge.dakalebi.domain.model.Viewer
-import ge.dakalebi.domain.repository.AccountRepository
-import ge.dakalebi.domain.repository.AdminRepository
-import ge.dakalebi.domain.repository.CatalogRepository
-import ge.dakalebi.domain.repository.GuestModeRepository
-import ge.dakalebi.domain.repository.SettingsRepository
-import ge.dakalebi.domain.usecase.CheckAdminRights
-import ge.dakalebi.domain.usecase.ClearEpisodeProgress
-import ge.dakalebi.domain.usecase.LoadCatalog
-import ge.dakalebi.domain.usecase.LoadProgress
-import ge.dakalebi.domain.usecase.MarkSeasonWatched
-import ge.dakalebi.domain.usecase.ObserveAccount
-import ge.dakalebi.domain.usecase.RecordEpisodeDuration
-import ge.dakalebi.domain.usecase.RefreshCatalog
-import ge.dakalebi.domain.usecase.ResetAllProgress
-import ge.dakalebi.domain.usecase.ResetSeasonProgress
-import ge.dakalebi.domain.usecase.SaveProgress
-import ge.dakalebi.domain.usecase.SendPasswordReset
-import ge.dakalebi.domain.usecase.SignInWithEmail
-import ge.dakalebi.domain.usecase.SignOut
-import ge.dakalebi.domain.usecase.SignUpWithEmail
-import ge.dakalebi.domain.usecase.SyncUserSettings
 import ge.dakalebi.presentation.CatalogStore
 import ge.dakalebi.presentation.SessionUiState
 import ge.dakalebi.presentation.SessionViewModel
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -49,8 +21,10 @@ import kotlin.test.assertTrue
  * The rules worth pinning down: an account always wins over the guest choice,
  * signing in ends guest mode, switching to guest never shows the sign-in screen
  * in between, and a guest is never asked about the account backend. And the
- * work every shell used to repeat: settings sync follows the account, and the
- * catalog is dropped when nobody is using the app.
+ * work every shell used to repeat: settings sync follows the account, the
+ * catalog loads for each viewer, and it is dropped when nobody is using the app.
+ *
+ * The fakes are in `SessionFakes.kt`, shared with the screen ViewModels' tests.
  */
 class SessionViewModelTest {
 
@@ -63,20 +37,7 @@ class SessionViewModelTest {
         guestMode: MemoryGuestMode = MemoryGuestMode(),
         settings: RecordingSettingsRepository = RecordingSettingsRepository(),
         catalog: CatalogStore = catalogStore(),
-    ) = SessionViewModel(
-        observeAccount = ObserveAccount(accounts),
-        checkAdminRights = CheckAdminRights(admins),
-        signInWithEmail = SignInWithEmail(accounts),
-        signUpWithEmail = SignUpWithEmail(accounts),
-        sendPasswordResetUseCase = SendPasswordReset(accounts),
-        signOutUseCase = SignOut(accounts),
-        guestMode = guestMode,
-        syncUserSettings = SyncUserSettings(settings),
-        catalog = catalog,
-        // Everything follows the account unconfined, so it needs nothing from
-        // the scope but a place to live.
-        scope = CoroutineScope(Dispatchers.Unconfined),
-    ).also { it.start() }
+    ) = sessionViewModel(accounts, admins, guestMode, settings, catalog)
 
     private val SessionViewModel.now: SessionUiState get() = state.value
 
@@ -290,101 +251,79 @@ class SessionViewModelTest {
         assertTrue(store.loadError != null)
     }
 
-    private fun catalogStore(
-        catalog: CatalogRepository = StubCatalogRepository(),
-        progress: FakeProgressRepository = FakeProgressRepository(),
-    ): CatalogStore {
-        val clock = FakeClock()
-        return CatalogStore(
-            loadCatalog = LoadCatalog(catalog),
-            loadProgress = LoadProgress(progress),
-            refreshCatalogUseCase = RefreshCatalog(catalog, clock),
-            saveProgressUseCase = SaveProgress(progress, clock),
-            clearEpisodeProgress = ClearEpisodeProgress(progress),
-            markSeasonWatchedUseCase = MarkSeasonWatched(progress, clock),
-            resetSeasonProgressUseCase = ResetSeasonProgress(progress),
-            resetAllProgressUseCase = ResetAllProgress(progress),
-            recordEpisodeDuration = RecordEpisodeDuration(catalog),
-        )
-    }
-}
+    // ------------------------------------------------------------ loading
 
-/** An auth provider the test drives by hand. */
-private class ScriptedAccountRepository(
-    initial: Account? = null,
-    private val signOutFails: Boolean = false,
-) : AccountRepository {
-    override val account = MutableStateFlow(initial)
-    var signOuts = 0
-        private set
+    @Test
+    fun a_viewer_arriving_loads_their_catalog() {
+        val accounts = ScriptedAccountRepository()
+        val catalog = catalogStore()
+        session(accounts = accounts, catalog = catalog)
+        assertTrue(catalog.episodes.isEmpty(), "nobody is watching yet")
 
-    /** Runs as the sign-out starts, before the provider reports it. */
-    var onSignOut: () -> Unit = {}
+        accounts.emit(account)
 
-    fun emit(account: Account?) {
-        this.account.value = account
+        assertEquals(2, catalog.episodes.size)
+        assertFalse(catalog.loading)
     }
 
-    override suspend fun signIn(email: String, password: String) = Unit
-    override suspend fun signUp(email: String, password: String) = Unit
-    override suspend fun sendPasswordReset(email: String) = Unit
+    @Test
+    fun a_guest_from_the_last_visit_loads_at_start() {
+        val catalog = catalogStore()
 
-    override suspend fun signOut() {
-        onSignOut()
-        if (signOutFails) throw IllegalStateException("network")
-        signOuts++
-        emit(null)
-    }
-}
+        session(guestMode = MemoryGuestMode(value = true), catalog = catalog)
 
-private class RecordingAdminRepository : AdminRepository {
-    val asked = mutableListOf<String>()
-
-    override suspend fun isAdmin(uid: String): Boolean {
-        asked += uid
-        return true
-    }
-}
-
-private class MemoryGuestMode(var value: Boolean = false) : GuestModeRepository {
-    override fun isGuest() = value
-
-    override fun setGuest(value: Boolean) {
-        this.value = value
-    }
-}
-
-/** Which account the settings sync was attached to, in order. A stop is null. */
-private class RecordingSettingsRepository : SettingsRepository {
-    val attached = mutableListOf<String?>()
-
-    override val settings = MutableStateFlow(UserSettings())
-
-    override fun start(uid: String) {
-        attached += uid
+        assertEquals(2, catalog.episodes.size)
     }
 
-    override fun stop() {
-        attached += null
+    @Test
+    fun the_same_viewer_reported_again_does_not_load_again() {
+        val accounts = ScriptedAccountRepository(initial = account)
+        val repository = StubCatalogRepository()
+        session(accounts = accounts, catalog = catalogStore(repository))
+
+        accounts.emit(account.copy(emailVerified = false))
+
+        assertEquals(1, repository.loads)
     }
 
-    override suspend fun <T : Any> set(setting: Setting<T>, value: T) = true
-}
+    /** The account's load must not land after the reset that signing out made. */
+    @Test
+    fun signing_out_stops_a_load_still_running() {
+        val gate = CompletableDeferred<Unit>()
+        val accounts = ScriptedAccountRepository(initial = account)
+        val catalog = catalogStore(StubCatalogRepository().apply { loadGate = gate })
+        session(accounts = accounts, catalog = catalog)
+        assertTrue(catalog.loading)
 
-private class StubCatalogRepository : CatalogRepository {
-    var fails = false
-    private val episodes = listOf(episode(1, 1, id = "e1"), episode(1, 2, id = "e2"))
+        accounts.emit(null)
+        gate.complete(Unit)
 
-    override suspend fun load(): Catalog {
-        if (fails) throw IllegalStateException("offline")
-        return Catalog(episodes, CatalogMeta(1.0, 1, episodes.size))
+        assertTrue(catalog.episodes.isEmpty())
+        assertTrue(catalog.loading, "so the next viewer loads afresh")
+        assertNull(catalog.loadError, "a stopped load is not a failed one")
     }
 
-    override suspend fun listEpisodes() = episodes
-    override suspend fun getMeta() = CatalogMeta(1.0, 1, episodes.size)
-    override suspend fun refresh(nowMillis: Double, onProgress: (Int, Int) -> Unit) =
-        RefreshResult(1, episodes.size, 0, 0, episodes)
+    @Test
+    fun a_failed_load_is_retried_for_the_same_viewer() {
+        val repository = StubCatalogRepository().apply { fails = true }
+        val catalog = catalogStore(repository)
+        val session = session(accounts = ScriptedAccountRepository(initial = account), catalog = catalog)
+        assertNotNull(catalog.loadError)
 
-    override suspend fun resolveVideo(episode: Episode) = episode
-    override suspend fun recordDuration(episodeId: String, durationSeconds: Int) = Unit
+        repository.fails = false
+        session.retryCatalogLoad()
+
+        assertNull(catalog.loadError)
+        assertEquals(2, catalog.episodes.size)
+    }
+
+    @Test
+    fun retrying_with_nobody_watching_loads_nothing() {
+        val repository = StubCatalogRepository()
+        val session = session(catalog = catalogStore(repository))
+
+        session.retryCatalogLoad()
+
+        assertEquals(0, repository.loads)
+    }
 }

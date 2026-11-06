@@ -19,6 +19,9 @@ import ge.dakalebi.domain.usecase.RefreshCatalog
 import ge.dakalebi.domain.usecase.ResetAllProgress
 import ge.dakalebi.domain.usecase.ResetSeasonProgress
 import ge.dakalebi.domain.usecase.SaveProgress
+import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * The catalog and this viewer's progress, as Compose state.
@@ -68,13 +71,26 @@ class CatalogStore(
 
     private var loadedFor: String? = null
 
+    /** One load at a time, so a second caller waits for the first instead of fetching again. */
+    private val loadLock = Mutex()
+
     // -------------------------------------------------------------- loading
 
-    suspend fun ensureLoaded(uid: String) {
+    /**
+     * Loads the catalog and [uid]'s progress, unless that is already on screen.
+     *
+     * A call made while another load runs waits for it, then loads only if what
+     * it left is not [uid]'s. So the session's load and the fixture's preload in
+     * `Main.kt` fetch once between them.
+     *
+     * A cancelled load is not a failed one. It leaves no error and stays loading,
+     * because whoever cancelled it is about to load for the next viewer or reset.
+     */
+    suspend fun ensureLoaded(uid: String): Unit = loadLock.withLock {
         // `loadError != null` deliberately re-enters. Without it a single
         // failed read latched permanently: the guard matched on every later
         // call, so the retry button — and any navigation — was a no-op.
-        if (loadedFor == uid && !loading && loadError == null) return
+        if (loadedFor == uid && !loading && loadError == null) return@withLock
         // Another viewer's progress must not carry over to this one, not for the
         // frames the load takes and not after it fails. Switching from an account
         // to guest mode goes straight from one viewer to the other.
@@ -87,10 +103,12 @@ class CatalogStore(
             episodes = catalog.episodes
             meta = catalog.meta
             progress = loadProgress(uid)
+            loading = false
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Throwable) {
             Log.e("catalog", "load failed for uid=$uid", e)
             loadError = e
-        } finally {
             loading = false
         }
     }

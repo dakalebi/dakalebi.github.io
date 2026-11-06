@@ -11,8 +11,11 @@ import ge.dakalebi.domain.usecase.SignOut
 import ge.dakalebi.domain.usecase.SignUpWithEmail
 import ge.dakalebi.domain.usecase.SyncUserSettings
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 
 /** Who is signed in, or browsing as a guest. */
 data class SessionUiState(
@@ -57,15 +60,13 @@ data class SessionUiState(
  *
  * - settings sync follows the account. A guest has no settings document, so for
  *   a guest the sync stops and settings stay on the device;
+ * - the catalog and the viewer's progress load when someone starts using the
+ *   app, and again for each new viewer;
  * - the catalog is dropped when nobody is using the app.
  *
- * Both run in the app's scope the moment the state changes, not in a
- * composition, so they wait for no frame and do not depend on which shell is on
- * screen.
- *
- * Loading the catalog is not here. Each shell loads when its screens need it, and
- * [CatalogStore.ensureLoaded] does not join a load that is already running, so a
- * second caller here would fetch everything twice.
+ * All of it runs in the app's scope the moment the state changes, not in a
+ * composition, so it waits for no frame and does not depend on which shell or
+ * screen is showing.
  */
 class SessionViewModel(
     private val observeAccount: ObserveAccount,
@@ -100,9 +101,33 @@ class SessionViewModel(
         // comes back as permission errors. Switching from an account to guest
         // mode never passes through nobody, so it keeps the episodes; the
         // guest's own load replaces the account's progress.
+        //
+        // The previous viewer's load stops first, so its progress can never land
+        // after the next viewer's, or after the reset.
         scope.follow(state.map { it.viewerId }.distinctUntilChanged()) { viewerId ->
-            if (viewerId == null) catalog.reset()
+            catalogLoad?.cancel()
+            if (viewerId == null) catalog.reset() else loadCatalog(viewerId)
         }
+    }
+
+    /** The load running for the current viewer, if any. */
+    private var catalogLoad: Job? = null
+
+    /**
+     * Loads the catalog again after a load failed: the retry on the screens that
+     * show the failure. Nothing else loads it a second time.
+     */
+    fun retryCatalogLoad() {
+        state.value.viewerId?.let(::loadCatalog)
+    }
+
+    /**
+     * Undispatched, so the store marks itself loading, and drops the previous
+     * viewer's progress, in the same call that changed the viewer.
+     */
+    private fun loadCatalog(viewerId: String) {
+        catalogLoad?.cancel()
+        catalogLoad = scope.launch(start = CoroutineStart.UNDISPATCHED) { catalog.ensureLoaded(viewerId) }
     }
 
     /** Enters the app without an account. */

@@ -5,7 +5,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import ge.dakalebi.core.formatTime
 import ge.dakalebi.di.catalog
@@ -24,7 +23,6 @@ import ge.dakalebi.ui.useFixtures
 import io.github.bchmsl.keel.dom.classNames
 import io.github.bchmsl.keel.icons.Icon
 import io.github.bchmsl.keel.icons.LucideIcon
-import kotlinx.coroutines.launch
 import org.jetbrains.compose.web.attributes.disabled
 import org.jetbrains.compose.web.dom.A
 import org.jetbrains.compose.web.dom.Button
@@ -44,7 +42,6 @@ import kotlin.math.ceil
 internal fun DriveHomeScreen(player: DrivePlayer) {
     val catalog = catalog()
     val session = session()
-    val scope = rememberCoroutineScope()
 
     Div({ classes("drive-screen") }) {
         Div({ classes("drive-top") }) {
@@ -65,7 +62,7 @@ internal fun DriveHomeScreen(player: DrivePlayer) {
                     Div({ classes("drive-note") }) { Text(S.catalogUnavailable) }
                     Button({
                         classes("drive-btn")
-                        onClick { session.state.value.viewerId?.let { id -> scope.launch { catalog.ensureLoaded(id) } } }
+                        onClick { session.retryCatalogLoad() }
                     }) { Text(S.retry.caps) }
                 }
                 episode == null -> Div({ classes("drive-note") }) { Text(S.emptyBody) }

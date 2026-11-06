@@ -57,12 +57,11 @@ fun DriveApp() {
     // Signed in or a guest: either way car mode, not the sign-in screen.
     val viewer = sessionState.viewer
 
-    // The same gate and loading the TV root has. Keyed on the viewer, so a guest loads
-    // the catalog and their device progress too. Settings sync and dropping the catalog
-    // on sign-out follow the session on their own (`SessionViewModel`).
+    // Nobody watching stops the car's player. Loading the viewer's catalog, settings sync
+    // and dropping the catalog on sign-out follow the session on their own
+    // (`SessionViewModel`).
     LaunchedEffect(viewer?.id) {
-        val viewerId = viewer?.id
-        if (viewerId == null) player.stop() else catalog.ensureLoaded(viewerId)
+        if (viewer == null) player.stop()
     }
 
     LaunchedEffect(S.tag) { document.documentElement?.setAttribute("lang", S.tag) }

@@ -1,7 +1,6 @@
 package ge.dakalebi.ui.dashboard
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -72,8 +71,6 @@ fun DashboardScreen() {
     var seasonOverride by remember { mutableStateOf<Int?>(null) }
     var busy by remember { mutableStateOf(false) }
 
-    LaunchedEffect(uid) { if (uid != null) catalog.ensureLoaded(uid) }
-
     val season = seasonOverride ?: catalog.defaultSeason
     val episodes = season?.let { catalog.season(it) } ?: emptyList()
     val inProgress = catalog.inProgress(limit = 12)
@@ -103,7 +100,7 @@ fun DashboardScreen() {
 
             catalog.loadError != null -> LoadFailed(
                 message = ErrorMessages.catalogLoad(catalog.loadError),
-                onRetry = { uid?.let { id -> scope.launch { catalog.ensureLoaded(id) } } },
+                onRetry = session::retryCatalogLoad,
             )
 
             catalog.episodes.isEmpty() -> EmptyCatalog(

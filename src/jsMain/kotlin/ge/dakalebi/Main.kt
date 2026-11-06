@@ -91,7 +91,9 @@ fun main() {
         MainScope().launch {
             // The fixture reports its viewer synchronously, so it is known here: a
             // guest loads as the guest. Signed out loads as the account, ready for
-            // the sign-in the fixture accepts.
+            // the sign-in the fixture accepts. With a viewer, the session has
+            // already started this load, and this waits for it rather than
+            // fetching again.
             runCatching { graph.catalog.ensureLoaded(graph.session.state.value.viewerId ?: FIXTURE_UID) }
                 .onFailure { Log.e("boot", "fixture load failed", it) }
             render()
