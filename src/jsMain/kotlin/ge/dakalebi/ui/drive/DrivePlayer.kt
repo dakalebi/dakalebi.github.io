@@ -7,14 +7,12 @@ import ge.dakalebi.core.Log
 import ge.dakalebi.domain.model.Episode
 import ge.dakalebi.domain.service.COMPACT_SCREEN_MAX_QUALITY
 import ge.dakalebi.domain.service.withStartFragment
-import ge.dakalebi.i18n.S
 import ge.dakalebi.presentation.CatalogStore
 import ge.dakalebi.presentation.PlaybackError
 import ge.dakalebi.presentation.PlaybackViewModel
 import ge.dakalebi.presentation.PlaybackViewModelFactory
 import ge.dakalebi.presentation.Route
 import ge.dakalebi.presentation.Router
-import ge.dakalebi.ui.assetBase
 import ge.dakalebi.ui.player.VideoPlayhead
 import ge.dakalebi.ui.player.isAppleMobile
 import ge.dakalebi.ui.player.isCompactScreen
@@ -28,8 +26,6 @@ import kotlinx.coroutines.launch
 import org.w3c.dom.HTMLElement
 import org.w3c.dom.HTMLVideoElement
 import org.w3c.dom.events.Event
-import org.w3c.dom.url.URL
-import kotlin.js.json
 import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.max
@@ -46,9 +42,6 @@ private const val SEEK_TOLERANCE = 1.0
 
 /** A stream that never accepts the resume seek plays from where it is, rather than fighting forever. */
 private const val MAX_RESUME_ATTEMPTS = 8
-
-/** `new MediaMetadata(init)`. Only constructed after checking the browser has it. */
-private external class MediaMetadata(init: dynamic)
 
 /**
  * Driving mode's player: one native `<video>` for the whole visit, and the big controls
@@ -75,9 +68,11 @@ private external class MediaMetadata(init: dynamic)
  * **The rules are shared.** Each episode opened gets its own [PlaybackViewModel], the one
  * the web and TV watch screens use: it picks the file, saves (every seven seconds, on
  * pause, at the end), makes the one retry after an error and clears progress. What stays
- * here is this player's: the element, its resume, the media session and the wake lock.
- * The resume stays because the skip buttons count from the saved spot until it lands,
- * and because a finished episode starts over here rather than resuming near its end.
+ * here is this player's: the element and its resume, and when to call the media session
+ * ([DriveMediaSession]), the wake lock ([ScreenWakeLock]) and full screen
+ * ([enterVideoFullscreen]), which each have a file of their own. The resume stays
+ * because the skip buttons count from the saved spot until it lands, and because a
+ * finished episode starts over here rather than resuming near its end.
  */
 internal class DrivePlayer(
     private val catalog: CatalogStore,
@@ -148,8 +143,17 @@ internal class DrivePlayer(
 
     /** The viewer's intent, as opposed to the element's state: a reload after a failed load keeps it. */
     private var wantsToPlay = false
-    private var wakeLock: dynamic = null
-    private var wakeLockPending = false
+
+    /** A lock granted after a pause is let go at once. */
+    private val wakeLock = ScreenWakeLock(stillWanted = { playing })
+
+    private val mediaSession = DriveMediaSession(
+        play = ::playNow,
+        pause = ::pause,
+        skip = ::skip,
+        next = ::next,
+        seek = ::seek,
+    )
 
     private val current: Episode? get() = episodeId?.let { catalog.byId(it) }
 
@@ -191,13 +195,13 @@ internal class DrivePlayer(
         // drops it whenever the page is hidden.
         val onVisibility: (Event) -> Unit = {
             if (document.asDynamic().visibilityState == "hidden") persist()
-            else if (playing) acquireWakeLock()
+            else if (playing) wakeLock.acquire()
         }
         val onPageHide: (Event) -> Unit = { persist() }
         document.addEventListener("visibilitychange", onVisibility)
         window.addEventListener("pagehide", onPageHide)
 
-        installMediaSession()
+        mediaSession.install()
 
         return {
             persist()
@@ -206,8 +210,8 @@ internal class DrivePlayer(
             mediaEvents.forEach { (type, handler) -> video.removeEventListener(type, handler) }
             document.removeEventListener("visibilitychange", onVisibility)
             window.removeEventListener("pagehide", onPageHide)
-            clearMediaSession()
-            releaseWakeLock()
+            mediaSession.clear()
+            wakeLock.release()
         }
     }
 
@@ -268,7 +272,7 @@ internal class DrivePlayer(
         resumeAttempts = 0
         // Timed saves count from the saved spot, not from 0:00.
         rules.jumpedTo(resumeTarget ?: 0.0)
-        updateMetadata(episode)
+        mediaSession.showEpisode(episode)
 
         val chosen = rules.state.value
         val url = chosen.videoUrl
@@ -358,53 +362,12 @@ internal class DrivePlayer(
     }
 
     /**
-     * The picture, full screen. Call from a tap: every browser refuses otherwise.
-     *
-     * The standard Fullscreen API where the page may use it (desktop, Android, iPad).
-     * An iPhone has none for a page, only its own video player, which
-     * `webkitEnterFullscreen` opens on this element. Either way the picture is the
-     * element with its native controls, so leaving is the browser's own button, swipe
-     * or Escape.
+     * The picture, full screen, once [fullscreenReady]. Call from a tap: every browser
+     * refuses otherwise. See [enterVideoFullscreen].
      */
     fun enterFullscreen() {
         if (!fullscreenReady) return
-        val doc = document.asDynamic()
-        val element = video.asDynamic()
-        when {
-            doc.fullscreenEnabled == true && jsTypeOf(element.requestFullscreen) == "function" -> {
-                val request = runCatching { element.requestFullscreen() }
-                    .onFailure { Log.w("drive", "requestFullscreen threw", it) }
-                if (request.isFailure) {
-                    enterNativeFullscreen()
-                } else {
-                    // A refusal arrives later, as a rejected promise. Older engines return nothing.
-                    val promise = request.getOrNull()
-                    if (promise != null && jsTypeOf(promise.then) == "function") {
-                        promise.catch { error: dynamic ->
-                            Log.w("drive", "requestFullscreen refused: ${error?.name}")
-                            enterNativeFullscreen()
-                        }
-                    }
-                }
-            }
-            doc.webkitFullscreenEnabled == true && jsTypeOf(element.webkitRequestFullscreen) == "function" ->
-                runCatching { element.webkitRequestFullscreen() }.onFailure {
-                    Log.w("drive", "webkitRequestFullscreen threw", it)
-                    enterNativeFullscreen()
-                }
-            else -> enterNativeFullscreen()
-        }
-    }
-
-    /** iPhone: Safari's own fullscreen video player. */
-    private fun enterNativeFullscreen() {
-        val element = video.asDynamic()
-        if (jsTypeOf(element.webkitEnterFullscreen) != "function") {
-            Log.w("drive", "no way to go full screen in this browser")
-            return
-        }
-        runCatching { element.webkitEnterFullscreen() }
-            .onFailure { Log.w("drive", "webkitEnterFullscreen refused", it) }
+        enterVideoFullscreen(video)
     }
 
     /** Relative to the saved position while the resume has not landed yet, not to 0:00. */
@@ -437,7 +400,7 @@ internal class DrivePlayer(
         episodeId = null
         playing = false
         resumeTarget = null
-        runCatching { mediaSession?.metadata = null }
+        mediaSession.clearEpisode()
     }
 
     private fun playNow() {
@@ -465,7 +428,7 @@ internal class DrivePlayer(
             .onFailure { Log.w("drive", "seek to ${clamped}s rejected", it) }
         position = floor(clamped).toInt()
         viewModel?.jumpedTo(clamped)
-        updatePositionState()
+        mediaSession.updatePosition(video)
     }
 
     private fun advanceTo(episode: Episode) {
@@ -484,15 +447,15 @@ internal class DrivePlayer(
         failure = reason
         playing = false
         buffering = false
-        releaseWakeLock()
-        runCatching { mediaSession?.playbackState = "paused" }
+        wakeLock.release()
+        mediaSession.setPlaybackState("paused")
     }
 
     // --------------------------------------------------------------- events
 
     private fun onDurationKnown() {
         duration = video.duration.takeIf { it.isFinite() && it > 0 }?.let { floor(it).toInt() }
-        updatePositionState()
+        mediaSession.updatePosition(video)
     }
 
     private fun onTimeUpdate() {
@@ -502,7 +465,7 @@ internal class DrivePlayer(
         val whole = floor(time).toInt()
         if (whole != position) {
             position = whole
-            updatePositionState()
+            mediaSession.updatePosition(video)
         }
         // Saves every seven seconds of playback.
         viewModel?.onTimeUpdate()
@@ -513,8 +476,8 @@ internal class DrivePlayer(
     private fun onPlay() {
         wantsToPlay = true
         playing = true
-        acquireWakeLock()
-        runCatching { mediaSession?.playbackState = "playing" }
+        wakeLock.acquire()
+        mediaSession.setPlaybackState("playing")
     }
 
     private fun onPause() {
@@ -523,8 +486,8 @@ internal class DrivePlayer(
         if (video.error == null) wantsToPlay = false
         playing = false
         persist()
-        releaseWakeLock()
-        runCatching { mediaSession?.playbackState = "paused" }
+        wakeLock.release()
+        mediaSession.setPlaybackState("paused")
     }
 
     private fun onEnded() {
@@ -575,7 +538,7 @@ internal class DrivePlayer(
                 resumeTarget = null
                 viewModel?.jumpedTo(target)
                 position = floor(target).toInt()
-                updatePositionState()
+                mediaSession.updatePosition(video)
             }
             return
         }
@@ -595,118 +558,5 @@ internal class DrivePlayer(
     private fun persist(isWatched: Boolean? = null) {
         if (resumeTarget != null && isWatched == null) return
         viewModel?.save(isWatched)
-    }
-
-    // -------------------------------------------------------- media session
-
-    /**
-     * The lock screen, Control Center, a Bluetooth head unit and the steering-wheel
-     * buttons all reach the page through this one object. `undefined` where unsupported.
-     */
-    private val mediaSession: dynamic get() = window.navigator.asDynamic().mediaSession
-
-    private val actions: List<Pair<String, (dynamic) -> Unit>> = listOf(
-        "play" to { _ -> playNow() },
-        "pause" to { _ -> pause() },
-        // The system may say how far its own skip button goes. Honour it, so the icon it
-        // draws and the distance moved agree.
-        "seekbackward" to { details -> skip(-((details?.seekOffset as? Double) ?: SKIP_SECONDS)) },
-        "seekforward" to { details -> skip((details?.seekOffset as? Double) ?: SKIP_SECONDS) },
-        // Steering-wheel "previous" goes back 30 seconds rather than a whole episode: a
-        // press by mistake should cost half a minute, not an episode.
-        "previoustrack" to { _ -> skip(-SKIP_SECONDS) },
-        "nexttrack" to { _ -> next() },
-        "seekto" to { details -> (details?.seekTime as? Double)?.let { seek(it) } },
-    )
-
-    private fun installMediaSession() {
-        val session = mediaSession ?: return
-        for ((action, handler) in actions) {
-            // A browser throws for an action it does not know. The others still count.
-            runCatching { session.setActionHandler(action, handler) }
-                .onFailure { Log.d("drive", "media session has no '$action' action") }
-        }
-    }
-
-    private fun clearMediaSession() {
-        val session = mediaSession ?: return
-        for ((action, _) in actions) runCatching { session.setActionHandler(action, null) }
-    }
-
-    private fun updateMetadata(episode: Episode) {
-        val session = mediaSession ?: return
-        if (jsTypeOf(window.asDynamic().MediaMetadata) != "function") return
-        val init: dynamic = json(
-            "title" to S.seasonAndEpisode(episode.seasonNumber, episode.episodeNumber),
-            "artist" to S.seriesTitle,
-            "album" to S.driveMode,
-            "artwork" to arrayOf(
-                json(
-                    // Absolute: the lock screen does not resolve against this page.
-                    "src" to URL("${assetBase}icon-512.png", window.location.href).href,
-                    "sizes" to "512x512",
-                    "type" to "image/png",
-                ),
-            ),
-        )
-        runCatching { session.metadata = MediaMetadata(init) }
-            .onFailure { Log.w("drive", "media session metadata rejected", it) }
-    }
-
-    /** Lets the system draw a moving progress bar. Throws if position exceeds duration. */
-    private fun updatePositionState() {
-        val session = mediaSession ?: return
-        val total = video.duration
-        if (!total.isFinite() || total <= 0 || jsTypeOf(session.setPositionState) != "function") return
-        runCatching {
-            session.setPositionState(
-                json(
-                    "duration" to total,
-                    "playbackRate" to video.playbackRate,
-                    "position" to min(max(video.currentTime, 0.0), total),
-                ),
-            )
-        }
-    }
-
-    // ----------------------------------------------------------- wake lock
-
-    /**
-     * Keeps the screen on while the episode plays, so the phone does not lock in its
-     * mount mid-episode. Released on pause. The browser releases it by itself whenever
-     * the page is hidden, and it can only be asked for while the page is visible.
-     */
-    private fun acquireWakeLock() {
-        if (wakeLock != null || wakeLockPending) return
-        if (document.asDynamic().visibilityState != "visible") return
-        val api = window.navigator.asDynamic().wakeLock ?: return
-        wakeLockPending = true
-        runCatching {
-            api.request("screen").then(
-                { lock: dynamic ->
-                    wakeLockPending = false
-                    if (playing) {
-                        wakeLock = lock
-                        lock.addEventListener("release", { _: dynamic -> if (wakeLock === lock) wakeLock = null })
-                    } else {
-                        // Paused while the request was in flight.
-                        lock.release()
-                    }
-                },
-                { error: dynamic ->
-                    wakeLockPending = false
-                    Log.w("drive", "screen wake lock refused: ${error?.name}")
-                },
-            )
-        }.onFailure {
-            wakeLockPending = false
-            Log.w("drive", "screen wake lock unavailable", it)
-        }
-    }
-
-    private fun releaseWakeLock() {
-        val lock = wakeLock ?: return
-        wakeLock = null
-        runCatching { lock.release() }
     }
 }
