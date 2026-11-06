@@ -204,9 +204,10 @@ The consoles are yours; the code is already written against them.
 |---|---|---|
 | A push to `master` | the site root, `/` | `deploy.yml` |
 | A pull request from this repository | `/pr/<number>/`, rebuilt on each push, removed when it closes | `checks.yml` |
+| A push to `redesign/develop` | `/redesign/`, rebuilt on each push | `redesign.yml` |
 
-To try a branch on the real site, open a draft pull request. There is no shared
-preview branch.
+To try a branch on the real site, open a draft pull request. The one long-running
+branch with a folder of its own is `redesign/develop`, for the redesign.
 
 - **`gh-pages` is the site's state, kept as one commit.**
   `tools/publish-site.sh` rewrites one folder and replaces that commit; the
@@ -216,11 +217,11 @@ preview branch.
   needed) whose `css-classes` check passes. No force pushes or deletion, and
   admins are included. By convention, pull requests are squash-merged.
 - **Settings → Environments → github-pages → Deployment branches** must allow
-  `master` and `refs/pull/*/merge`. Pull request runs are matched by their merge
-  ref, not their branch name, so without the last one every preview fails at the
-  deploy step.
+  `master`, `refs/pull/*/merge` and `redesign/develop`. Pull request runs are
+  matched by their merge ref, not their branch name, so without the second one
+  every preview fails at the deploy step.
 
-Every folder, `/pr/<n>/` included, talks to the **same Firebase project** as
+Every folder, `/pr/<n>/` and `/redesign/` included, talks to the **same Firebase project** as
 production, because the config is compiled in. Anything done on a preview is real
 data.
 

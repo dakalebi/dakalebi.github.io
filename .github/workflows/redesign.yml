@@ -1,0 +1,83 @@
+name: Deploy redesign
+
+# The long-running redesign branch, published on every push:
+#
+#   redesign/develop  https://dakalebi.github.io/redesign/  /redesign/tv/  /redesign/drive/
+#
+# Same build and guard as deploy.yml, then the same publish.yml, into the
+# `redesign` folder. That folder is the branch's own: a production publish keeps
+# it (tools/publish-site.sh, `owned_elsewhere`).
+#
+# A push uses the workflow file from the commit it pushes, so this runs only while
+# `redesign/develop` carries this file. A branch cut from master after it landed does.
+#
+# The deploy job needs `redesign/develop` in Settings -> Environments ->
+# github-pages -> Deployment branches. Without it the folder is written to
+# `gh-pages` but the deploy is refused, and the folder only goes live with the
+# next deploy of anything else.
+#
+# Like every folder, /redesign/ talks to the production Firebase project.
+# Anything done there is real data.
+
+on:
+  push:
+    branches: [redesign/develop]
+  workflow_dispatch:
+
+# The ceiling for the publish workflow's jobs, which ask for what they need.
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+# One run at a time, queued rather than cancelled, so the branch's newest commit is
+# always the last one written.
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      # A manual run from another branch would otherwise put that branch on /redesign/.
+      - name: Only redesign/develop publishes from here
+        if: github.ref_name != 'redesign/develop'
+        run: |
+          echo "::error::${GITHUB_REF_NAME} does not publish to /redesign/. Only redesign/develop does."
+          exit 1
+
+      # keel is a submodule that settings.gradle.kts includes as a build.
+      - name: Check out the branch being published
+        uses: actions/checkout@v5
+        with:
+          submodules: true
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build Kotlin/JS bundle
+        run: ./gradlew jsBrowserDistribution
+
+      - name: Every emitted CSS class is styleable on the shell that draws it
+        run: python3 tools/check-css-classes.py
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: site-build
+          path: build/dist/js/productionExecutable
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    needs: build
+    uses: ./.github/workflows/publish.yml
+    with:
+      folder: redesign
+      artifact: site-build

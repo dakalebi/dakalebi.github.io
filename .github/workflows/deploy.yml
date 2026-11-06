@@ -1,9 +1,10 @@
 name: Deploy to GitHub Pages
 
-# Two kinds of publisher, one site:
+# Three kinds of publisher, one site:
 #
-#   master        https://dakalebi.github.io/              /tv/  /drive/
-#   pull request  https://dakalebi.github.io/pr/<number>/  (checks.yml)
+#   master            https://dakalebi.github.io/              /tv/  /drive/
+#   pull request      https://dakalebi.github.io/pr/<number>/  (checks.yml)
+#   redesign/develop  https://dakalebi.github.io/redesign/     (redesign.yml)
 #
 # Each one builds only itself and owns one folder of the site; publish.yml holds
 # how a folder is written and how the site is deployed. Rebuilding everything on
