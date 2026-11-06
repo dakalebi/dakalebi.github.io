@@ -1,4 +1,4 @@
-package ge.dakalebi.ui.drive
+package ge.dakalebi.next.drive
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -13,9 +13,9 @@ import ge.dakalebi.presentation.PlaybackViewModel
 import ge.dakalebi.presentation.PlaybackViewModelFactory
 import ge.dakalebi.presentation.Route
 import ge.dakalebi.presentation.Router
-import ge.dakalebi.ui.player.VideoPlayhead
-import ge.dakalebi.ui.player.isAppleMobile
-import ge.dakalebi.ui.player.isCompactScreen
+import ge.dakalebi.next.player.VideoPlayhead
+import ge.dakalebi.next.player.isAppleMobile
+import ge.dakalebi.next.player.isCompactScreen
 import kotlinx.browser.document
 import kotlinx.browser.window
 import kotlinx.coroutines.Job
@@ -32,7 +32,7 @@ import kotlin.math.max
 import kotlin.math.min
 
 /** How far the big skip buttons, and the steering wheel's previous-track button, move. */
-internal const val SKIP_SECONDS = 30.0
+const val SKIP_SECONDS = 30.0
 
 /** Resuming a nearly finished episode stops this far short, so it does not end at once. */
 private const val END_MARGIN = 5.0
@@ -74,7 +74,7 @@ private const val MAX_RESUME_ATTEMPTS = 8
  * because the skip buttons count from the saved spot until it lands, and because a
  * finished episode starts over here rather than resuming near its end.
  */
-internal class DrivePlayer(
+class DrivePlayer(
     private val catalog: CatalogStore,
     private val router: Router,
     /** Makes the rules for each episode opened. */

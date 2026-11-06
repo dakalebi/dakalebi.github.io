@@ -5,6 +5,10 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import ge.dakalebi.domain.service.orderedQualityLabels
 import ge.dakalebi.i18n.S
+import ge.dakalebi.next.player.PlayerEvents
+import ge.dakalebi.next.player.PlayerKeyAction
+import ge.dakalebi.next.player.PlayerKeyPolicy
+import ge.dakalebi.next.player.mapPlayerKey
 import io.github.bchmsl.keel.components.ProgressBar
 import io.github.bchmsl.keel.components.Spinner
 import io.github.bchmsl.keel.components.SpinnerSize

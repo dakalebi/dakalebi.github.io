@@ -9,6 +9,7 @@ import ge.dakalebi.di.catalog
 import ge.dakalebi.di.router
 import ge.dakalebi.di.sessionState
 import ge.dakalebi.i18n.S
+import ge.dakalebi.next.drive.DrivePlayer
 import ge.dakalebi.presentation.Route
 import ge.dakalebi.ui.LoginScreen
 import ge.dakalebi.ui.ToastHost

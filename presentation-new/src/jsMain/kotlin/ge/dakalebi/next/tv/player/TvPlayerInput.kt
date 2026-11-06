@@ -1,19 +1,19 @@
-package ge.dakalebi.ui.tv.player
+package ge.dakalebi.next.tv.player
 
-import ge.dakalebi.ui.tv.focus.Direction
-import ge.dakalebi.ui.tv.focus.GROUP_ATTR
-import ge.dakalebi.ui.tv.focus.ITEM_ATTR
-import ge.dakalebi.ui.tv.focus.SpatialNav
-import ge.dakalebi.ui.tv.input.Key
-import ge.dakalebi.ui.tv.input.MediaAction
-import ge.dakalebi.ui.tv.input.TvLayer
+import ge.dakalebi.next.tv.focus.Direction
+import ge.dakalebi.next.tv.focus.GROUP_ATTR
+import ge.dakalebi.next.tv.focus.ITEM_ATTR
+import ge.dakalebi.next.tv.focus.SpatialNav
+import ge.dakalebi.next.tv.input.Key
+import ge.dakalebi.next.tv.input.MediaAction
+import ge.dakalebi.next.tv.input.TvLayer
 import org.w3c.dom.HTMLElement
 
 /**
  * The player's input layer: what Back, the D-pad, OK and the media keys do in each
- * [Mode]. [TvVideoPlayer] pushes it for as long as it is on the page.
+ * [Mode]. `TvVideoPlayer` pushes it for as long as it is on the page.
  */
-internal fun playerLayer(player: TvPlayerState): TvLayer {
+fun playerLayer(player: TvPlayerState): TvLayer {
     val refs = player.refs
     return TvLayer(
         key = "tv-player",
@@ -174,7 +174,7 @@ internal fun playerLayer(player: TvPlayerState): TvLayer {
  * platform gives a settings popup, and the thing that was missing when the engine
  * was free to walk out of the menu into whatever happened to be nearby on screen.
  */
-internal fun qualityMenuLayer(player: TvPlayerState): TvLayer =
+fun qualityMenuLayer(player: TvPlayerState): TvLayer =
     TvLayer(
         key = "tv-quality",
         root = { player.refs.qualityMenu },

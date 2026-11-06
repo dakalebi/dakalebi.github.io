@@ -1,10 +1,10 @@
-package ge.dakalebi.ui.tv.focus
+package ge.dakalebi.next.tv.focus
 
 import kotlinx.browser.window
 import org.w3c.dom.Element
 import org.w3c.dom.HTMLElement
 
-internal enum class Axis { X, Y }
+enum class Axis { X, Y }
 
 /**
  * Focus without letting the browser scroll for us.
@@ -35,7 +35,7 @@ internal fun HTMLElement.focusWithoutScrolling() {
  * for smooth scrolling is a styling decision, and `scroll-behavior` on the
  * container already expresses it.
  */
-internal fun centre(item: HTMLElement, axes: Set<Axis>, within: Element) {
+fun centre(item: HTMLElement, axes: Set<Axis>, within: Element) {
     val xScroller = if (Axis.X in axes) scrollableAncestor(item, Axis.X, within) else null
     val yScroller = if (Axis.Y in axes) scrollableAncestor(item, Axis.Y, within) else null
     if (xScroller == null && yScroller == null) return

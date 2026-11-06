@@ -1,4 +1,4 @@
-package ge.dakalebi.ui.tv
+package ge.dakalebi.next.tv
 
 import ge.dakalebi.domain.model.InterfaceScale
 import kotlinx.browser.document

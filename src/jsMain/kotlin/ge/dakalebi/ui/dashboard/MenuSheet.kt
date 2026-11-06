@@ -11,8 +11,8 @@ import ge.dakalebi.domain.model.Setting
 import ge.dakalebi.i18n.I18n
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
-import ge.dakalebi.ui.drive.driveHref
-import ge.dakalebi.ui.player.isAppleMobile
+import ge.dakalebi.next.drive.driveHref
+import ge.dakalebi.next.player.isAppleMobile
 import io.github.bchmsl.keel.components.Drawer
 import io.github.bchmsl.keel.components.DrawerEdge
 import io.github.bchmsl.keel.components.ProgressBar

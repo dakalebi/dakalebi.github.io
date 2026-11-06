@@ -1,4 +1,4 @@
-package ge.dakalebi.ui.drive
+package ge.dakalebi.next.drive
 
 import ge.dakalebi.core.Log
 import kotlinx.browser.document

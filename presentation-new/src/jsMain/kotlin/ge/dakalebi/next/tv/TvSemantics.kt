@@ -1,4 +1,4 @@
-package ge.dakalebi.ui.tv
+package ge.dakalebi.next.tv
 
 import org.jetbrains.compose.web.attributes.AttrsScope
 import org.w3c.dom.Element
@@ -45,7 +45,7 @@ import org.w3c.dom.Element
  * [busy] is the same idea for work in flight, and is what tells a screen reader that a
  * press *was* registered when the only other evidence is a word changing.
  */
-internal fun <T : Element> AttrsScope<T>.actsAsButton(
+fun <T : Element> AttrsScope<T>.actsAsButton(
     accessibleName: String? = null,
     disabled: Boolean = false,
     busy: Boolean = false,
@@ -63,7 +63,7 @@ internal fun <T : Element> AttrsScope<T>.actsAsButton(
  * know a press opened anything — and no way to know it is already open, which turns
  * "close the menu" into a guess.
  */
-internal fun <T : Element> AttrsScope<T>.ownsPopup(expanded: Boolean) {
+fun <T : Element> AttrsScope<T>.ownsPopup(expanded: Boolean) {
     attr("aria-haspopup", "menu")
     attr("aria-expanded", expanded.toString())
 }
@@ -76,13 +76,13 @@ internal fun <T : Element> AttrsScope<T>.ownsPopup(expanded: Boolean) {
  * say which one is on. Pair with [actsAsOptionGroup] on the container, since a lone
  * radio has nothing to be exclusive within.
  */
-internal fun <T : Element> AttrsScope<T>.actsAsOption(selected: Boolean) {
+fun <T : Element> AttrsScope<T>.actsAsOption(selected: Boolean) {
     attr("role", "radio")
     attr("aria-checked", selected.toString())
 }
 
 /** The container for [actsAsOption] items. */
-internal fun <T : Element> AttrsScope<T>.actsAsOptionGroup(label: String? = null) {
+fun <T : Element> AttrsScope<T>.actsAsOptionGroup(label: String? = null) {
     attr("role", "radiogroup")
     label?.let { attr("aria-label", it) }
 }

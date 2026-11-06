@@ -15,11 +15,13 @@ import ge.dakalebi.domain.model.Episode
 import ge.dakalebi.domain.service.vlcOpenUrl
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
+import ge.dakalebi.next.drive.DrivePlayer
+import ge.dakalebi.next.drive.SKIP_SECONDS
 import ge.dakalebi.presentation.ErrorMessages
 import ge.dakalebi.presentation.Route
 import ge.dakalebi.ui.ConfirmDialog
-import ge.dakalebi.ui.player.isAppleMobile
-import ge.dakalebi.ui.useFixtures
+import ge.dakalebi.next.player.isAppleMobile
+import ge.dakalebi.next.useFixtures
 import io.github.bchmsl.keel.dom.classNames
 import io.github.bchmsl.keel.icons.Icon
 import io.github.bchmsl.keel.icons.LucideIcon

@@ -1,8 +1,8 @@
 package ge.dakalebi.ui.watch
 
 import ge.dakalebi.core.Log
+import ge.dakalebi.next.player.AirPlayClock
 import ge.dakalebi.presentation.Playhead
-import ge.dakalebi.ui.player.AirPlayClock
 import org.w3c.dom.HTMLVideoElement
 
 /**

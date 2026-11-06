@@ -27,12 +27,12 @@ import ge.dakalebi.ui.ConfirmDialog
 import ge.dakalebi.ui.EpisodeRow
 import ge.dakalebi.ui.ExternalLink
 import ge.dakalebi.ui.UpNextList
-import ge.dakalebi.ui.drive.driveHref
+import ge.dakalebi.next.drive.driveHref
 import ge.dakalebi.ui.player.CustomVideoPlayer
 import ge.dakalebi.ui.player.NativeVideoPlayer
-import ge.dakalebi.ui.player.PlayerEvents
-import ge.dakalebi.ui.player.isAppleMobile
-import ge.dakalebi.ui.player.isCompactScreen
+import ge.dakalebi.next.player.PlayerEvents
+import ge.dakalebi.next.player.isAppleMobile
+import ge.dakalebi.next.player.isCompactScreen
 import io.github.bchmsl.keel.components.Callout
 import io.github.bchmsl.keel.components.CalloutBody
 import io.github.bchmsl.keel.components.CalloutTone

@@ -1,4 +1,4 @@
-package ge.dakalebi.ui.tv.focus
+package ge.dakalebi.next.tv.focus
 
 import kotlinx.browser.document
 import org.w3c.dom.Element
@@ -32,7 +32,7 @@ import kotlin.math.abs
  * every tile on every keypress, which is the difference between smooth and
  * unusable on a 2019 television.
  */
-internal object SpatialNav {
+object SpatialNav {
 
     private val focusListeners = mutableListOf<(HTMLElement) -> Unit>()
 

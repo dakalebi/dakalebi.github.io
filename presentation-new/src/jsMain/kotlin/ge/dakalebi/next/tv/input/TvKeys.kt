@@ -1,6 +1,6 @@
-package ge.dakalebi.ui.tv.input
+package ge.dakalebi.next.tv.input
 
-import ge.dakalebi.ui.tv.focus.Direction
+import ge.dakalebi.next.tv.focus.Direction
 import org.w3c.dom.events.KeyboardEvent
 
 /** What a press means, once the platform's spelling has been sorted out. */

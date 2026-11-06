@@ -1,4 +1,4 @@
-package ge.dakalebi.ui.tv
+package ge.dakalebi.next.tv
 
 /**
  * The TV UI's tunable numbers, in one place.
@@ -15,7 +15,7 @@ package ge.dakalebi.ui.tv
  * that does *not* belong here: it is a property of [ge.dakalebi.presentation.TvSeek],
  * lives in shared code, and has its own tests.
  */
-internal object TvConfig {
+object TvConfig {
 
     /**
      * How long the player chrome stays up after the last press, while playing.

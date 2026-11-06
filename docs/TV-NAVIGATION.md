@@ -304,7 +304,7 @@ Breaks Android TV's `TV-DB`.
 
 **2. The navigation rail has no boundary.** `mayLeave` lets a vertical press leave any
 group, and lets a `Y` group be left horizontally in *both* directions
-([SpatialNav.kt:185](../src/jsMain/kotlin/ge/dakalebi/ui/tv/focus/SpatialNav.kt#L185)).
+([SpatialNav.kt:185](../presentation-new/src/jsMain/kotlin/ge/dakalebi/next/tv/focus/SpatialNav.kt#L185)).
 The rail is fixed while content scrolls behind it, so whether Up, Down or Left stays in
 the rail depends entirely on what happens to be scrolled behind it. This is the direct
 cause of "sometimes they work correctly, but most of the time they don't". R20 and R21.
@@ -400,7 +400,7 @@ active" observation for this path.
 ### Fix 2 — give the navigation rail walls
 
 **Where:** `move` and `mayLeave` in
-[SpatialNav.kt:185](../src/jsMain/kotlin/ge/dakalebi/ui/tv/focus/SpatialNav.kt#L185).
+[SpatialNav.kt:185](../presentation-new/src/jsMain/kotlin/ge/dakalebi/next/tv/focus/SpatialNav.kt#L185).
 
 **Cause:** `mayLeave` returns true for every vertical press and for both horizontal
 directions out of a `Y` group. `leaveGroup` already refuses chrome as a *destination*
@@ -447,7 +447,7 @@ the bottom — the three that produced different answers before. Re-run R9 and R
 ### Fix 3 — come back from the player to the tile you left
 
 **Where:** `landingSpot` in
-[SpatialNav.kt:492](../src/jsMain/kotlin/ge/dakalebi/ui/tv/focus/SpatialNav.kt#L492),
+[SpatialNav.kt:492](../presentation-new/src/jsMain/kotlin/ge/dakalebi/next/tv/focus/SpatialNav.kt#L492),
 plus `FocusMemory`.
 
 **Cause:** `landingSpot` tries `entryPoint` first, and `entryPoint` only stands aside
@@ -459,7 +459,7 @@ top. The grid's memory is intact and simply never consulted, because nothing rec
 **The hook already exists and is dead code.** `FocusMemory.rememberScreen` /
 `recallScreen` store exactly a `screenKey → (groupKey, itemKey)` triple and nothing
 calls them
-([FocusMemory.kt:26](../src/jsMain/kotlin/ge/dakalebi/ui/tv/focus/FocusMemory.kt#L26)).
+([FocusMemory.kt:26](../presentation-new/src/jsMain/kotlin/ge/dakalebi/next/tv/focus/FocusMemory.kt#L26)).
 
 **Change:**
 
@@ -474,7 +474,7 @@ calls them
 must not inherit the player's groups. Derive it from the route *shape* —
 `dashboard` / `settings` / `watch` — so the player writes its own key and browse keeps
 one stable key of its own. Pass it in rather than letting the focus engine read the
-router: `SpatialNav` names nothing outside `ui/tv/focus` today and should keep it that
+router: `SpatialNav` names nothing outside `next/tv/focus` today and should keep it that
 way, so add a `var screenKey: String?` set by `TvApp` alongside `onFocusChanged`.
 
 **This also fixes R6.** When the focused tile is removed, the same lookup lands the ring
@@ -491,7 +491,7 @@ from a cold load; R13.
 ### Fix 4 — first entry to the rail lands on the active destination
 
 **Where:** `TvNavRail.kt`, and the arrival branch of `leaveGroup` in
-[SpatialNav.kt:328](../src/jsMain/kotlin/ge/dakalebi/ui/tv/focus/SpatialNav.kt#L328).
+[SpatialNav.kt:328](../presentation-new/src/jsMain/kotlin/ge/dakalebi/next/tv/focus/SpatialNav.kt#L328).
 
 **Cause:** arrival into a group is memory → `data-tv-entry` → geometry. The rail
 declares no entry item and has no memory on a first visit, so geometry picks whichever
@@ -512,9 +512,9 @@ rail. The mechanism is available; the rail just never opted into it.
    menu that should always open on where you are. Without this, visiting Settings and
    returning to Home would still land the ring on Settings.
 3. **Scope the two screen-wide entry queries away from chrome.** `entryPoint`
-   ([SpatialNav.kt:539](../src/jsMain/kotlin/ge/dakalebi/ui/tv/focus/SpatialNav.kt#L539))
+   ([SpatialNav.kt:539](../presentation-new/src/jsMain/kotlin/ge/dakalebi/next/tv/focus/SpatialNav.kt#L539))
    and `focusEntry`
-   ([SpatialNav.kt:523](../src/jsMain/kotlin/ge/dakalebi/ui/tv/focus/SpatialNav.kt#L523))
+   ([SpatialNav.kt:523](../presentation-new/src/jsMain/kotlin/ge/dakalebi/next/tv/focus/SpatialNav.kt#L523))
    both do a bare `scope.querySelector("[data-tv-entry]")`, which takes the **first in
    document order**. `TvApp` renders the rail at
    [TvApp.kt:216](../src/jsMain/kotlin/ge/dakalebi/ui/tv/TvApp.kt#L216), before the
@@ -537,7 +537,7 @@ then R5, R12's back-to-top, R13 and R14 to confirm nothing else moved.
 ### Fix 5 — say something on the first Back at the top level
 
 **Where:** `back()` in
-[TvInput.kt:262](../src/jsMain/kotlin/ge/dakalebi/ui/tv/input/TvInput.kt#L262), at the
+[TvInput.kt:262](../presentation-new/src/jsMain/kotlin/ge/dakalebi/next/tv/input/TvInput.kt#L262), at the
 `pendingExit` block.
 
 **Cause:** the first press only writes `Log.d`. On a television that is indistinguishable
