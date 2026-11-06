@@ -483,3 +483,22 @@ the car buttons need a real iPhone.
 | P20 | An episode ends while full screen | Nothing starts by itself. **Real iPhone only** |
 | P21 | Previous episode | Opens the episode before, from its saved spot, and plays. Disabled on the very first episode and until the video has loaded |
 | P22 | Swipe home while playing | From full screen: picture in picture. From the inline player: none, as in I21. **Real iPhone only** |
+
+## Q — Cavea Plus
+
+Fixture: season 12 of `?ui=demo`, `/tv/?ui=tv-demo` and `/drive/?ui=drive-demo`. Episode 8
+is Formula's with no video and is on Cavea Plus; episode 9 is only on Cavea Plus. The
+real catalog lists Cavea Plus only after an admin refresh writes `meta/cavea`.
+
+| ID | Scenario | Expected |
+|---|---|---|
+| Q1 | Admin refresh | The toast adds `Cavea Plus: N სერია`, and `M მხოლოდ იქ` when some are only there. If Cavea Plus does not answer: `Cavea Plus-ის სია ვერ განახლდა`, and the Formula part still lands |
+| Q2 | Season 12 list and tiles, on all three shells | 8 and 9 carry a `Cavea Plus` tag in the still's top corner, clear of the number. Their line reads `Cavea Plus-ზეა`. Episodes that play have no tag |
+| Q3 | Web: open 12/9 | `ეს სერია მხოლოდ Cavea Plus-ზეა` with `Cavea Plus-ზე გახსნა`, which opens Cavea Plus's page for that episode in a new tab. No Formula chip |
+| Q4 | Web: open 12/8 | The link error with the same Cavea Plus button. The Formula chip stays |
+| Q5 | Web: a Formula episode that fails to load and is on Cavea Plus | After the one retry, the notice offers Cavea Plus too |
+| Q6 | Web home with 12/9 as the hero (guest, mark it watched) | Watch and `Cavea Plus-ზე გახსნა` side by side, and the note `ეს სერია მხოლოდ Cavea Plus-ზეა` |
+| Q7 | TV: open 12/9 or 12/8 | The message, a QR code and `დაასკანერე ტელეფონით და უყურე Cavea Plus-ზე`. A phone camera opens the episode on Cavea Plus. Back returns where it came from |
+| Q8 | Drive: open 12/9 or 12/8 | The message over the picture. Under it, Mark as watched and `Cavea Plus-ზე გახსნა` (and VLC on an iPhone, for 12/8 with a link); full screen gives way to the Cavea Plus button |
+| Q9 | Gallery (`?gallery`, Status) on all three shells | A tagged still, a QR code and the notice with its action |
+| Q10 | Progress on 12/9, then Formula publishes it | After the next admin refresh, the progress moves to the Formula episode on the next load |

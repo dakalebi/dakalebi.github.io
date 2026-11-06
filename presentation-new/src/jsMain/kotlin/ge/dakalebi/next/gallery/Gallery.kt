@@ -8,7 +8,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import ge.dakalebi.domain.model.Episode
 import ge.dakalebi.domain.model.InterfaceScale
+import ge.dakalebi.domain.service.caveaOnlyId
+import ge.dakalebi.domain.service.caveaWatchUrl
 import ge.dakalebi.i18n.I18n
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
@@ -28,6 +31,7 @@ import ge.dakalebi.next.components.MenuPlacement
 import ge.dakalebi.next.components.Notice
 import ge.dakalebi.next.components.Scrubber
 import ge.dakalebi.next.components.ProgressBar
+import ge.dakalebi.next.components.QrCode
 import ge.dakalebi.next.components.SegmentOption
 import ge.dakalebi.next.components.Segmented
 import ge.dakalebi.next.components.Sheet
@@ -37,6 +41,7 @@ import ge.dakalebi.next.components.Spinner
 import ge.dakalebi.next.components.Switch
 import ge.dakalebi.next.components.TextField
 import ge.dakalebi.next.components.TextFieldKind
+import ge.dakalebi.next.components.Thumb
 import ge.dakalebi.next.components.ToastRegion
 import ge.dakalebi.next.components.Transport
 import ge.dakalebi.next.components.tvItem
@@ -496,6 +501,26 @@ private fun StatusPanel(toasts: ToastStore) {
             }
         }
 
+        // An episode that plays only on Cavea Plus: its tagged still, the notice the web
+        // player shows with the way there (a toast here, not the link), and the TV's code.
+        Block("Cavea Plus", wide = true) {
+            Div({ classes("gl-stack") }) {
+                Div({ classes("gl-row") }) {
+                    Div({ classes("gl-cavea-thumb") }) { Thumb(galleryCaveaEpisode) }
+                    Div({ classes("gl-cavea-qr") }) { QrCode(caveaWatchUrl(GALLERY_CAVEA_ID), label = S.openOnCavea) }
+                }
+                Div({ if (tv) focusGroup("notice-cavea", FocusAxis.X) }) {
+                    Notice(
+                        title = S.videoOnlyOnCavea,
+                        actionLabel = S.openOnCavea,
+                        onAction = { toasts.show(S.openOnCavea) },
+                        actionAttrs = tvItem("notice-cavea-open"),
+                        actionIcon = Glyph.ExternalLink,
+                    )
+                }
+            }
+        }
+
         Block("Toasts") {
             Row("toasts") {
                 Button("Plain", onClick = { toasts.show(S.backAtStart) }, attrs = tvItem("toast-plain"))
@@ -557,6 +582,27 @@ private fun StatusPanel(toasts: ToastStore) {
         }
     }
 }
+
+/** A real Cavea Plus episode id (season 1, episode 1), so the code scans to a real page. */
+private const val GALLERY_CAVEA_ID = "1ebb18a0-3ad0-11ed-b811-fbe65fc4b7e9"
+
+/** An episode only Cavea Plus has, with no still, so the gradient shows under the tag. */
+private val galleryCaveaEpisode = Episode(
+    id = caveaOnlyId(GALLERY_CAVEA_ID),
+    formulaEpisodeId = null,
+    formulaSeasonId = null,
+    seasonNumber = 19,
+    episodeNumber = 4,
+    title = null,
+    thumbnailUrl = null,
+    videoUrl = null,
+    sources = emptyMap(),
+    durationSeconds = null,
+    episodePageUrl = null,
+    lastResolvedAtMillis = null,
+    updatedAtMillis = null,
+    caveaEpisodeId = GALLERY_CAVEA_ID,
+)
 
 // ----- overlays ------------------------------------------------------------------------
 

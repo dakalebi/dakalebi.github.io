@@ -39,6 +39,9 @@ kotlin {
             implementation(project(":core"))
             implementation("org.jetbrains.compose.runtime:runtime:1.11.1")
             implementation("org.jetbrains.compose.html:html-core:1.11.1")
+            // The TV's QR code for an episode on Cavea Plus (`QrCode.kt`). MIT, no
+            // dependencies of its own.
+            implementation(npm("qrcode-generator", "2.0.4"))
         }
     }
 }

@@ -19,6 +19,7 @@ import ge.dakalebi.domain.model.Episode
 import ge.dakalebi.domain.model.Setting
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
+import ge.dakalebi.next.components.QrCode
 import ge.dakalebi.next.components.Spinner
 import ge.dakalebi.next.components.Thumb
 import ge.dakalebi.next.player.PlayerEvents
@@ -61,6 +62,7 @@ private data class TvPlaybackView(
     val sources: Map<String, String>,
     val quality: String?,
     val error: PlaybackError?,
+    val caveaUrl: String?,
 )
 
 /**
@@ -101,7 +103,7 @@ internal fun TvWatch(episodeId: String) {
     val playbackState = playback.collectState()
     val view by remember(playbackState) {
         derivedStateOf(structuralEqualityPolicy()) {
-            playbackState.value.let { TvPlaybackView(it.videoUrl, it.sources, it.quality, it.error) }
+            playbackState.value.let { TvPlaybackView(it.videoUrl, it.sources, it.quality, it.error, it.caveaUrl) }
         }
     }
 
@@ -141,10 +143,18 @@ internal fun TvWatch(episodeId: String) {
         onError = { playback.onMediaError(refs.video?.error?.code?.toInt()) },
     )
 
+    // An episode that does not play here but is on Cavea Plus: the way to it, as a code
+    // for a phone. Also after a file that failed to play, where there is a picture no more.
+    val error = view.error
+    val caveaUrl = view.caveaUrl
+    if (error != null && caveaUrl != null && !catalog.loading) {
+        TvCaveaNote(ErrorMessages.playback(error), caveaUrl)
+        return
+    }
+
     val url = view.videoUrl
     if (url == null || catalog.loading) {
         Div({ classes("tv-note") }) {
-            val error = view.error
             if (error == null) Spinner() else P { Text(ErrorMessages.playback(error)) }
         }
         return
@@ -199,6 +209,21 @@ internal fun TvWatch(episodeId: String) {
                     )
                 }
             }
+        }
+    }
+}
+
+/**
+ * Why this episode does not play, and a QR code that opens it on Cavea Plus on a phone.
+ * Nothing on it takes focus, so Back leaves it as it leaves the spinner.
+ */
+@Composable
+private fun TvCaveaNote(message: String, caveaUrl: String) {
+    Div({ classes("tv-note") }) {
+        Div({ classes("tv-cavea") }) {
+            P({ classes("tv-cavea-title") }) { Text(message) }
+            QrCode(caveaUrl, label = S.openOnCavea)
+            P({ classes("tv-cavea-hint") }) { Text(S.scanToOpenOnCavea) }
         }
     }
 }

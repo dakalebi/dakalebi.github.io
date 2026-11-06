@@ -333,7 +333,9 @@ private fun Stage(
 
         if (mode != PlayerMode.Mini) {
             if (waiting) Div({ classes("np-center") }) { Spinner(onMedia = true) }
-            if (ui.error != null) Div({ classes("np-center") }) { Icon(Glyph.CircleAlert, label = S.videoLoadFailed) }
+            ui.error?.let { error ->
+                Div({ classes("np-center") }) { Icon(Glyph.CircleAlert, label = ErrorMessages.playback(error)) }
+            }
             player.feedback?.let { message ->
                 Div({ classes("np-feedback"); attr("aria-hidden", "true") }) { Text(message) }
             }
@@ -496,7 +498,18 @@ private fun Body(
         }
         PlayerTransport(nowPlaying, player, episode, compact = false)
 
-        if (error != null) Notice(title = error)
+        // An episode that will not play here but is on Cavea Plus says where it is, the
+        // way an iPhone is pointed to VLC: one link that opens Cavea Plus's own page.
+        if (error != null) {
+            val caveaUrl = ui.caveaUrl.takeIf { ui.offersCavea }
+            Notice(
+                title = error,
+                actionLabel = caveaUrl?.let { S.openOnCavea },
+                actionHref = caveaUrl,
+                actionExternal = true,
+                actionIcon = Glyph.ExternalLink,
+            )
+        }
 
         if (next != null && (ui.ended || ui.promptDue)) {
             UpNext(
@@ -558,7 +571,10 @@ private fun Body(
                     }
                 }
             })
-            Chip(S.openOnFormula, icon = Glyph.ExternalLink, href = episode.episodePageUrl, external = true)
+            // An episode only Cavea Plus has has no Formula page.
+            episode.episodePageUrl?.let { page ->
+                Chip(S.openOnFormula, icon = Glyph.ExternalLink, href = page, external = true)
+            }
         }
 
         Queue(nowPlaying, episode)

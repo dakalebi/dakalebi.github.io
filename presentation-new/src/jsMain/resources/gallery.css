@@ -235,6 +235,15 @@
   border-radius: 0;
 }
 
+/* The Cavea Plus samples: a still at a tile's width and a small QR code beside it. */
+.gl-cavea-thumb {
+  width: 10rem;
+}
+
+.gl-cavea-qr {
+  --qr-size: 7rem;
+}
+
 .gl-skeleton-tiles {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

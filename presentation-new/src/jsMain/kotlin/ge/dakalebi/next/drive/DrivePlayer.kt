@@ -137,6 +137,13 @@ class DrivePlayer(
     var quality: String? by mutableStateOf(null)
         private set
 
+    /**
+     * The open episode's page on Cavea Plus, offered once it fails to play here. Null when
+     * Cavea Plus does not have it.
+     */
+    var caveaUrl: String? by mutableStateOf(null)
+        private set
+
     /** Where the episode should start, until the element is confirmed to be there. */
     private var resumeTarget: Double? = null
     private var resumeAttempts = 0
@@ -278,9 +285,11 @@ class DrivePlayer(
         val url = chosen.videoUrl
         sourceUrl = url
         quality = chosen.quality
+        caveaUrl = chosen.caveaUrl
         if (url == null) {
-            // Driving mode keeps one message for a missing link and a failed one.
-            fail(PlaybackError.LoadFailed)
+            // Driving mode keeps one message for a missing link and a failed one, except
+            // for an episode only Cavea Plus has, which says so.
+            fail(chosen.error ?: PlaybackError.LoadFailed)
             wantsToPlay = false
             video.removeAttribute("src")
             video.load()
