@@ -145,18 +145,18 @@ presentation-new/src/jsMain/kotlin/ge/dakalebi/next/
                  the redesign's UI on the /next/ pages, and the engines the old UI
                  shares with it until the switch:
   Shell.kt       which UI a page is; PageZoom.kt stops pinch zoom
-  components/    the redesign's components and its 25 icons, for all three shells
+  components/    the redesign's components and its 27 icons, for all three shells
   web/           the web screens: sign-in, Home, Seasons, Settings, the tab bar and
                  side menu around them, and the player (mini-player, sheet, panel)
-  gallery/       every component in every state, on any /next/ page with ?gallery,
-                 and on the pages that have no screens yet
+  gallery/       every component in every state, on any /next/ page with ?gallery
   tv/            the TV screens: sign-in, Home, Seasons, Settings, and the rail
                  around them
   tv/focus/      D-pad navigation — geometry within a band, memory across bands
   tv/input/      one window listener and a layer stack, for the whole TV UI
   tv/player/     the TV player: its state, keys and video element, shared with the
                  old TV UI, and the redesign's chrome and shelf
-  drive/         the driving-mode player, its media session and wake lock
+  drive/         driving mode: the one-button Home, the player screen, and the
+                 player, its media session and wake lock (shared with the old UI)
   player/        media helpers: the AirPlay clock, device checks, player keys
 
 src/jsMain/kotlin/ge/dakalebi/
