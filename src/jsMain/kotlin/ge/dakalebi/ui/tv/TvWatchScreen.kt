@@ -3,36 +3,33 @@ package ge.dakalebi.ui.tv
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.runtime.structuralEqualityPolicy
 import ge.dakalebi.core.Log
-import ge.dakalebi.di.LocalResolveEpisodeVideo
 import ge.dakalebi.di.catalog
-import ge.dakalebi.di.router
+import ge.dakalebi.di.collectState
+import ge.dakalebi.di.rememberPlaybackViewModel
 import ge.dakalebi.di.sessionState
 import ge.dakalebi.di.settings
 import ge.dakalebi.di.toasts
 import ge.dakalebi.domain.model.Episode
 import ge.dakalebi.domain.model.Setting
-import ge.dakalebi.domain.service.orderedQualityLabels
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
-import ge.dakalebi.presentation.Route
-import ge.dakalebi.presentation.SAVE_EVERY
+import ge.dakalebi.presentation.ErrorMessages
+import ge.dakalebi.presentation.PlaybackError
 import ge.dakalebi.ui.Thumb
 import ge.dakalebi.ui.player.PlayerEvents
+import ge.dakalebi.ui.player.VideoPlayhead
 import ge.dakalebi.ui.tv.input.TvInput
 import ge.dakalebi.ui.tv.player.TvVideoPlayer
-import kotlinx.coroutines.launch
 import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.Text
 import org.w3c.dom.HTMLVideoElement
-import kotlin.math.floor
 
 /**
  * The one input stack, reachable from the player.
@@ -45,64 +42,57 @@ internal val LocalTvInput = staticCompositionLocalOf<TvInput> {
     error("LocalTvInput was read outside TvApp")
 }
 
-/** Non-Compose holders, written from media events several times a second. */
+/** The element, for the error code a media `error` event does not carry. */
 private class TvWatchRefs {
     var video: HTMLVideoElement? = null
-    var lastSaved: Double = 0.0
-    var resumeApplied: Boolean = false
-    var navigated: Boolean = false
-    var retried: Boolean = false
 }
 
 /**
- * Playback, and the rules about what a position means.
+ * What this screen draws from the playback state. The time updates four times a
+ * second change the rest, and must not recompose the player and its rails.
+ */
+private data class TvPlaybackView(
+    val videoUrl: String?,
+    val sources: Map<String, String>,
+    val quality: String?,
+    val error: PlaybackError?,
+)
+
+/**
+ * Playback on a television.
  *
- * Deliberately not built on the web watch screen's controller. That code is a
- * state machine for a WebKit bug: iOS Safari silently ignores a seek issued before
- * the element is seekable, so it retries across four media events with a backoff
- * and gives up after eight attempts. Chromium in an Android TV WebView has no such
- * behaviour — a seek at `loadedmetadata` lands — so reusing it here would import an
- * eight-attempt loop, an AirPlay wall-clock extrapolation and a pile of
- * `isAppleMobile` branches to work around a problem this platform does not have.
+ * The rules are the shared [ge.dakalebi.presentation.PlaybackViewModel]'s: which
+ * file plays, saving every [ge.dakalebi.presentation.SAVE_EVERY] seconds, the one
+ * retry, the resume target and leaving for the next episode. What it does not
+ * take from the web is the web's workarounds. iOS Safari silently ignores a seek
+ * issued before the element is seekable, so the web retries across four media
+ * events and keeps an AirPlay clock. Chromium in an Android TV WebView has no such
+ * behaviour, a seek at `loadedmetadata` lands, so the resume here is one seek.
  *
- * What *is* shared is everything that carries a rule rather than a workaround: the
- * [SAVE_EVERY] cadence, and the watched threshold and never-rewind guard inside
- * `SaveProgress`, which the store calls and which has its own tests.
+ * TV differs from the web in what it asks of the ViewModel:
+ * - It plays the stored link at once and swaps in the fresh one when Formula
+ *   answers, instead of showing "loading" for that round trip.
+ * - It starts in the best rendition on any screen, and never shows the iPhone
+ *   message: a file that will not play is just a failed load here.
+ * - It never remembers playing or paused: every episode starts playing. So it
+ *   saves through `save` and `markWatched`, not the web's media-event methods.
+ * - It goes on to the next episode at the end when the viewer's autoplay setting
+ *   says so.
  */
 @Composable
 fun TvWatchScreen(episodeId: String) {
     val catalog = catalog()
     val sessionState = sessionState()
-    val router = router()
     val settings = settings()
     val toasts = toasts()
     val input = LocalTvInput.current
-    val resolveVideo = LocalResolveEpisodeVideo.current
-    val scope = rememberCoroutineScope()
 
-    val refs = remember(episodeId) { TvWatchRefs() }
-    var error by remember(episodeId) { mutableStateOf<String?>(null) }
-
-    /*
-     * What the live resolve produced, if it has answered yet — and only that.
-     *
-     * Everything the player needs is derived below, so playback starts from the URL
-     * already in the catalog instead of waiting on a round trip to Formula. The web
-     * screen sets these *only* from its effect, which costs it a "loading" frame on
-     * every episode even though it is holding a perfectly good stored URL.
-     */
-    var resolvedUrl by remember(episodeId) { mutableStateOf<String?>(null) }
-    var resolvedSources by remember(episodeId) { mutableStateOf<Map<String, String>>(emptyMap()) }
-    var pickedQuality by remember(episodeId) { mutableStateOf<String?>(null) }
-    // Read once per episode. The preference syncs, and a pick made on another device
-    // must not relabel, or restart, the stream already playing here.
-    val preferredQuality = remember(episodeId) { settings[Setting.PreferredQuality] }
+    val playback = rememberPlaybackViewModel(episodeId, maxQuality = null, appleMobile = false)
+    val refs = remember(playback) { TvWatchRefs() }
 
     // Whose progress this is: the account's, or a guest's on this device.
     val uid = sessionState.viewerId
     val episode = catalog.byId(episodeId)
-    val entry = episode?.let { catalog.progress[it.id] }
-    val savedSeconds = entry?.progressSeconds ?: 0
     val progressReady = !catalog.loading
     val nextEpisode = episode?.let { catalog.next(it) }
 
@@ -111,60 +101,26 @@ fun TvWatchScreen(episodeId: String) {
     val upcoming = episode?.let { catalog.upcoming(it, TvConfig.RAIL_COUNT) } ?: emptyList()
     val earlier = episode?.let { catalog.previous(it, TvConfig.RAIL_COUNT) } ?: emptyList()
 
-    // One map for everything downstream, so the label and the menu cannot disagree
-    // about which rendition is best — the defect that shipped on the web once.
-    val sources = resolvedSources.ifEmpty { episode?.sources ?: emptyMap() }
-    val quality = pickedQuality
-        ?: preferredQuality.takeIf { sources.containsKey(it) }
-        ?: orderedQualityLabels(sources).firstOrNull()
-    val videoUrl = resolvedUrl ?: quality?.let { sources[it] } ?: episode?.videoUrl
-
-    LaunchedEffect(episode?.id) {
-        val current = episode ?: return@LaunchedEffect
-        error = null
-        val resolved = resolveVideo(current)
-        if (resolved !== current) catalog.putEpisode(resolved)
-        resolvedSources = resolved.sources.ifEmpty { current.sources }
-        val preferred = preferredQuality.takeIf { resolvedSources.containsKey(it) }
-        resolvedUrl = preferred?.let { resolvedSources[it] }
-            ?: resolved.videoUrl
-            ?: orderedQualityLabels(resolvedSources).firstOrNull()?.let { resolvedSources[it] }
-        if (resolvedUrl == null && current.videoUrl == null) error = S.videoLinkFailed
+    // The stored link, before the state is read, so the first frame already has a
+    // player. The fresh one replaces it below when Formula answers.
+    remember(playback, episode?.id) { episode?.let { playback.startFrom(it) } }
+    val playbackState = playback.collectState()
+    val view by remember(playbackState) {
+        derivedStateOf(structuralEqualityPolicy()) {
+            playbackState.value.let { TvPlaybackView(it.videoUrl, it.sources, it.quality, it.error) }
+        }
     }
 
-    fun persist(isWatched: Boolean? = null) {
-        val video = refs.video ?: return
-        val current = episode ?: return
-        val id = uid ?: return
-        val seconds = floor(video.currentTime).toInt()
-        if (seconds < 1 && isWatched == null) return
-        val duration = video.duration.takeIf { it.isFinite() && it > 0 }?.let { floor(it).toInt() }
-        scope.launch {
-            runCatching {
-                catalog.saveProgress(
-                    uid = id,
-                    episodeId = current.id,
-                    progressSeconds = seconds,
-                    durationSeconds = duration,
-                    isWatched = isWatched,
-                )
-            }.onFailure { Log.e("progress", "save failed for ${current.id} at ${seconds}s", it) }
-        }
+    LaunchedEffect(playback, episode?.id) {
+        val current = episode ?: return@LaunchedEffect
+        playback.resolve(current)
     }
 
     // The saves the web screen makes on `visibilitychange` and `beforeunload`. A
     // television does not background a tab, but it does get switched off at the
     // wall, and leaving the screen is the moment that matters.
-    DisposableEffect(episode?.id, uid) {
-        onDispose { persist() }
-    }
-
-    fun goToNext() {
-        val next = nextEpisode ?: return
-        if (refs.navigated) return
-        refs.navigated = true
-        persist()
-        router.go(Route.Watch(next.id))
+    DisposableEffect(playback, uid) {
+        onDispose { playback.save() }
     }
 
     if (episode == null) {
@@ -175,51 +131,31 @@ fun TvWatchScreen(episodeId: String) {
     }
 
     val events = PlayerEvents(
-        onElement = { refs.video = it },
+        onElement = { video ->
+            refs.video = video
+            playback.attach(video?.let { VideoPlayhead(it) })
+        },
         onLoadedMetadata = { video ->
-            // The whole of resume, on a platform whose seeks land. Clamped short of
-            // the end so resuming a nearly-finished episode does not immediately
-            // fire `ended` and roll into the next one.
-            if (!refs.resumeApplied && progressReady) {
-                refs.resumeApplied = true
-                val duration = video.duration
-                if (duration.isFinite() && duration > 0 && savedSeconds > 1) {
-                    val target = minOf(savedSeconds.toDouble(), duration - 5.0).coerceAtLeast(0.0)
+            // The whole of resume, on a platform whose seeks land: one seek, once,
+            // as soon as the saved spot is known.
+            if (!catalog.loading) {
+                playback.resumeTarget()?.let { target ->
                     runCatching { video.currentTime = target }
                         .onFailure { Log.w("resume", "seek to ${target}s rejected", it) }
-                    refs.lastSaved = target
                 }
+                playback.resumeLanded()
             }
         },
-        onTimeUpdate = { video ->
-            val time = video.currentTime
-            if (time - refs.lastSaved >= SAVE_EVERY) {
-                refs.lastSaved = time
-                persist()
-            }
-        },
-        onPause = { persist() },
+        onTimeUpdate = { playback.onTimeUpdate() },
+        onPause = { playback.save() },
         onEnded = {
-            persist(isWatched = true)
-            if (settings[Setting.AutoplayNext] && nextEpisode != null) goToNext()
+            playback.markWatched()
+            if (settings[Setting.AutoplayNext] && nextEpisode != null) playback.goToNext()
         },
-        onError = {
-            Log.e("player", "media error for ${episode.id} (src=$videoUrl)")
-            if (!refs.retried) {
-                refs.retried = true
-                scope.launch {
-                    val resolved = resolveVideo(episode)
-                    catalog.putEpisode(resolved)
-                    resolvedUrl = resolved.videoUrl
-                    if (resolved.videoUrl == null) error = S.videoLoadFailed
-                }
-            } else {
-                error = S.videoLoadFailed
-            }
-        },
+        onError = { playback.onMediaError(refs.video?.error?.code?.toInt()) },
     )
 
-    val url = videoUrl
+    val url = view.videoUrl
     if (url != null && progressReady) {
         // Keyed so moving to the next episode builds a new element rather than
         // reusing one that still holds the previous file's state.
@@ -227,12 +163,10 @@ fun TvWatchScreen(episodeId: String) {
             TvVideoPlayer(
                 src = url,
                 autoPlay = true,
-                sources = sources,
-                quality = quality,
+                sources = view.sources,
+                quality = view.quality,
                 onQualitySelected = { label ->
-                    pickedQuality = label
-                    settings.set(Setting.PreferredQuality, label) { toasts.error(S.settingNotSynced) }
-                    sources[label]?.let { resolvedUrl = it }
+                    playback.selectQuality(label) { toasts.error(S.settingNotSynced) }
                 },
                 input = input,
                 events = events,
@@ -272,7 +206,7 @@ fun TvWatchScreen(episodeId: String) {
             )
         }
     } else {
-        Div({ classes("tv-note") }) { Text(error ?: S.loading) }
+        Div({ classes("tv-note") }) { Text(view.error?.let { ErrorMessages.playback(it) } ?: S.loading) }
     }
 }
 

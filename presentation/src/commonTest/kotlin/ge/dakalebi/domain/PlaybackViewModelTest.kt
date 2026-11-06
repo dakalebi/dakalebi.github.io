@@ -139,6 +139,80 @@ class PlaybackViewModelTest {
         assertEquals("480p", rig.settings[Setting.PreferredQuality])
     }
 
+    // ------------------------------------------- the stored links (TV, Drive)
+
+    @Test
+    fun the_stored_links_play_at_once_without_asking_formula() = runTest {
+        var asked = 0
+        val rig = rig(maxQuality = 720, resolve = { asked++; it })
+
+        rig.vm.startFrom(e1)
+
+        assertEquals("720p", rig.vm.state.value.quality)
+        assertEquals(renditions["720p"], rig.vm.state.value.videoUrl)
+        assertEquals(renditions, rig.vm.state.value.sources)
+        assertEquals(0, asked)
+    }
+
+    @Test
+    fun the_stored_links_follow_a_picked_quality() = runTest {
+        val rig = rig(preferred = "480p")
+
+        rig.vm.startFrom(e1)
+
+        assertEquals("480p", rig.vm.state.value.quality)
+        assertEquals(renditions["480p"], rig.vm.state.value.videoUrl)
+    }
+
+    @Test
+    fun an_episode_without_renditions_plays_its_one_link() = runTest {
+        val single = e1.copy(videoUrl = "https://example.invalid/e1.mp4", sources = emptyMap())
+        val rig = rig(episodes = listOf(single, e2))
+
+        rig.vm.startFrom(single)
+
+        assertNull(rig.vm.state.value.quality)
+        assertEquals("https://example.invalid/e1.mp4", rig.vm.state.value.videoUrl)
+    }
+
+    @Test
+    fun the_fresh_links_replace_the_stored_ones_in_the_same_quality() = runTest {
+        val fresh = renditions.mapValues { (_, url) -> "$url?fresh" }
+        val rig = rig(maxQuality = 720, resolve = { it.copy(sources = fresh) })
+        rig.vm.startFrom(e1)
+
+        rig.vm.resolve(e1)
+
+        assertEquals("720p", rig.vm.state.value.quality)
+        assertEquals("${renditions["720p"]}?fresh", rig.vm.state.value.videoUrl)
+    }
+
+    /** A pick synced from another device must not relabel, or restart, the stream playing here. */
+    @Test
+    fun the_picked_quality_is_read_once_per_episode() = runTest {
+        val rig = rig(preferred = "480p")
+        rig.vm.startFrom(e1)
+
+        rig.settings.set(Setting.PreferredQuality, "720p") { error("the preference should have synced") }
+        runCurrent()
+        rig.vm.resolve(e1)
+
+        assertEquals("480p", rig.vm.state.value.quality)
+        assertEquals(renditions["480p"], rig.vm.state.value.videoUrl)
+    }
+
+    @Test
+    fun a_quality_picked_before_the_fresh_links_arrive_is_kept() = runTest {
+        val rig = rig()
+        rig.vm.startFrom(e1)
+
+        rig.vm.selectQuality("480p") { error("the preference should have synced") }
+        rig.vm.resolve(e1)
+
+        assertEquals("480p", rig.vm.state.value.quality)
+        assertEquals(renditions["480p"], rig.vm.state.value.videoUrl)
+    }
+
     // --------------------------------------------------------------- retry
 
     @Test
@@ -195,6 +269,39 @@ class PlaybackViewModelTest {
         rig.vm.markWatched()
         runCurrent()
 
+        assertEquals(true, rig.progress.stored["e1"]?.isWatched)
+    }
+
+    @Test
+    fun a_jump_restarts_the_save_clock() = runTest {
+        val rig = rig()
+        rig.play(7.0)
+        assertEquals(1, rig.progress.saves)
+
+        rig.vm.jumpedTo(600.0)
+        rig.play(600.5, 606.9)
+        assertEquals(1, rig.progress.saves, "a skip forward does not save at once")
+        rig.play(607.0)
+        assertEquals(2, rig.progress.saves)
+        assertEquals(607, rig.progress.stored["e1"]?.progressSeconds)
+
+        rig.vm.jumpedTo(100.0)
+        rig.play(107.0)
+        assertEquals(3, rig.progress.saves, "a skip back does not wait to pass the old spot")
+        assertEquals(107, rig.progress.stored["e1"]?.progressSeconds)
+    }
+
+    /** TV and driving mode save this way. Only the web remembers playing or paused. */
+    @Test
+    fun saving_without_the_media_events_leaves_the_play_intent_alone() = runTest {
+        val rig = rig(playIntent = "paused")
+        rig.head.position = 300.0
+
+        rig.vm.save()
+        rig.vm.markWatched()
+        runCurrent()
+
+        assertEquals("paused", rig.prefs.intents["e1"])
         assertEquals(true, rig.progress.stored["e1"]?.isWatched)
     }
 

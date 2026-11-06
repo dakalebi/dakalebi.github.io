@@ -94,17 +94,29 @@ data class PlaybackUiState(
  * One episode's playback: which file plays, where the viewer is, and what that
  * position means.
  *
- * This holds the rules, not the workarounds. The resume retry loop for iOS, the
+ * This holds the rules, not the workarounds. The resume retry loops for iOS, the
  * AirPlay clock, the `#t=` start fragment and the media element itself belong to
- * the screen of the platform that needs them. The screen tells this what the
+ * the player of the platform that needs them. The player tells this what the
  * element did (`onTimeUpdate`, `onPause`, `onEnded`, ...) and reads the answer
  * from [state].
  *
- * One per watch screen and episode, from [PlaybackViewModelFactory]. Saves run in
- * the app scope, so a save in flight still lands when the screen goes. The
- * resolve and the retry run in a child scope that [close] cancels.
+ * All three players use it: the web watch screen, the TV watch screen and
+ * driving mode's player. They differ in what they call, not in the rules:
+ * - The web asks Formula before it plays ([resolve]). TV plays the stored link at
+ *   once and swaps in the fresh one ([startFrom], then [resolve]). Driving mode
+ *   plays the stored link and asks Formula only after an error ([startFrom]).
+ * - Only the web remembers whether the viewer left an episode playing or paused
+ *   ([onPlay], [onPause], [onEnded]). TV and driving mode save through [save] and
+ *   [markWatched], which leave that alone.
+ * - The web and TV resume through [resumeTarget]. Driving mode keeps its own
+ *   resume, because its skip buttons count from the saved spot until it lands, and
+ *   tells this where it moved the element ([jumpedTo]).
  *
- * Toasts stay with the screen: the methods that end in one say so in their
+ * One per episode, from [PlaybackViewModelFactory]. Saves run in the app scope, so
+ * a save in flight still lands when the player moves on. The resolve and the retry
+ * run in a child scope that [close] cancels.
+ *
+ * Toasts stay with the player: the methods that end in one say so in their
  * result, and each platform decides what it tells the viewer.
  */
 class PlaybackViewModel(
@@ -138,12 +150,38 @@ class PlaybackViewModel(
 
     private val savedSeconds: Int get() = catalog.progress[episodeId]?.progressSeconds ?: 0
 
+    /*
+     * The quality the viewer picked, read once per episode. The preference syncs,
+     * and a pick made on another device must not relabel, or restart, the stream
+     * already playing here.
+     */
+    private var preferredRead = false
+    private var preferred: String? = null
+
+    private fun preferredQuality(): String? {
+        if (!preferredRead) {
+            preferred = settings[Setting.PreferredQuality]
+            preferredRead = true
+        }
+        return preferred
+    }
+
     /** The element appeared or went. Without one there is nothing to save. */
     fun attach(playhead: Playhead?) {
         this.playhead = playhead
     }
 
     // --------------------------------------------------------- resolution
+
+    /**
+     * Picks the file from the links the catalog already holds, without asking
+     * Formula, so playback can start at once. The same choice as [resolve].
+     * [PlaybackUiState.resolving] stays as it was.
+     */
+    fun startFrom(episode: Episode) {
+        val (quality, url) = choose(episode.sources, episode.videoUrl)
+        setState { copy(sources = episode.sources, quality = quality, videoUrl = url) }
+    }
 
     /**
      * Asks Formula for fresh links and picks the file to play.
@@ -158,9 +196,7 @@ class PlaybackViewModel(
         if (resolved !== episode) catalog.putEpisode(resolved)
 
         val sources = resolved.sources.ifEmpty { episode.sources }
-        val preferred = settings[Setting.PreferredQuality].takeIf { sources.containsKey(it) }
-        val quality = preferred ?: defaultQualityLabel(sources, maxQuality)
-        val url = quality?.let { sources[it] } ?: resolved.videoUrl
+        val (quality, url) = choose(sources, resolved.videoUrl)
         setState {
             copy(
                 sources = sources,
@@ -172,11 +208,20 @@ class PlaybackViewModel(
         }
     }
 
+    /** The label and the file it names. [fallbackUrl] only when [sources] has no label to offer. */
+    private fun choose(sources: Map<String, String>, fallbackUrl: String?): Pair<String?, String?> {
+        val quality = preferredQuality()?.takeIf { sources.containsKey(it) }
+            ?: defaultQualityLabel(sources, maxQuality)
+        return quality to (quality?.let { sources[it] } ?: fallbackUrl)
+    }
+
     /**
      * The viewer picked a rendition. It becomes the account's preference, and
      * [onNotSynced] fires if that write is rejected.
      */
     fun selectQuality(label: String, onNotSynced: () -> Unit) {
+        preferred = label
+        preferredRead = true
         setState { copy(quality = label) }
         settings.set(Setting.PreferredQuality, label, onNotSynced)
         // A new source, so an error about the old one no longer applies.
@@ -244,6 +289,16 @@ class PlaybackViewModel(
     /** The resume seek landed, or the platform gave up on it. */
     fun resumeLanded() {
         resumed = true
+    }
+
+    /**
+     * The player moved the element to [seconds] itself: a seek the viewer asked
+     * for, or a resume it landed without [resumeTarget]. The next timed save counts
+     * from there, so a skip forward does not save at once and a skip back does not
+     * wait to pass the old spot.
+     */
+    fun jumpedTo(seconds: Double) {
+        lastSaved = seconds
     }
 
     // -------------------------------------------------------- media events
