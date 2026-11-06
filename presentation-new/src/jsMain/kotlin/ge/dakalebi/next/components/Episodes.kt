@@ -21,7 +21,8 @@ import org.jetbrains.compose.web.dom.Text
  *
  * The episode number sits on it in a small dark pill, so it reads on any frame. The
  * hairline along the bottom is the watched share ([progress], 0 to 1), drawn only
- * once an episode is started.
+ * once an episode is started. An episode that does not play here but is on Cavea Plus
+ * carries a small "Cavea Plus" tag in the top corner ([showsCaveaBadge]).
  *
  * Decorative to assistive technology: the row or tile it sits in names the episode
  * and says how far in it is, so the image adds nothing to read out.
@@ -46,6 +47,7 @@ fun Thumb(episode: Episode, progress: Double? = null, attrs: ExtraAttrs? = null)
             }
         }
         Span({ classes("thumb-number") }) { Text("${episode.episodeNumber}") }
+        if (episode.showsCaveaBadge) Span({ classes("cavea-badge") }) { Text(CAVEA_PLUS) }
         if (progress != null && progress > 0) {
             Div({ classes("thumb-progress") }) {
                 Div({
@@ -57,13 +59,25 @@ fun Thumb(episode: Episode, progress: Double? = null, attrs: ExtraAttrs? = null)
     }
 }
 
+/**
+ * The service's own name, written the same in both languages, so it is not in `S`. The
+ * strings that say what to do there are.
+ */
+private const val CAVEA_PLUS = "Cavea Plus"
+
+/**
+ * Only an episode with no video here gets the tag. One that plays here and is also on
+ * Cavea Plus is the usual case, and a tag on most of the catalog would say nothing.
+ */
+private val Episode.showsCaveaBadge: Boolean get() = !hasVideo && onCavea
+
 /** How far into [this] episode the viewer is, 0 to 1, or null when it is not started. */
 private fun WatchProgress?.startedShare(): Double? =
     this?.takeIf { it.isStarted }?.percent?.let { it / 100.0 }
 
 /**
  * The line under an episode's name: its length, then how much is left if it is
- * started, or that it has no video.
+ * started, or that it has no video here (and is on Cavea Plus, when it is).
  */
 fun episodeMeta(episode: Episode, progress: WatchProgress?): String {
     val duration = progress?.durationSeconds ?: episode.durationSeconds
@@ -74,7 +88,7 @@ fun episodeMeta(episode: Episode, progress: WatchProgress?): String {
                 val left = ((duration - progress.progressSeconds) / 60.0).roundToInt().coerceAtLeast(1)
                 add(S.minutesRemaining(left))
             }
-            !episode.hasVideo -> add(S.noVideo)
+            !episode.hasVideo -> add(if (episode.onCavea) S.onCavea else S.noVideo)
         }
     }
     return parts.joinToString(" · ")
@@ -153,7 +167,7 @@ private fun tileMeta(episode: Episode, progress: WatchProgress?): String {
         progress?.isStarted == true && duration != null && duration > 0 -> S.minutesRemaining(
             ((duration - progress.progressSeconds) / 60.0).roundToInt().coerceAtLeast(1),
         )
-        !episode.hasVideo -> S.noVideo
+        !episode.hasVideo -> if (episode.onCavea) S.onCavea else S.noVideo
         else -> formatDuration(duration).orEmpty()
     }
 }

@@ -180,7 +180,9 @@ private fun DrivePlayerBody(episode: Episode, player: DrivePlayer) {
 /**
  * The actions under the picture: full screen, mark watched and, on an iPhone or iPad,
  * open in VLC. The old driving mode's three, pressed once a visit while parked rather
- * than while driving.
+ * than while driving. An episode that failed to play and is on Cavea Plus trades full
+ * screen, which has no picture to show, for a button that opens it there, so the row
+ * stays three abreast on an iPhone.
  */
 @Composable
 private fun DriveExtras(episode: Episode, player: DrivePlayer, loaded: Boolean) {
@@ -188,19 +190,22 @@ private fun DriveExtras(episode: Episode, player: DrivePlayer, loaded: Boolean) 
     val toasts = toasts()
     val watched = catalog.progress[episode.id]?.isWatched == true
     val vlcUrl = player.sourceUrl.takeIf { loaded && isAppleMobile }
+    val caveaUrl = player.caveaUrl.takeIf { loaded && player.failed }
     var confirmClear by remember(episode.id) { mutableStateOf(false) }
 
     Div({ classes("drive-extras") }) {
         // The native player has a fullscreen button of its own, but a small one, hidden
         // until the picture is tapped. This one waits for the video to know its picture,
         // which an iPhone needs before it opens its fullscreen player.
-        Button(
-            label = S.fullscreen,
-            onClick = { player.enterFullscreen() },
-            icon = Glyph.Maximize,
-            disabled = !loaded || !player.fullscreenReady,
-            attrs = { classes("drive-extra") },
-        )
+        if (caveaUrl == null) {
+            Button(
+                label = S.fullscreen,
+                onClick = { player.enterFullscreen() },
+                icon = Glyph.Maximize,
+                disabled = !loaded || !player.fullscreenReady,
+                attrs = { classes("drive-extra") },
+            )
+        }
 
         // Watched undoes through the web page's own confirmation: a tap by mistake must
         // not cost the episode's place.
@@ -239,6 +244,19 @@ private fun DriveExtras(episode: Episode, player: DrivePlayer, loaded: Boolean) 
                 onClick = { player.pause() },
                 icon = Glyph.ExternalLink,
                 href = href,
+                attrs = { classes("drive-extra") },
+            )
+        }
+
+        // The message over the picture says why; this is where to go instead. Another
+        // app, so this page stops first, as for VLC.
+        if (caveaUrl != null) {
+            Button(
+                label = S.openOnCavea,
+                onClick = { player.pause() },
+                icon = Glyph.ExternalLink,
+                href = caveaUrl,
+                external = true,
                 attrs = { classes("drive-extra") },
             )
         }

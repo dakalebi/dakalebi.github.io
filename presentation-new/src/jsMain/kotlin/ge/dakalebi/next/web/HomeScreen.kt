@@ -7,6 +7,7 @@ import ge.dakalebi.di.catalog
 import ge.dakalebi.di.session
 import ge.dakalebi.di.sessionState
 import ge.dakalebi.domain.model.Episode
+import ge.dakalebi.domain.service.caveaWatchUrl
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
 import ge.dakalebi.next.components.Button
@@ -143,9 +144,16 @@ private fun ContinueCard(episode: Episode) {
                     icon = Glyph.Play,
                     href = href,
                 )
+                // No video here but on Cavea Plus: the way there, beside the way in.
+                val caveaId = episode.caveaEpisodeId
+                if (!episode.hasVideo && caveaId != null) {
+                    Button(S.openOnCavea, icon = Glyph.ExternalLink, href = caveaWatchUrl(caveaId), external = true)
+                }
             }
             if (!episode.hasVideo) {
-                P({ classes("continue-note") }) { Text(S.videoUnavailableForEpisode) }
+                P({ classes("continue-note") }) {
+                    Text(if (episode.onCavea) S.videoOnlyOnCavea else S.videoUnavailableForEpisode)
+                }
             }
         }
     }

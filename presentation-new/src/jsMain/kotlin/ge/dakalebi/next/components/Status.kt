@@ -112,7 +112,8 @@ fun Badge(text: String) {
  * it appears.
  *
  * The action ([actionLabel], usually "retry") is drawn after the words. [actionAttrs]
- * go on its button.
+ * go on its button. With [actionHref] it is a link instead, such as "Open on Cavea
+ * Plus", opened in a new tab when [actionExternal]; [onAction] still runs on the click.
  */
 @Composable
 fun Notice(
@@ -121,6 +122,9 @@ fun Notice(
     actionLabel: String? = null,
     onAction: () -> Unit = {},
     actionAttrs: ExtraAttrs? = null,
+    actionHref: String? = null,
+    actionExternal: Boolean = false,
+    actionIcon: Glyph? = null,
 ) {
     Div({ classes("notice"); attr("role", "alert") }) {
         Icon(Glyph.CircleAlert)
@@ -129,7 +133,15 @@ fun Notice(
             if (body != null) P({ classes("notice-body") }) { Text(body) }
         }
         if (actionLabel != null) {
-            Button(actionLabel, onClick = onAction, variant = ButtonVariant.Secondary, attrs = actionAttrs)
+            Button(
+                actionLabel,
+                onClick = onAction,
+                variant = ButtonVariant.Secondary,
+                icon = actionIcon,
+                href = actionHref,
+                external = actionExternal,
+                attrs = actionAttrs,
+            )
         }
     }
 }

@@ -139,7 +139,10 @@ private fun TvHero(episode: Episode) {
                 }
             }
             if (!episode.hasVideo) {
-                P({ classes("tv-hero-note") }) { Text(S.videoUnavailableForEpisode) }
+                // A television cannot open Cavea Plus's page. Watch leads to a QR code for it.
+                P({ classes("tv-hero-note") }) {
+                    Text(if (episode.onCavea) S.videoOnlyOnCavea else S.videoUnavailableForEpisode)
+                }
             }
         }
         Div({ classes("tv-hero-still"); attr("aria-hidden", "true") }) {

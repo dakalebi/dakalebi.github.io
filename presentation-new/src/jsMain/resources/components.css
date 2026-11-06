@@ -1127,6 +1127,28 @@
   text-shadow: var(--thumb-number-shadow);
 }
 
+/* An episode that does not play here but is on Cavea Plus: the service's name in the
+   top corner, on the number's dark pill and in its narrow figures, so it fits a row's
+   small still. Amber, so it reads as a note, not a number. */
+.cavea-badge {
+  position: absolute;
+  top: var(--space-1);
+  right: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-8);
+  background: var(--color-on-media);
+  color: var(--color-accent-text);
+  font: var(--type-figure-s);
+  font-stretch: var(--type-figure-stretch);
+  white-space: nowrap;
+  text-shadow: var(--thumb-number-shadow);
+}
+
+/* A row's still is small: a tighter pill keeps it clear of the number. */
+.ep-row .cavea-badge {
+  padding: var(--space-1);
+}
+
 /* How far in a started episode is: a hairline along the foot. */
 .thumb-progress {
   position: absolute;
@@ -1304,6 +1326,33 @@
 
 .ring--current .ring-number {
   color: var(--ring-current-fg);
+}
+
+/* ----- QR code ----------------------------------------------------------------- */
+
+/* Dark squares on a light card in every theme: a phone's scanner expects that way
+   round. The margin a scanner needs is inside the drawing, so the card has no padding. */
+.qr {
+  width: var(--qr-size, 12rem);
+  aspect-ratio: 1;
+  border-radius: var(--radius-12);
+  background: var(--cream-50);
+  color: var(--walnut-950);
+}
+
+.qr svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* No code could be drawn: the link itself, to type. */
+.qr--text {
+  aspect-ratio: auto;
+  padding: var(--space-3);
+  font: var(--type-body-s);
+  font-stretch: var(--type-body-s-stretch);
+  overflow-wrap: anywhere;
 }
 
 /* ----- TV focus ---------------------------------------------------------------- */

@@ -20,6 +20,7 @@ import ge.dakalebi.domain.repository.AdminRepository
 import ge.dakalebi.domain.repository.CatalogRepository
 import ge.dakalebi.domain.repository.GuestModeRepository
 import ge.dakalebi.domain.repository.ProgressRepository
+import ge.dakalebi.domain.service.caveaOnlyId
 import kotlinx.browser.window
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -89,6 +90,10 @@ private const val FIXTURE_SEASONS = 12
  * Twelve seasons of eight, which is enough to exercise every shape: a rail that
  * overflows, a grid that wraps, and season chips that scroll.
  *
+ * The last season ends with the two Cavea Plus cases: 12/8 is Formula's but has no
+ * video, and Cavea Plus has it; 12/9 is only on Cavea Plus. Both play nowhere here,
+ * so they show the badge, the message and the way to Cavea Plus.
+ *
  * Thumbnails are deliberately null so the deterministic gradient stands in, which
  * keeps the fixture from depending on the network.
  */
@@ -118,6 +123,25 @@ private fun fixtureEpisodes(): List<Episode> = buildList {
             )
         }
     }
+    add(removeAt(lastIndex).copy(videoUrl = null, sources = emptyMap(), caveaEpisodeId = "c1208"))
+    add(
+        Episode(
+            id = caveaOnlyId("c1209"),
+            formulaEpisodeId = null,
+            formulaSeasonId = null,
+            seasonNumber = FIXTURE_SEASONS,
+            episodeNumber = 9,
+            title = null,
+            thumbnailUrl = null,
+            videoUrl = null,
+            sources = emptyMap(),
+            durationSeconds = null,
+            episodePageUrl = null,
+            lastResolvedAtMillis = null,
+            updatedAtMillis = null,
+            caveaEpisodeId = "c1209",
+        ),
+    )
 }
 
 /**

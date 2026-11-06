@@ -36,6 +36,28 @@
   text-align: center;
 }
 
+/* An episode that plays on Cavea Plus only: why, the code for a phone, and what to do
+   with it, in one column in the middle of the screen. */
+.tv-cavea {
+  --qr-size: 16rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-6);
+  max-width: 36rem;
+}
+
+.tv-cavea-title {
+  color: var(--color-text);
+  font: var(--type-title);
+  font-stretch: var(--type-title-stretch);
+  letter-spacing: var(--type-title-tracking);
+}
+
+.tv-cavea-hint {
+  color: var(--color-text-2);
+}
+
 /* ----- rail -------------------------------------------------------------------- */
 
 /* The left edge: the mark and three places. Fixed, which is what the focus engine reads
