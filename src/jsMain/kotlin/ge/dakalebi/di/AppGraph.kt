@@ -46,6 +46,8 @@ import ge.dakalebi.domain.usecase.SyncUserSettings
 import ge.dakalebi.presentation.CatalogStore
 import ge.dakalebi.presentation.DashboardViewModel
 import ge.dakalebi.presentation.DashboardViewModelFactory
+import ge.dakalebi.presentation.LoginViewModel
+import ge.dakalebi.presentation.LoginViewModelFactory
 import ge.dakalebi.presentation.PreferencesStore
 import ge.dakalebi.presentation.HashRouter
 import ge.dakalebi.presentation.PlaybackViewModel
@@ -157,4 +159,7 @@ class AppGraph(
     val dashboard = DashboardViewModelFactory {
         DashboardViewModel(catalog = catalog, session = session, toasts = toasts, scope = scope)
     }
+
+    /** One per visit to the sign-in form, in every shell. Its requests run in [scope]. */
+    val login = LoginViewModelFactory { LoginViewModel(session = session, toasts = toasts, scope = scope) }
 }
