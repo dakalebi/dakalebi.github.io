@@ -24,6 +24,5 @@ private fun AppGraph.providedValues(): Array<ProvidedValue<*>> = arrayOf(
     LocalCatalog provides catalog,
     LocalSettings provides settings,
     LocalPreferences provides preferences,
-    LocalResolveEpisodeVideo provides resolveEpisodeVideo,
     LocalPlayback provides playback,
 )

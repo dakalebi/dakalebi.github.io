@@ -129,10 +129,13 @@ class AppGraph(
         scope = scope,
     )
 
-    /** Used by the TV and Drive players, which resolve a URL without going via a store. */
-    val resolveEpisodeVideo = ResolveEpisodeVideo(catalogRepository)
+    /** Asks Formula for an episode's fresh links. Only the playback rules do. */
+    private val resolveEpisodeVideo = ResolveEpisodeVideo(catalogRepository)
 
-    /** One per watch screen. Its saves run in [scope], so one in flight lands after the screen goes. */
+    /**
+     * One per episode played: each watch screen's, web and TV, and each episode driving
+     * mode opens. Its saves run in [scope], so one in flight lands after the player moves on.
+     */
     val playback = PlaybackViewModelFactory { episodeId, maxQuality, appleMobile ->
         PlaybackViewModel(
             episodeId = episodeId,

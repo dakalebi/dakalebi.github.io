@@ -8,7 +8,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
-import ge.dakalebi.domain.usecase.ResolveEpisodeVideo
 import ge.dakalebi.presentation.CatalogStore
 import ge.dakalebi.presentation.PlaybackUiState
 import ge.dakalebi.presentation.PlaybackViewModel
@@ -45,7 +44,6 @@ val LocalSession = local<SessionViewModel>("LocalSession")
 val LocalCatalog = local<CatalogStore>("LocalCatalog")
 val LocalSettings = local<SettingsStore>("LocalSettings")
 val LocalPreferences = local<PreferencesStore>("LocalPreferences")
-val LocalResolveEpisodeVideo = local<ResolveEpisodeVideo>("LocalResolveEpisodeVideo")
 val LocalPlayback = local<PlaybackViewModelFactory>("LocalPlayback")
 
 /**

@@ -89,7 +89,10 @@ Two kinds, while the refactor moves from one to the other.
 - **ViewModels** extend `presentation/ViewModel.kt`: one immutable state value in
   a `StateFlow`, changed only through `setState`, so no reader sees half of a
   change. A test reads `state.value` with no Compose at all; a screen reads it
-  with `collectAsState()`.
+  with `collectAsState()`. A ViewModel that is replaced while the screen stays,
+  such as the playback one at the next episode, is read with `collectState()`:
+  `collectAsState()` would show the old one's last state until the new one
+  changes.
 
 `SessionViewModel` is the first ViewModel, and the root one all three shells
 share: who is using the app, plus the work every shell root used to repeat for
@@ -99,17 +102,18 @@ composition, so they wait for no frame and do not depend on which shell is on
 screen. Loading the catalog stays with each shell, because `CatalogStore` does not
 join a load already running and a second caller would fetch everything twice.
 
-`PlaybackViewModel` is one per watch screen and episode, made by
-`PlaybackViewModelFactory` and read with `rememberPlaybackViewModel`. It holds the
-playback rules: which file plays, when a position is saved and what it means, the
-one retry after a media error, the resume target, the next-episode card and leaving
-for the next episode. The screen tells it what the media element did and supplies
-the position through a `Playhead`. What only one platform needs stays in that
-platform's screen: on the web, the element, the iOS resume retry loop, the AirPlay
-clock and the `#t=` start fragment. Saves run in the app scope, so a save already
-sent still lands after the screen has gone; the resolve and the retry stop with the
-screen. The web watch screen uses it; the TV and driving-mode players still keep
-their own copy of these rules.
+`PlaybackViewModel` is one per episode played, made by `PlaybackViewModelFactory`.
+A watch screen gets it with `rememberPlaybackViewModel`; driving mode's player makes
+one for each episode it opens. It holds the playback rules: which file plays, when
+a position is saved and what it means, the one retry after a media error, the
+resume target, the next-episode card and leaving for the next episode. The player
+tells it what the media element did and supplies the position through a
+`Playhead`. What only one platform needs stays in that platform's player: on the
+web, the element, the iOS resume retry loop, the AirPlay clock and the `#t=` start
+fragment; on TV, the one resume seek; in driving mode, its own resume and the media
+session. Saves run in the app scope, so a save already sent still lands after the
+player has moved on; the resolve and the retry stop with it. All three players use
+it: the web, TV and driving mode.
 
 New state goes into a ViewModel. The stores move over screen by screen.
 
@@ -187,8 +191,9 @@ watching" and next-to-play choices, episode ordering across season boundaries,
 hash-route parsing, settings sync (the merge rules, `SyncedSettingsRepository`,
 `SettingsStore`, the device copy), the session (guests, and what follows the
 account: settings sync and dropping the catalog), guest storage, playback-failure classification,
-the playback rules (`PlaybackViewModel`: the file, saves, the one retry, resume and
-the next-episode card), the quality default, the iOS resume fragment, the VLC links and playlist, TV seeking
+the playback rules (`PlaybackViewModel`: the file, the stored links TV and driving
+mode start from, saves, the one retry, resume and the next-episode card), the
+quality default, the iOS resume fragment, the VLC links and playlist, TV seeking
 and interface size, timestamp formatting, toast dismissal, and the catalog cache.
 
 Two of those earn their place beyond the coverage they add:
