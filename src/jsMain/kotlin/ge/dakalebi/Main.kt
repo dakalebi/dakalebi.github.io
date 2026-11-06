@@ -12,6 +12,8 @@ import ge.dakalebi.ui.blockPinchZoom
 import ge.dakalebi.di.fixtureGraph
 import ge.dakalebi.ui.drive.DriveApp
 import ge.dakalebi.ui.shell
+import ge.dakalebi.ui.spike.MiniPlayerSpike
+import ge.dakalebi.ui.spike.isMiniPlayerSpike
 import ge.dakalebi.ui.tv.TvApp
 import ge.dakalebi.ui.tv.applyInterfaceScale
 import ge.dakalebi.ui.useFixtures
@@ -74,7 +76,8 @@ fun main() {
                 when (shell) {
                     Shell.Tv -> TvApp()
                     Shell.Drive -> DriveApp()
-                    Shell.Web -> App()
+                    // Redesign phase 0 spike (draft PR only, never merged).
+                    Shell.Web -> if (isMiniPlayerSpike) MiniPlayerSpike() else App()
                 }
             }
         }
