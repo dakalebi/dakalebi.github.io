@@ -386,14 +386,15 @@ Saves happen at most every 7 seconds during playback, plus on pause, on
 `visibilitychange` to hidden (mobile often never fires `beforeunload`), and on
 unmount.
 
-On the web watch screen these decisions are made by `PlaybackViewModel`
-(`presentation/`), which has tests and no browser: which file plays, when to save
-and with what flag, the one retry after a media error, where to resume, when the
-next-episode card is due, and leaving for the next episode. `WatchScreen` keeps the
-element and the browser workarounds below (the resume retry loop, the `#t=`
-fragment, the AirPlay clock). A save already sent still lands after the screen has
-gone, because saves run in the app scope. TV and driving mode still keep their own
-copy of these rules.
+On all three players (web, TV and driving mode) these decisions are made by
+`PlaybackViewModel` (`presentation/`), which has tests and no browser: which file
+plays, when to save and with what flag, the one retry after a media error, where to
+resume, when the next-episode card is due, and leaving for the next episode. Each
+player keeps its element and its own workarounds: `WatchScreen` has the ones below
+(the resume retry loop, the `#t=` fragment, the AirPlay clock), `TvWatchScreen`
+resumes with one seek, and `DrivePlayer` keeps its own resume and the media
+session. A save already sent still lands after the player has moved on, because
+saves run in the app scope.
 
 ### Choosing a player
 
@@ -457,7 +458,7 @@ exists, a phone starts there too, not at its 720p default. Otherwise a phone-siz
 side under 600 CSS px) starts at 720p and everything else at the best rendition
 (`defaultQualityLabel`). iPads are not compact. The native iOS player has no
 quality menu, so with it on, this default is an iPhone's only way off 1080p. TV
-picks its quality in `TvWatchScreen` and is not affected.
+asks for no cap (`TvWatchScreen`), so it starts at the best rendition on any screen.
 
 ### The AirPlay clock
 
@@ -535,10 +536,11 @@ player screen is the native player with big controls around it.
   a frame. Previous and Next swap the source on that element and reuse that first
   permission. Nothing moves on by itself at `ended`: the episode is marked watched
   and stays.
-- **Same rules as the web player**: progress saves every `SAVE_EVERY` seconds,
-  resume retries the seek (up to eight tries), one fresh link after a media error, the
-  picked quality or the best rendition capped at 720p on a phone, and a `#t=`
-  fragment on iOS.
+- **The web player's rules, the same code** (`PlaybackViewModel`, one per episode
+  opened): progress saves every `SAVE_EVERY` seconds, one fresh link after a media
+  error, and the picked quality or the best rendition capped at 720p on a phone.
+  The resume is the car player's own: it retries the seek (up to eight tries), adds
+  a `#t=` fragment on iOS, and starts a finished episode over.
 - **Car and headphone buttons** through the Media Session API (play/pause, ∓30 s,
   next, seek), and a screen wake lock while playing.
 - **Mark as watched** shows a green tick once done. Tapping the tick asks the same
@@ -969,14 +971,14 @@ retry.
 
 ## 8. What is verified, and what is not
 
-**Automated.** `./gradlew allTests`, on Node, in `:presentation` for now (217 tests
+**Automated.** `./gradlew allTests`, on Node, in `:presentation` for now (225 tests
 on 2026-11-06, covering `:core`, `:domain` and `:data` too), run by CI on every pull request and before every publish: the watched threshold, the never-rewind guard, "continue watching"
 and the next episode to play, ordering across season boundaries and the rest of a
 season, hash-route parsing, settings sync (the merge rules, the repository, the
 store, the device copy), the session (guest choice, admin rights, and the
 settings sync and catalog reset that follow it), guest storage, playback-failure classification,
-the web player's playback rules (the file, saves, the one retry, resume and the
-next-episode card), the quality default, the iOS resume fragment, the VLC links and playlist encoding,
+the playback rules all three players share (the file, the stored links TV and
+driving mode start from, saves, the one retry, resume and the next-episode card), the quality default, the iOS resume fragment, the VLC links and playlist encoding,
 TV seeking and interface size, timestamp formatting, toast dismissal, the catalog
 cache's stamp rule, its thirteen-field round trip and its duration patch, the bare
 GET, and the

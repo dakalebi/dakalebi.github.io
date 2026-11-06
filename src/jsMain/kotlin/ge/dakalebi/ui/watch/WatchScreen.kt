@@ -3,7 +3,6 @@ package ge.dakalebi.ui.watch
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -12,6 +11,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import ge.dakalebi.core.formatTime
 import ge.dakalebi.di.catalog
+import ge.dakalebi.di.collectState
 import ge.dakalebi.di.rememberPlaybackViewModel
 import ge.dakalebi.di.sessionState
 import ge.dakalebi.di.settings
@@ -76,7 +76,7 @@ fun WatchScreen(episodeId: String) {
         maxQuality = COMPACT_SCREEN_MAX_QUALITY.takeIf { isCompactScreen },
         appleMobile = isAppleMobile,
     )
-    val ui by playback.state.collectAsState()
+    val ui by playback.collectState()
     // Whose progress this is: the account's, or a guest's on this device.
     val uid = sessionState.viewerId
     val refs = remember(episodeId) { WatchRefs() }

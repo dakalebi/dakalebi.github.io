@@ -3,11 +3,13 @@ package ge.dakalebi.di
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
-import ge.dakalebi.domain.usecase.ResolveEpisodeVideo
 import ge.dakalebi.presentation.CatalogStore
+import ge.dakalebi.presentation.PlaybackUiState
 import ge.dakalebi.presentation.PlaybackViewModel
 import ge.dakalebi.presentation.PlaybackViewModelFactory
 import ge.dakalebi.presentation.PreferencesStore
@@ -42,7 +44,6 @@ val LocalSession = local<SessionViewModel>("LocalSession")
 val LocalCatalog = local<CatalogStore>("LocalCatalog")
 val LocalSettings = local<SettingsStore>("LocalSettings")
 val LocalPreferences = local<PreferencesStore>("LocalPreferences")
-val LocalResolveEpisodeVideo = local<ResolveEpisodeVideo>("LocalResolveEpisodeVideo")
 val LocalPlayback = local<PlaybackViewModelFactory>("LocalPlayback")
 
 /**
@@ -78,3 +79,14 @@ fun rememberPlaybackViewModel(episodeId: String, maxQuality: Int?, appleMobile: 
     DisposableEffect(viewModel) { onDispose { viewModel.close() } }
     return viewModel
 }
+
+/**
+ * This ViewModel's state, for drawing.
+ *
+ * Keyed on the ViewModel. A plain `collectAsState` keeps the state it last saw
+ * until its collector restarts, so on the first frame after a screen moves to
+ * another episode it would still hold the previous episode's file, and a new
+ * player would start loading that.
+ */
+@Composable
+fun PlaybackViewModel.collectState(): State<PlaybackUiState> = key(this) { state.collectAsState() }

@@ -4,12 +4,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
-import ge.dakalebi.di.LocalResolveEpisodeVideo
+import ge.dakalebi.di.LocalPlayback
 import ge.dakalebi.di.catalog
 import ge.dakalebi.di.router
-import ge.dakalebi.di.session
 import ge.dakalebi.di.sessionState
-import ge.dakalebi.di.settings
 import ge.dakalebi.i18n.S
 import ge.dakalebi.presentation.Route
 import ge.dakalebi.ui.LoginScreen
@@ -36,18 +34,14 @@ import org.jetbrains.compose.web.dom.Text
 @Composable
 fun DriveApp() {
     val router = router()
-    val session = session()
     val catalog = catalog()
-    val settings = settings()
-    val resolveVideo = LocalResolveEpisodeVideo.current
+    val playback = LocalPlayback.current
 
     val player = remember {
         DrivePlayer(
             catalog = catalog,
-            settings = settings,
             router = router,
-            resolveVideo = resolveVideo,
-            viewerId = { session.state.value.viewerId },
+            playback = playback,
         )
     }
 

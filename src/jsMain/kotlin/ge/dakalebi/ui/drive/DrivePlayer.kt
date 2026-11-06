@@ -5,26 +5,25 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import ge.dakalebi.core.Log
 import ge.dakalebi.domain.model.Episode
-import ge.dakalebi.domain.model.Setting
 import ge.dakalebi.domain.service.COMPACT_SCREEN_MAX_QUALITY
-import ge.dakalebi.domain.service.PlaybackFailure
-import ge.dakalebi.domain.service.defaultQualityLabel
-import ge.dakalebi.domain.service.playbackFailure
-import ge.dakalebi.domain.service.retryUrl
 import ge.dakalebi.domain.service.withStartFragment
-import ge.dakalebi.domain.usecase.ResolveEpisodeVideo
 import ge.dakalebi.i18n.S
 import ge.dakalebi.presentation.CatalogStore
+import ge.dakalebi.presentation.PlaybackError
+import ge.dakalebi.presentation.PlaybackViewModel
+import ge.dakalebi.presentation.PlaybackViewModelFactory
 import ge.dakalebi.presentation.Route
 import ge.dakalebi.presentation.Router
-import ge.dakalebi.presentation.SAVE_EVERY
-import ge.dakalebi.presentation.SettingsStore
 import ge.dakalebi.ui.assetBase
+import ge.dakalebi.ui.player.VideoPlayhead
 import ge.dakalebi.ui.player.isAppleMobile
 import ge.dakalebi.ui.player.isCompactScreen
 import kotlinx.browser.document
 import kotlinx.browser.window
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import org.w3c.dom.HTMLElement
 import org.w3c.dom.HTMLVideoElement
@@ -73,22 +72,30 @@ private external class MediaMetadata(init: dynamic)
  * nothing here waits for a recomposition. [next] and [previous] swap the source and
  * call `play()` themselves, and the route follows.
  *
- * The rules about what a position means are shared, not repeated: [SAVE_EVERY] for the
- * cadence, and the watched threshold and never-rewind guard inside `SaveProgress`.
+ * **The rules are shared.** Each episode opened gets its own [PlaybackViewModel], the one
+ * the web and TV watch screens use: it picks the file, saves (every seven seconds, on
+ * pause, at the end), makes the one retry after an error and clears progress. What stays
+ * here is this player's: the element, its resume, the media session and the wake lock.
+ * The resume stays because the skip buttons count from the saved spot until it lands,
+ * and because a finished episode starts over here rather than resuming near its end.
  */
 internal class DrivePlayer(
     private val catalog: CatalogStore,
-    private val settings: SettingsStore,
     private val router: Router,
-    private val resolveVideo: ResolveEpisodeVideo,
-    /** Who progress is filed under: the account's uid, or a guest's device key. */
-    private val viewerId: () -> String?,
+    /** Makes the rules for each episode opened. */
+    private val playback: PlaybackViewModelFactory,
 ) {
     /**
      * Lives as long as the page, like the graph's own scope. A composable's scope is
      * cancelled as the screen leaves, which is the moment the last save is made.
      */
     private val scope = MainScope()
+
+    /** The open episode's rules. Replaced at each [open], dropped at [stop]. */
+    private var viewModel: PlaybackViewModel? = null
+
+    /** Applies what the open episode's retry decides. See [follow]. */
+    private var following: Job? = null
 
     private val video = (document.createElement("video") as HTMLVideoElement).apply {
         controls = true
@@ -120,7 +127,7 @@ internal class DrivePlayer(
         private set
 
     /** Why the open episode did not play, which picks the message. Null while it can. */
-    var failure: PlaybackFailure? by mutableStateOf(null)
+    var failure: PlaybackError? by mutableStateOf(null)
         private set
     val failed: Boolean get() = failure != null
 
@@ -131,11 +138,13 @@ internal class DrivePlayer(
     var sourceUrl: String? by mutableStateOf(null)
         private set
 
+    /** The rendition [sourceUrl] is, by label. Null when the episode lists none. */
+    var quality: String? by mutableStateOf(null)
+        private set
+
     /** Where the episode should start, until the element is confirmed to be there. */
     private var resumeTarget: Double? = null
     private var resumeAttempts = 0
-    private var lastSaved = 0.0
-    private var retried = false
 
     /** The viewer's intent, as opposed to the element's state: a reload after a failed load keeps it. */
     private var wantsToPlay = false
@@ -232,26 +241,42 @@ internal class DrivePlayer(
         }
         // The episode being left. Skipped after `ended`, which has already saved it as watched.
         if (episodeId != null && !video.ended) persist()
+        release()
 
         val entry = catalog.progress[episode.id]
         // A finished episode starts over. Resuming it would land five seconds from the end.
         val saved = entry?.takeIf { !it.isWatched }?.progressSeconds ?: 0
 
+        // The same choice the web player makes: the quality the viewer picked if this
+        // episode has it, otherwise the best rendition, capped at 720p on a phone. The
+        // episode's default stream only when it lists no renditions.
+        val rules = playback.create(
+            episodeId = episode.id,
+            maxQuality = COMPACT_SCREEN_MAX_QUALITY.takeIf { isCompactScreen },
+            appleMobile = isAppleMobile,
+        )
+        rules.attach(VideoPlayhead(video))
+        rules.startFrom(episode)
+        viewModel = rules
+
         episodeId = episode.id
         failure = null
-        retried = false
         buffering = false
         position = saved
         duration = episode.durationSeconds ?: entry?.durationSeconds
         resumeTarget = saved.toDouble().takeIf { saved > 1 }
         resumeAttempts = 0
-        lastSaved = resumeTarget ?: 0.0
+        // Timed saves count from the saved spot, not from 0:00.
+        rules.jumpedTo(resumeTarget ?: 0.0)
         updateMetadata(episode)
 
-        val url = sourceFor(episode)
+        val chosen = rules.state.value
+        val url = chosen.videoUrl
         sourceUrl = url
+        quality = chosen.quality
         if (url == null) {
-            fail(PlaybackFailure.LoadFailed)
+            // Driving mode keeps one message for a missing link and a failed one.
+            fail(PlaybackError.LoadFailed)
             wantsToPlay = false
             video.removeAttribute("src")
             video.load()
@@ -260,7 +285,44 @@ internal class DrivePlayer(
         // iOS resumes through the source itself, as the web player does (see
         // [withStartFragment]). [resume] stays as the fallback and finds it already there.
         video.src = if (isAppleMobile) withStartFragment(url, saved) else url
+        follow(rules)
         if (play) playNow()
+    }
+
+    /**
+     * Applies what [rules] decides after a media error: a fresh link to load, carrying on
+     * from where the failed one stopped, or the failure to show.
+     *
+     * The first value is the link [open] already loaded, so it changes nothing. Only the
+     * link and the error are read, so the time updates do not wake this.
+     */
+    private fun follow(rules: PlaybackViewModel) {
+        following = scope.launch {
+            rules.state.map { it.videoUrl to it.error }.distinctUntilChanged().collect { (url, error) ->
+                if (rules !== viewModel) return@collect
+                if (error != null) {
+                    if (failure == null) fail(error)
+                    return@collect
+                }
+                if (url == null || url == sourceUrl) return@collect
+                sourceUrl = url
+                video.src = url
+                if (wantsToPlay) {
+                    video.play().catch {
+                        Log.w("drive", "play() after retry refused", it)
+                        playing = false
+                    }
+                }
+            }
+        }
+    }
+
+    /** Stops following the open episode's rules. Saves already sent still land. */
+    private fun release() {
+        following?.cancel()
+        following = null
+        viewModel?.close()
+        viewModel = null
     }
 
     /**
@@ -268,7 +330,7 @@ internal class DrivePlayer(
      * position. Watched is sticky in `SaveProgress`, so the saves that follow keep it.
      */
     fun markWatched() {
-        persist(isWatched = true)
+        viewModel?.markWatched()
     }
 
     /**
@@ -278,11 +340,9 @@ internal class DrivePlayer(
      */
     fun clearProgress(done: (Boolean) -> Unit) {
         val id = episodeId ?: return
-        val user = viewerId() ?: return
+        val rules = viewModel ?: return
         scope.launch {
-            val cleared = runCatching { catalog.clearProgress(user, id) }
-                .onFailure { Log.e("progress", "clear failed for $id", it) }
-                .isSuccess
+            val cleared = rules.clearProgress()
             if (cleared && episodeId == id) seek(0.0)
             done(cleared)
         }
@@ -370,6 +430,7 @@ internal class DrivePlayer(
     /** Signed out: nothing may keep playing, or saving, for an account that is gone. */
     fun stop() {
         wantsToPlay = false
+        release()
         video.pause()
         video.removeAttribute("src")
         video.load()
@@ -403,7 +464,7 @@ internal class DrivePlayer(
         runCatching { video.currentTime = clamped }
             .onFailure { Log.w("drive", "seek to ${clamped}s rejected", it) }
         position = floor(clamped).toInt()
-        lastSaved = clamped
+        viewModel?.jumpedTo(clamped)
         updatePositionState()
     }
 
@@ -419,7 +480,7 @@ internal class DrivePlayer(
      * reporting itself unpaused, and a `play` event may already have arrived, so the
      * screen would otherwise keep saying "Pause" over an episode that is not playing.
      */
-    private fun fail(reason: PlaybackFailure) {
+    private fun fail(reason: PlaybackError) {
         failure = reason
         playing = false
         buffering = false
@@ -443,10 +504,8 @@ internal class DrivePlayer(
             position = whole
             updatePositionState()
         }
-        if (time - lastSaved >= SAVE_EVERY) {
-            lastSaved = time
-            persist()
-        }
+        // Saves every seven seconds of playback.
+        viewModel?.onTimeUpdate()
     }
 
     // The native controls start and stop the element without going through [playNow]
@@ -476,43 +535,17 @@ internal class DrivePlayer(
     private fun onError() {
         // Emptying the source on sign-out reports an error too. That one is not a failure.
         if (video.getAttribute("src").isNullOrEmpty()) return
-        val episode = current ?: return
-        val code = video.error?.code?.toInt()
-        Log.e("drive", "media error for ${episode.id} (code=$code)")
+        val rules = viewModel ?: return
         // On an iPhone, code 4 is a file Safari cannot decode (all of season 2), and the
-        // message then points to VLC.
-        val reason = playbackFailure(code, isAppleMobile)
-        if (retried) {
-            fail(reason)
-            return
-        }
-        retried = true
-        // The stored link may have expired. Ask Formula for a fresh one, once, and carry on
-        // from where this one stopped.
-        resumeTarget = resumeTarget ?: video.currentTime.takeIf { it > 1 }
-        resumeAttempts = 0
-        val id = episode.id
-        val failedUrl = sourceUrl
-        scope.launch {
-            val fresh = runCatching { resolveVideo(episode) }
-                .onFailure { Log.e("drive", "resolve failed for $id", it) }
-                .getOrNull()
-            if (episodeId != id) return@launch
-            // The same link again starts no new load, so it would wait forever: say so now.
-            // That is the case whenever Formula's API is down, and for a file that cannot play.
-            val url = retryUrl(failedUrl = failedUrl, freshUrl = fresh?.let { catalog.putEpisode(it); sourceFor(it) })
-            if (url == null) {
-                fail(reason)
-                return@launch
-            }
-            sourceUrl = url
-            video.src = url
-            if (wantsToPlay) {
-                video.play().catch {
-                    Log.w("drive", "play() after retry refused", it)
-                    playing = false
-                }
-            }
+        // message then points to VLC. The rules log it and pick the message.
+        if (rules.onMediaError(video.error?.code?.toInt())) {
+            // The stored link may have expired. The rules ask Formula for a fresh one,
+            // once, and [follow] loads it. It carries on from where this one stopped.
+            resumeTarget = resumeTarget ?: video.currentTime.takeIf { it > 1 }
+            resumeAttempts = 0
+        } else {
+            // Already retried: give up until the next tap.
+            rules.state.value.error?.let { fail(it) }
         }
     }
 
@@ -540,7 +573,7 @@ internal class DrivePlayer(
         if (abs(video.currentTime - target) < SEEK_TOLERANCE) {
             if (confirming && !video.seeking) {
                 resumeTarget = null
-                lastSaved = target
+                viewModel?.jumpedTo(target)
                 position = floor(target).toInt()
                 updatePositionState()
             }
@@ -558,24 +591,10 @@ internal class DrivePlayer(
 
     // -------------------------------------------------------------- saving
 
+    /** Held while the resume is pending, unless it records a decision such as watched. */
     private fun persist(isWatched: Boolean? = null) {
-        val id = episodeId ?: return
-        val user = viewerId() ?: return
         if (resumeTarget != null && isWatched == null) return
-        val seconds = floor(video.currentTime).toInt()
-        if (seconds < 1 && isWatched == null) return
-        val total = video.duration.takeIf { it.isFinite() && it > 0 }?.let { floor(it).toInt() }
-        scope.launch {
-            runCatching {
-                catalog.saveProgress(
-                    uid = user,
-                    episodeId = id,
-                    progressSeconds = seconds,
-                    durationSeconds = total,
-                    isWatched = isWatched,
-                )
-            }.onFailure { Log.e("progress", "save failed for $id at ${seconds}s", it) }
-        }
+        viewModel?.save(isWatched)
     }
 
     // -------------------------------------------------------- media session
@@ -689,20 +708,5 @@ internal class DrivePlayer(
         val lock = wakeLock ?: return
         wakeLock = null
         runCatching { lock.release() }
-    }
-
-    /**
-     * The same choice the web player makes: the quality the viewer picked if this episode
-     * has it, otherwise the best rendition, capped at 720p on a phone. The episode's
-     * default stream only when it lists no renditions.
-     */
-    private fun sourceFor(episode: Episode): String? =
-        qualityFor(episode)?.let { episode.sources[it] } ?: episode.videoUrl
-
-    /** The rendition [sourceFor] picks, by label. Null when the episode lists none. */
-    fun qualityFor(episode: Episode): String? {
-        val sources = episode.sources
-        return settings[Setting.PreferredQuality].takeIf { sources.containsKey(it) }
-            ?: defaultQualityLabel(sources, COMPACT_SCREEN_MAX_QUALITY.takeIf { isCompactScreen })
     }
 }

@@ -13,10 +13,10 @@ import ge.dakalebi.di.router
 import ge.dakalebi.di.session
 import ge.dakalebi.di.toasts
 import ge.dakalebi.domain.model.Episode
-import ge.dakalebi.domain.service.PlaybackFailure
 import ge.dakalebi.domain.service.vlcOpenUrl
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
+import ge.dakalebi.presentation.ErrorMessages
 import ge.dakalebi.presentation.Route
 import ge.dakalebi.ui.ConfirmDialog
 import ge.dakalebi.ui.player.isAppleMobile
@@ -188,12 +188,7 @@ private fun DrivePlayerBody(episode: Episode, player: DrivePlayer) {
                 val failure = player.failure
                 if (loaded && failure != null) {
                     Div({ classes("drive-error"); attr("role", "alert") }) {
-                        Text(
-                            when (failure) {
-                                PlaybackFailure.UnsupportedOnAppleMobile -> S.videoUnsupportedOnAppleMobile
-                                PlaybackFailure.LoadFailed -> S.videoLoadFailed
-                            },
-                        )
+                        Text(ErrorMessages.playback(failure))
                     }
                 }
             }
@@ -316,7 +311,7 @@ private fun DriveExtras(episode: Episode, player: DrivePlayer, loaded: Boolean) 
                 current = episode,
                 currentUrl = vlcUrl,
                 upcoming = emptyList(),
-                quality = player.qualityFor(episode),
+                quality = player.quality,
                 startSeconds = player.position,
                 title = { S.seasonAndEpisode(it.seasonNumber, it.episodeNumber) },
             )
