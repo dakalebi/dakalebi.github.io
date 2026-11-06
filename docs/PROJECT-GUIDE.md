@@ -1025,8 +1025,9 @@ time and autoplay.
 - **Guest mode with a real TV remote**, reaching "Continue as guest".
 - **Settings sync on two real devices** after the final #28 fix and the
   combined rules: no such check is recorded.
-- **`CustomVideoPlayer` internals**, beyond rendering. It is 600 lines of media
-  state machine that needs a playing video to exercise.
+- **The players' internals**, beyond rendering. `CustomPlayerState`,
+  `TvPlayerState` and `DrivePlayer` are media state machines that need a playing
+  video to exercise.
 
 ---
 
@@ -1074,8 +1075,6 @@ gcloud CLI is installed on the owner's machine.
 ### Known gaps, unprioritised
 
 - Watch progress is uncached and is the next quota bottleneck.
-- `CustomVideoPlayer` is still one 600-line composable. It has no layering
-  violations; splitting it blind is the risk.
 - English exists and is complete but has never been proof-read by a speaker of
   the Georgian original for tone.
 

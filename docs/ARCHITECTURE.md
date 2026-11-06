@@ -234,14 +234,24 @@ later state change is.
 - **`i18n.S` is a global.** It is a resource bundle behind an interface, already
   swappable through `I18n.use(tag)`. Routing it through a CompositionLocal
   would rewrite every line of UI text for no gain in substitutability.
-- **Each player is still one large file.** `ui/player/CustomVideoPlayer.kt` (the
-  web, about 700 lines), `ui/tv/player/TvVideoPlayer.kt` (about 1,100) and
-  `ui/drive/DrivePlayer.kt` (about 700). They have no layering violations: the
-  playback rules are in `PlaybackViewModel`, and what is left is each platform's
-  media element, its controls and its timers. Splitting one means cutting a dense
-  media state machine apart, and the players are the one part of this app that
-  cannot be exercised without a real browser and a playing video. That is a change
-  of its own, checked on the devices, not part of a cleanup.
+- **Each player keeps its media state in one class.** The players are split by
+  job, but the state machine at the centre of each (the element handles, the
+  timers, the paint loop, the resume) stays whole, because the players are the one
+  part of this app that cannot be exercised without a real browser and a playing
+  video. None has a layering violation: the playback rules are in
+  `PlaybackViewModel`.
+
+  | Player | State and actions | Around it |
+  |---|---|---|
+  | Web, `ui/player/` | `CustomPlayerState` | `CustomVideoPlayer` (effects, layout), `CustomPlayerVideo` (the element and its events), `CustomPlayerControls` |
+  | TV, `ui/tv/player/` | `TvPlayerState` | `TvVideoPlayer` (input layers, layout), `TvPlayerInput` (what each key does), `TvPlayerVideo`, `TvPlayerChrome` |
+  | Driving mode, `ui/drive/` | `DrivePlayer` (not Compose) | `DriveMediaSession`, `ScreenWakeLock`, `VideoFullscreen.kt` |
+
+  The two Compose players hold their state in a plain class kept with `remember`,
+  so the same state objects live as long as the old single composable's did and
+  the effects run in the same order. The TV focus path still needs no
+  recomposition: the key handling in `TvPlayerInput` moves the ring with direct
+  `SpatialNav` calls, as it did before the split.
 - **`Firebase` is an object, not injected.** It is a lazily-initialised handle
   to the SDK, held inside `data/firebase` and named by nothing outside it. The
   repositories in front of it are what the rest of the app depends on.
