@@ -1,0 +1,609 @@
+/* =============================================================================
+   Presentation-New design tokens: "Tbilisi evening". Approved by the owner on 2026-11-06.
+
+   Dark only, in every shell. The page frames video, and a light theme would fight it.
+
+   Three layers, and each layer may only read the one below it:
+     1. Primitives  raw values (--walnut-900, --fs-16, --space-4). Components never read these.
+     2. Semantic    roles (--color-surface-1, --type-title-size, --gap-stack). Shells override here.
+     3. Component   one component's knobs (--mini-bg, --tabbar-h). Colours come from layer 2 only.
+                    A size that only one component uses may be a literal here.
+
+   Shells. Put the shell on <html>: data-shell="web" | "tv" | "drive". No attribute means web.
+     web    1rem = 16px, the browser's own size. Desktop gets a few overrides from 64rem wide.
+     tv     1rem = 1/60 of the panel width (16px on a 960x540 panel) times --tv-scale,
+            which InterfaceScale sets (0.75 to 1.3). Every TV size below is in rem for that reason.
+     drive  1rem = 16px, but larger roles and targets. Nothing under 16px. No small text while driving.
+
+   Sizes are named by their px value at a 16px root (--fs-20 is 1.25rem). On TV the name is the
+   design size at 960x540, not the rendered size.
+
+   Chrome casing (Mtavruli) is not a token. It is a string transform per language (`String.caps`),
+   so English stays sentence case. The roles marked "caps" below expect that transform.
+   ========================================================================== */
+
+:root {
+  color-scheme: dark;
+
+  /* ===== 1. PRIMITIVES ===================================================== */
+
+  /* walnut: grounds and surfaces, darkest first */
+  --black: #000000;
+  --walnut-950: #140e0c;
+  --walnut-900: #1d1512;
+  --walnut-850: #281d19;
+  --walnut-800: #352721;
+  --walnut-750: #423128;
+  --walnut-700: #4a372e;
+  --walnut-500: #87705f;
+
+  /* cream: text */
+  --cream-50: #faf0e6;
+  --cream-200: #d4c0ae;
+  --cream-400: #b09a88;
+
+  /* honey amber: the one accent */
+  --amber-300: #f7bd62;
+  --amber-400: #f4a93c;
+  --amber-500: #de9128;
+  --amber-600: #c98522;
+  --amber-ink: #241812;
+
+  /* status */
+  --sage-300: #9bd08a;
+  --pomegranate-300: #ff8d78;
+
+  /* channels, for alpha: rgb(var(--cream-rgb) / .1) */
+  --cream-rgb: 250 240 230;
+  --walnut-rgb: 20 14 12;
+  --amber-rgb: 244 169 60;
+  --shadow-rgb: 0 0 0;
+
+  /* families. Noto Sans Georgian also carries Latin, so English needs no second face. */
+  --font-georgian: "Noto Sans Georgian", "BPG Arial", Sylfaen, system-ui, sans-serif;
+  --font-figures: "Archivo", "Noto Sans Georgian", system-ui, sans-serif;
+
+  /* size steps (rem; name = px at 16px) */
+  --fs-12: 0.75rem;
+  --fs-13: 0.8125rem;
+  --fs-14: 0.875rem;
+  --fs-16: 1rem;
+  --fs-18: 1.125rem;
+  --fs-20: 1.25rem;
+  --fs-22: 1.375rem;
+  --fs-24: 1.5rem;
+  --fs-26: 1.625rem;
+  --fs-28: 1.75rem;
+  --fs-32: 2rem;
+  --fs-36: 2.25rem;
+  --fs-40: 2.5rem;
+  --fs-44: 2.75rem;
+  --fs-48: 3rem;
+  --fs-64: 4rem;
+
+  /* weights (both families are variable) */
+  --fw-400: 400;
+  --fw-500: 500;
+  --fw-650: 650;
+  --fw-750: 750;
+  --fw-850: 850;
+
+  /* widths, as font-stretch. Noto Sans Georgian: 62.5% to 100%. Archivo: 62% to 125%. */
+  --stretch-66: 66%;
+  --stretch-72: 72%;
+  --stretch-75: 75%;
+  --stretch-100: 100%;
+
+  /* line heights. Mkhedruli has real ascenders and descenders, so running text needs 1.5. */
+  --lh-100: 1;
+  --lh-110: 1.1;
+  --lh-125: 1.25;
+  --lh-140: 1.4;
+  --lh-150: 1.5;
+
+  --tracking-0: 0;
+  --tracking-2: 0.02em;
+
+  /* space: 4px grid */
+  --space-0: 0;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+
+  /* radius */
+  --radius-4: 0.25rem;
+  --radius-8: 0.5rem;
+  --radius-12: 0.75rem;
+  --radius-16: 1rem;
+  --radius-20: 1.25rem;
+  --radius-28: 1.75rem;
+  --radius-32: 2rem;
+  --radius-pill: 999px;
+
+  /* shadows. On a dark ground a shadow only reads under something floating. */
+  --shadow-1: 0 1px 2px rgb(var(--shadow-rgb) / 0.4);
+  --shadow-2: 0 8px 24px rgb(var(--shadow-rgb) / 0.45);
+  --shadow-3: 0 24px 64px rgb(var(--shadow-rgb) / 0.55);
+  --edge-light: inset 0 1px 0 rgb(var(--cream-rgb) / 0.06);
+
+  /* motion */
+  --dur-0: 0ms;
+  --dur-120: 120ms;
+  --dur-200: 200ms;
+  --dur-240: 240ms;
+  --dur-320: 320ms;
+  --ease-out: cubic-bezier(0.32, 0.72, 0, 1); /* decelerate; today's --ease */
+  --ease-in: cubic-bezier(0.4, 0, 1, 1); /* accelerate, for exits */
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+  /* ===== 2. SEMANTIC ======================================================= */
+
+  /* grounds, darkest to lightest. Depth comes from lightness, not shadow. */
+  --color-stage: var(--black); /* behind video only: letterbox and full screen */
+  --color-bg-deep: var(--walnut-950); /* tab bar, TV rail */
+  --color-bg: var(--walnut-900); /* the page */
+  --color-surface-1: var(--walnut-850); /* cards, sheets, panels */
+  --color-surface-2: var(--walnut-800); /* raised: mini-player, menus, selected rows */
+  --color-surface-3: var(--walnut-750); /* pressed on a raised surface */
+
+  /* lines */
+  --color-line: var(--walnut-700); /* dividers. Decorative, below 3:1 on purpose. */
+  --color-line-strong: var(--walnut-500); /* boundaries that carry meaning: inputs, off switches. 3:1+ */
+
+  /* text. All three pass 4.5:1 on every ground above. */
+  --color-text: var(--cream-50);
+  --color-text-2: var(--cream-200);
+  --color-text-3: var(--cream-400);
+  --color-text-on-accent: var(--amber-ink);
+
+  /* accent */
+  --color-accent: var(--amber-400);
+  --color-accent-hover: var(--amber-300);
+  --color-accent-press: var(--amber-500);
+  --color-accent-text: var(--amber-400); /* amber used as text or icon on a ground */
+  --color-accent-soft: rgb(var(--amber-rgb) / 0.14); /* tinted badge or selection */
+  --color-accent-large: var(--amber-400); /* accent for one very large surface (drive darkens it) */
+
+  /* status */
+  --color-success: var(--sage-300);
+  --color-danger: var(--pomegranate-300);
+
+  /* neutral layers on any ground */
+  --color-secondary: rgb(var(--cream-rgb) / 0.1); /* secondary buttons, chips */
+  --color-secondary-hover: rgb(var(--cream-rgb) / 0.14);
+  --color-hover: rgb(var(--cream-rgb) / 0.06); /* hover on ghost items */
+  --color-press: rgb(var(--cream-rgb) / 0.1);
+
+  /* progress. The track is context only (about 1.9:1), so every progress graphic also
+     carries its value as text or as an accessible name. The fill is 4.2:1+ against the track. */
+  --color-track: rgb(var(--cream-rgb) / 0.22);
+  --color-fill: var(--color-accent);
+
+  /* over video and over the page */
+  --color-on-media: rgb(var(--walnut-rgb) / 0.6);
+  --color-on-media-text: var(--cream-50);
+  --color-scrim: rgb(var(--walnut-rgb) / 0.72);
+  --color-glass: rgb(var(--walnut-rgb) / 0.92); /* blurred bars over scrolling content */
+  --color-handle: rgb(var(--cream-rgb) / 0.3);
+  --shadow-on-media: 0 1px 8px rgb(var(--shadow-rgb) / 0.6); /* numbers printed on a still */
+  --gradient-fallback: radial-gradient(120% 90% at 20% 15%, rgb(var(--amber-rgb) / 0.22), transparent 60%), linear-gradient(150deg, var(--walnut-800), var(--walnut-950));
+
+  /* focus. Web shows a ring on :focus-visible. TV adds a glow and a scale (see the tv block). */
+  --focus-color: var(--cream-50);
+  --focus-width: 2px;
+  --focus-gap: 2px;
+  --focus-glow: 0 0 0 0 transparent;
+  --focus-scale: 1;
+  --focus-ring: 0 0 0 var(--focus-gap) var(--color-bg), 0 0 0 calc(var(--focus-gap) + var(--focus-width)) var(--focus-color), var(--focus-glow);
+
+  /* type roles. Use as:  font: var(--type-x); font-stretch: var(--type-x-stretch);
+     letter-spacing: var(--type-x-tracking). Shells change only the -size tokens. */
+  --type-display-size: var(--fs-32);
+  --type-headline-size: var(--fs-26);
+  --type-title-size: var(--fs-18);
+  --type-section-size: var(--fs-14);
+  --type-label-size: var(--fs-14);
+  --type-label-s-size: var(--fs-12);
+  --type-item-size: var(--fs-16);
+  --type-body-size: var(--fs-16);
+  --type-body-s-size: var(--fs-14);
+  --type-meta-size: var(--fs-13);
+  --type-figure-xl-size: var(--fs-48);
+  --type-figure-l-size: var(--fs-28);
+  --type-figure-m-size: var(--fs-16);
+  --type-figure-s-size: var(--fs-13);
+
+  /* display: page titles. caps */
+  --type-display: var(--fw-850) var(--type-display-size) / var(--lh-100) var(--font-georgian);
+  --type-display-stretch: var(--stretch-66);
+  --type-display-tracking: var(--tracking-0);
+  /* headline: the episode you are on. caps */
+  --type-headline: var(--fw-850) var(--type-headline-size) / var(--lh-110) var(--font-georgian);
+  --type-headline-stretch: var(--stretch-66);
+  --type-headline-tracking: var(--tracking-0);
+  /* title: card, sheet and dialog titles. caps */
+  --type-title: var(--fw-750) var(--type-title-size) / var(--lh-125) var(--font-georgian);
+  --type-title-stretch: var(--stretch-75);
+  --type-title-tracking: var(--tracking-0);
+  /* section: labels above a group. caps */
+  --type-section: var(--fw-750) var(--type-section-size) / var(--lh-125) var(--font-georgian);
+  --type-section-stretch: var(--stretch-75);
+  --type-section-tracking: var(--tracking-2);
+  /* label: buttons and chips. caps */
+  --type-label: var(--fw-750) var(--type-label-size) / var(--lh-100) var(--font-georgian);
+  --type-label-stretch: var(--stretch-75);
+  --type-label-tracking: var(--tracking-2);
+  /* label-s: tab bar and badges. Mkhedruli, not caps: small caps text is hard to read. */
+  --type-label-s: var(--fw-650) var(--type-label-s-size) / var(--lh-100) var(--font-georgian);
+  --type-label-s-stretch: var(--stretch-100);
+  --type-label-s-tracking: var(--tracking-0);
+  /* item: the name of a row ("სერია 21", a setting). Mkhedruli, not caps. */
+  --type-item: var(--fw-650) var(--type-item-size) / var(--lh-125) var(--font-georgian);
+  --type-item-stretch: var(--stretch-100);
+  --type-item-tracking: var(--tracking-0);
+  /* body and body-s: sentences, settings descriptions */
+  --type-body: var(--fw-400) var(--type-body-size) / var(--lh-150) var(--font-georgian);
+  --type-body-stretch: var(--stretch-100);
+  --type-body-tracking: var(--tracking-0);
+  --type-body-s: var(--fw-400) var(--type-body-s-size) / var(--lh-150) var(--font-georgian);
+  --type-body-s-stretch: var(--stretch-100);
+  --type-body-s-tracking: var(--tracking-0);
+  /* meta: durations, counts, "20 left" lines */
+  --type-meta: var(--fw-500) var(--type-meta-size) / var(--lh-140) var(--font-georgian);
+  --type-meta-stretch: var(--stretch-100);
+  --type-meta-tracking: var(--tracking-0);
+  /* figures: episode numbers, timecodes, counters. Always tabular. */
+  --type-figure-xl: var(--fw-650) var(--type-figure-xl-size) / var(--lh-100) var(--font-figures);
+  --type-figure-l: var(--fw-650) var(--type-figure-l-size) / var(--lh-100) var(--font-figures);
+  --type-figure-m: var(--fw-650) var(--type-figure-m-size) / var(--lh-100) var(--font-figures);
+  --type-figure-s: var(--fw-500) var(--type-figure-s-size) / var(--lh-100) var(--font-figures);
+  --type-figure-stretch: var(--stretch-72);
+  --type-figure-numeric: tabular-nums;
+
+  /* spacing roles */
+  --gap-inline: var(--space-2); /* icon to text, chip to chip */
+  --gap-control: var(--space-2); /* between buttons in a row */
+  --gap-stack: var(--space-3); /* between rows in a list or lines in a card */
+  --gap-group: var(--space-6); /* between groups in a screen */
+  --gap-section: var(--space-8); /* between sections */
+  --pad-page-x: var(--space-4);
+  --pad-page-y: var(--space-4);
+  --pad-card: var(--space-4);
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+
+  /* shape roles. Controls are capsules; the radius grows with the surface. */
+  --radius-control: var(--radius-pill);
+  --radius-thumb: var(--radius-12);
+  --radius-card: var(--radius-16);
+  --radius-player: var(--radius-16);
+  --radius-sheet: var(--radius-28);
+  --radius-dialog: var(--radius-28);
+
+  /* elevation roles */
+  --elevation-raised: var(--shadow-1);
+  --elevation-float: var(--shadow-2), var(--edge-light); /* mini-player, menus, toasts */
+  --elevation-overlay: var(--shadow-3), var(--edge-light); /* sheets, dialogs */
+
+  /* stacking */
+  --z-base: 0;
+  --z-sticky: 10;
+  --z-tabbar: 20;
+  --z-mini: 30;
+  --z-scrim: 40;
+  --z-sheet: 50;
+  --z-menu: 60;
+  --z-dialog: 70;
+  --z-toast: 80;
+
+  /* motion roles. Exits are shorter than entrances. */
+  --dur-press: var(--dur-120); /* press and hover feedback */
+  --dur-state: var(--dur-200); /* small state changes: switch, check, tab */
+  --dur-enter: var(--dur-320); /* sheet up, mini-player expand, dialog in */
+  --dur-exit: var(--dur-240); /* the same things going away */
+  --dur-fade: var(--dur-120); /* opacity only. Kept under reduced motion. */
+  --dur-focus: var(--dur-120); /* TV focus moving between items */
+  --ease-enter: var(--ease-out);
+  --ease-exit: var(--ease-in);
+  --ease-move: var(--ease-in-out); /* something moving from one place to another */
+
+  /* targets */
+  --target-min: 2.75rem; /* 44px. Every touch target, even when it looks smaller. */
+
+  /* ===== 3. COMPONENT ====================================================== */
+
+  /* button */
+  --button-h: var(--target-min);
+  --button-h-compact: 2.25rem; /* desktop with a mouse only */
+  --button-px: 1.125rem;
+  --button-gap: var(--gap-inline);
+  --button-radius: var(--radius-control);
+  --button-icon: var(--fs-20);
+  --button-primary-bg: var(--color-accent);
+  --button-primary-bg-hover: var(--color-accent-hover);
+  --button-primary-bg-press: var(--color-accent-press);
+  --button-primary-fg: var(--color-text-on-accent);
+  --button-secondary-bg: var(--color-secondary);
+  --button-secondary-bg-hover: var(--color-secondary-hover);
+  --button-secondary-fg: var(--color-text);
+  --button-ghost-bg-hover: var(--color-hover);
+  --button-ghost-fg: var(--color-text-2);
+  --button-danger-fg: var(--color-danger);
+  --button-disabled-opacity: 0.4;
+
+  /* icon button */
+  --icon-button-size: var(--target-min);
+  --icon-size: var(--fs-24);
+  --icon-size-s: var(--fs-20);
+  --icon-stroke: 2;
+
+  /* chip (actions under the player: from start, watched, VLC) */
+  --chip-h: var(--target-min);
+  --chip-px: 0.875rem;
+  --chip-bg: var(--color-secondary);
+  --chip-bg-hover: var(--color-secondary-hover);
+  --chip-fg: var(--color-text);
+  --chip-radius: var(--radius-control);
+  --chip-done: var(--color-success); /* the check on "Watched" */
+
+  /* tab bar (phone, concept 3) */
+  --tabbar-h: 3.5rem; /* plus --safe-bottom */
+  --tabbar-bg: var(--color-glass);
+  --tabbar-blur: 20px;
+  --tabbar-line: var(--color-line);
+  --tabbar-icon: var(--icon-size);
+  --tabbar-fg: var(--color-text-3);
+  --tabbar-fg-active: var(--color-accent-text);
+
+  /* mini-player (sits on the tab bar) */
+  --mini-h: 4rem;
+  --mini-inset: var(--space-2);
+  --mini-radius: var(--radius-16);
+  --mini-bg: var(--color-surface-2);
+  --mini-shadow: var(--elevation-float);
+  --mini-thumb-w: 5.25rem;
+  --mini-progress-h: 2px;
+  --mini-progress-fill: var(--color-fill);
+  --mini-progress-track: var(--color-track);
+
+  /* now playing (the expanded mini-player) */
+  --np-bg: var(--color-surface-1);
+  --np-radius: var(--radius-sheet);
+  --np-pad: var(--space-5);
+  --np-handle-w: 2.25rem;
+  --np-handle-h: 0.3125rem;
+  --np-handle: var(--color-handle);
+  --np-shadow: var(--elevation-overlay);
+
+  /* side nav (desktop) */
+  --sidenav-w: 15rem;
+  --sidenav-bg: var(--color-bg-deep);
+  --sidenav-item-h: var(--target-min);
+  --sidenav-item-radius: var(--radius-12);
+  --sidenav-item-fg: var(--color-text-2);
+  --sidenav-item-fg-active: var(--color-text);
+  --sidenav-item-bg-active: var(--color-surface-2);
+  --sidenav-indicator: var(--color-accent);
+
+  /* docked now-playing panel (desktop) */
+  --dock-w: 22.5rem;
+  --dock-bg: var(--color-surface-1);
+  --dock-pad: var(--space-5);
+
+  /* episode row */
+  --row-h: 4.5rem;
+  --row-gap: var(--space-3);
+  --row-thumb-w: 6rem;
+  --row-bg-current: var(--color-surface-1);
+  --row-check: var(--color-success);
+
+  /* thumbnail (Formula still, or the fallback when it is missing or fails) */
+  --thumb-ratio: 16 / 9;
+  --thumb-radius: var(--radius-thumb);
+  --thumb-fallback: var(--gradient-fallback);
+  --thumb-number-shadow: var(--shadow-on-media);
+  /* episode tile (a sideways row on Home). TV sets its own. */
+  --tile-w: 9.5rem;
+
+  /* season ring */
+  --ring-size: var(--target-min);
+  --ring-stroke: 3px;
+  --ring-track: var(--color-track);
+  --ring-fill: var(--color-fill);
+  --ring-current-bg: var(--color-accent);
+  --ring-current-fg: var(--color-text-on-accent);
+  --ring-size-l: 3.25rem; /* the Seasons tab's strip and Home's season cards */
+
+  /* progress bar and scrubber */
+  --progress-h: 0.25rem;
+  --progress-h-thumb: 0.1875rem;
+  --progress-radius: var(--radius-pill);
+  --progress-track: var(--color-track);
+  --progress-fill: var(--color-fill);
+  --scrub-h: 0.25rem;
+  --scrub-h-active: 0.375rem;
+  --scrub-knob: 0.875rem;
+  --scrub-hit: var(--target-min);
+
+  /* player transport */
+  --transport-primary: 4.5rem;
+  --transport: 3rem;
+  --transport-icon: var(--fs-28);
+  --transport-primary-bg: var(--color-accent);
+  --transport-primary-fg: var(--color-text-on-accent);
+
+  /* controls over video */
+  --on-media-bg: var(--color-on-media);
+  --on-media-blur: 12px;
+  --on-media-fg: var(--color-on-media-text);
+
+  /* guest badge */
+  --badge-h: 1.5rem;
+  --badge-px: var(--space-2);
+  --badge-bg: var(--color-accent-soft);
+  --badge-fg: var(--color-accent-text);
+
+  /* text field (sign in). 16px minimum, or iOS Safari zooms into the field. */
+  --input-h: 3rem;
+  --input-px: var(--space-4);
+  --input-bg: var(--color-surface-1);
+  --input-border: var(--color-line-strong);
+  --input-border-focus: var(--color-accent);
+  --input-radius: var(--radius-12);
+  --input-font-size: max(16px, var(--fs-16));
+
+  /* switch (autoplay) */
+  --switch-w: 3.25rem;
+  --switch-h: 2rem;
+  --switch-track-off: var(--color-line-strong);
+  --switch-track-on: var(--color-accent);
+  --switch-knob: var(--color-text);
+
+  /* menu, dialog, toast */
+  --menu-bg: var(--color-surface-2);
+  --menu-radius: var(--radius-16);
+  --menu-item-h: var(--target-min);
+  --menu-shadow: var(--elevation-float);
+  --dialog-bg: var(--color-surface-1);
+  --dialog-radius: var(--radius-dialog);
+  --dialog-w: 25rem;
+  --dialog-shadow: var(--elevation-overlay);
+  --toast-bg: var(--color-surface-2);
+  --toast-radius: var(--radius-16);
+  --toast-shadow: var(--elevation-float);
+}
+
+/* ----- web, desktop width ---------------------------------------------------- */
+@media (min-width: 64rem) {
+  :root:not([data-shell="tv"]):not([data-shell="drive"]) {
+    --type-display-size: var(--fs-40);
+    --type-headline-size: var(--fs-32);
+    --type-title-size: var(--fs-20);
+    --pad-page-x: var(--space-8);
+    --pad-page-y: var(--space-6);
+    --gap-section: var(--space-10);
+    --tile-w: 11rem;
+  }
+}
+
+/* ----- TV: 10-foot, D-pad ---------------------------------------------------- */
+:root[data-shell="tv"] {
+  --tv-unit: min(1.667vw, 2.963vh); /* 1/60 of the panel, kept from today's tv.css */
+  --tv-scale: 1; /* set from InterfaceScale.multiplierOf() */
+  font-size: max(11px, calc(var(--tv-unit) * var(--tv-scale)));
+
+  --type-display-size: var(--fs-44);
+  --type-headline-size: var(--fs-36);
+  --type-title-size: var(--fs-22);
+  --type-section-size: var(--fs-16);
+  --type-label-size: var(--fs-16);
+  --type-label-s-size: var(--fs-14);
+  --type-item-size: var(--fs-18);
+  --type-body-size: var(--fs-18);
+  --type-body-s-size: var(--fs-16);
+  --type-meta-size: var(--fs-14); /* the TV floor: 28px on a 1080p panel */
+  --type-figure-l-size: var(--fs-28);
+  --type-figure-m-size: var(--fs-18);
+  --type-figure-s-size: var(--fs-14);
+
+  --pad-page-x: var(--space-12); /* 48 at 960: the overscan margin */
+  --pad-page-y: 1.6875rem; /* 27 at 540 */
+  --gap-group: var(--space-8);
+
+  /* focus is the only pointer a remote has: ring, glow and a small lift */
+  --focus-width: 0.1875rem;
+  --focus-gap: 0.1875rem;
+  --focus-glow: 0 0 1.875rem 0.5rem rgb(var(--amber-rgb) / 0.42);
+  --focus-scale: 1.05;
+
+  /* no hover on a remote */
+  --color-hover: transparent;
+  --button-ghost-bg-hover: transparent;
+
+  --button-h: 2.75rem;
+  --ring-size: 3.25rem;
+
+  /* TV only */
+  --rail-w: 4.5rem;
+  --rail-bg: var(--color-bg-deep);
+  --rail-item: 3rem;
+  --rail-item-fg: var(--color-text-3);
+  --rail-item-fg-active: var(--color-accent-text);
+  --tile-w: 8.5rem;
+  --tile-radius: var(--radius-12);
+  --tile-number: var(--type-figure-l);
+  --rail-w-open: 14rem;
+  --tv-content-x: calc(var(--pad-page-x) + var(--rail-w) + var(--space-6)); /* where a page starts, past the rail */
+  /* around a row, so the ring and its glow are not clipped: the ring (0.375), the glow's
+     spread and blur (2.375), and a little for the lift */
+  --tv-ring-room: var(--space-12);
+  --shelf-h: 18rem; /* the player's episode shelf */
+  --shelf-peek: 4.5rem; /* how much of its first band shows at rest */
+  --transport: 3.25rem;
+  --transport-primary: 4.25rem;
+  --transport-icon: var(--fs-28);
+}
+
+/* ----- drive: glanceable, large targets ------------------------------------- */
+:root[data-shell="drive"] {
+  --target-min: 4rem; /* 64px for every control */
+
+  --type-display-size: var(--fs-48);
+  --type-headline-size: var(--fs-36);
+  --type-title-size: var(--fs-24);
+  --type-section-size: var(--fs-18);
+  --type-label-size: var(--fs-20);
+  --type-label-s-size: var(--fs-16);
+  --type-item-size: var(--fs-20);
+  --type-body-size: var(--fs-20);
+  --type-body-s-size: var(--fs-18);
+  --type-meta-size: var(--fs-16); /* the drive floor */
+  --type-figure-xl-size: var(--fs-64);
+  --type-figure-l-size: var(--fs-36);
+  --type-figure-m-size: var(--fs-20);
+  --type-figure-s-size: var(--fs-16);
+
+  --pad-page-x: max(var(--space-4), var(--safe-left), var(--safe-right));
+  --gap-control: var(--space-3); /* 12px between targets, against mis-taps on a bumpy road */
+  --gap-stack: var(--space-4);
+
+  /* shorter motion: nothing should hold the eye */
+  --dur-enter: var(--dur-200);
+  --dur-exit: var(--dur-120);
+
+  /* --button-h, --chip-h, --icon-button-size and --ring-size read --target-min, and var() resolves
+     on the same <html> element, so they become 64px without being restated here. */
+  --icon-size: var(--fs-32);
+  --transport: 4.5rem;
+  --transport-primary: 7rem; /* 112px play and pause */
+  --transport-icon: var(--fs-40);
+
+  --color-accent-large: var(--amber-600); /* darker amber for the huge Continue: less glare at night */
+
+  /* drive only */
+  --car-continue-bg: var(--color-accent-large);
+  --car-continue-fg: var(--color-text-on-accent);
+  --car-continue-radius: var(--radius-32);
+}
+
+/* ----- reduced motion: keep fades, drop movement and scale ------------------- */
+@media (prefers-reduced-motion: reduce) {
+  :root,
+  :root[data-shell] {
+    --dur-press: var(--dur-0);
+    --dur-state: var(--dur-0);
+    --dur-enter: var(--dur-0);
+    --dur-exit: var(--dur-0);
+    --dur-focus: var(--dur-0);
+    --focus-scale: 1;
+  }
+}

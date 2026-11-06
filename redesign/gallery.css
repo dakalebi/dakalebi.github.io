@@ -1,0 +1,285 @@
+/* =============================================================================
+   The component gallery (`next/gallery/Gallery.kt`), drawn at `?gallery` on every page.
+   Every component in every state, drawn with the shell's tokens, so a change is checked
+   by eye on all three at once.
+
+   Layout only, from semantic tokens. The components bring their own looks.
+   ========================================================================== */
+
+.gl {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-group);
+  width: 100%;
+  max-width: 90rem;
+  min-height: 100vh;
+  min-height: 100dvh;
+  margin-inline: auto;
+  /* Room at the bottom for the toasts, so they never cover the last row. */
+  padding: calc(var(--pad-page-y) + var(--safe-top)) max(var(--pad-page-x), var(--safe-right))
+    calc(var(--pad-page-y) + var(--safe-bottom) + 4rem) max(var(--pad-page-x), var(--safe-left));
+}
+
+/* ----- header ----------------------------------------------------------------- */
+
+/* One row when it fits (TV, desktop, landscape); on a narrow screen the side group wraps
+   under the title instead of squeezing it. */
+.gl-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2) var(--gap-group);
+  padding-bottom: var(--gap-stack);
+  border-bottom: 1px solid var(--color-line);
+}
+
+.gl-head-side {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--gap-control);
+}
+
+.gl-eyebrow {
+  font: var(--type-meta);
+  font-stretch: var(--type-meta-stretch);
+  color: var(--color-accent-text);
+}
+
+.gl-title {
+  flex: 0 1 auto;
+  min-width: 0;
+  font: var(--type-headline);
+  font-stretch: var(--type-headline-stretch);
+  letter-spacing: var(--type-headline-tracking);
+  color: var(--color-text);
+}
+
+.gl-badge {
+  display: inline-flex;
+  flex: none;
+  align-items: baseline;
+  gap: var(--gap-inline);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--color-accent-soft);
+  color: var(--color-accent-text);
+  font: var(--type-label-s);
+  font-stretch: var(--type-label-s-stretch);
+  line-height: var(--lh-140);
+}
+
+.gl-badge-figure {
+  font: var(--type-figure-s);
+  font-stretch: var(--type-figure-stretch);
+  font-variant-numeric: var(--type-figure-numeric);
+  color: var(--color-text-2);
+}
+
+/* ----- panels ----------------------------------------------------------------- */
+
+/* Media queries measure rem at the browser's 16px, not the shell's root size, so this is
+   768 CSS px everywhere: a TV panel (960) and a phone in landscape get two columns. */
+.gl-panel {
+  display: grid;
+  gap: var(--gap-section) var(--gap-group);
+  align-items: start;
+}
+
+@media (min-width: 48rem) {
+  .gl-panel {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.gl-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-stack);
+  min-width: 0;
+}
+
+.gl-section--wide {
+  grid-column: 1 / -1;
+}
+
+.gl-section-title {
+  font: var(--type-section);
+  font-stretch: var(--type-section-stretch);
+  letter-spacing: var(--type-section-tracking);
+  color: var(--color-text-3);
+}
+
+.gl-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gap-control);
+  min-width: 0;
+}
+
+.gl-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-stack);
+  min-width: 0;
+}
+
+.gl-note {
+  font: var(--type-meta);
+  font-stretch: var(--type-meta-stretch);
+  color: var(--color-text-3);
+}
+
+/* ----- icons ------------------------------------------------------------------ */
+
+.gl-icons {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(4.75rem, 1fr));
+  gap: var(--space-2);
+}
+
+.gl-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-3) var(--space-2);
+  border-radius: var(--radius-12);
+  background: var(--color-surface-1);
+  color: var(--color-text);
+}
+
+.gl-icon-name {
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font: var(--type-figure-s);
+  font-stretch: var(--type-figure-stretch);
+  color: var(--color-text-3);
+}
+
+/* ----- media stage ------------------------------------------------------------ */
+
+/* A stand-in for a video frame, kept 16:9 and no taller than 22rem. No overflow clip:
+   the quality menu opens above its trigger and must not be cut off. */
+.gl-stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  max-width: calc(22rem * 16 / 9);
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius-player);
+  background: var(--gradient-fallback);
+}
+
+.gl-stage-center {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-group);
+}
+
+.gl-stage-bar {
+  position: absolute;
+  right: var(--space-3);
+  bottom: var(--space-3);
+  left: var(--space-3);
+  display: flex;
+  align-items: center;
+  gap: var(--gap-control);
+}
+
+.gl-stage-bar .progress {
+  flex: 1;
+}
+
+/* ----- status ----------------------------------------------------------------- */
+
+.gl-progress-row {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-control);
+}
+
+.gl-progress-row .progress {
+  flex: 1;
+}
+
+.gl-figure {
+  flex: none;
+  font: var(--type-figure-m);
+  font-stretch: var(--type-figure-stretch);
+  font-variant-numeric: var(--type-figure-numeric);
+  color: var(--color-text-2);
+}
+
+/* A thumbnail with the hairline of watched time along its bottom edge. */
+.gl-thumb {
+  position: relative;
+  width: 10rem;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: var(--radius-thumb);
+  background: var(--gradient-fallback);
+}
+
+.gl-thumb .progress {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  border-radius: 0;
+}
+
+/* The Cavea Plus samples: a still at a tile's width and a small QR code beside it. */
+.gl-cavea-thumb {
+  width: 10rem;
+}
+
+.gl-cavea-qr {
+  --qr-size: 7rem;
+}
+
+.gl-skeleton-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--gap-control);
+}
+
+/* The on-media spinner needs something dark behind it to be seen. */
+.gl-media-swatch {
+  display: grid;
+  place-items: center;
+  width: 6rem;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius-thumb);
+  background: var(--gradient-fallback);
+}
+
+/* The player's parts as they sit over a picture. */
+.gl-media-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-6);
+  border-radius: var(--radius-card);
+  background: var(--gradient-fallback);
+}
+
+/* ----- TV --------------------------------------------------------------------- */
+
+/* A 960x540 panel: tighter rhythm, so a section and its neighbour fit one screen. */
+:root[data-shell="tv"] .gl {
+  gap: var(--gap-stack);
+}
+
+/* One column. The D-pad moves by geometry and a row is a wall at its end, so a section
+   beside another could only be reached by luck. A TV screen is a stack of bands. */
+:root[data-shell="tv"] .gl-panel {
+  grid-template-columns: minmax(0, 1fr);
+  row-gap: var(--gap-group);
+}

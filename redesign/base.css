@@ -1,0 +1,89 @@
+/* =============================================================================
+   Page-level rules for every page, in every shell. Link after tokens.css.
+
+   Elements only, no classes: a component's look belongs to its own sheet. Reads the
+   semantic tokens (layer 2), so a shell's overrides in tokens.css reach these too.
+   ========================================================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  /* Behind an iOS overscroll bounce and under the home indicator. */
+  background: var(--color-bg);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--color-bg);
+  color: var(--color-text);
+  /* `font` resets font-stretch, so the stretch comes after it. */
+  font: var(--type-body);
+  font-stretch: var(--type-body-stretch);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  /* No double-tap zoom (iOS honours this, not the viewport
+     tag), no long-press callout and no tap flash. A pinch is cancelled in script. */
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+img,
+svg,
+video {
+  display: block;
+  max-width: 100%;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  font-stretch: inherit;
+  color: inherit;
+}
+
+/* Zero specificity, so any component class wins. */
+:where(button) {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+:where(h1, h2, h3, h4, p, figure, blockquote, dl, dd) {
+  margin: 0;
+}
+
+:where(ul, ol) {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* A default ring for anything focusable. Components that need the TV glow and lift
+   use --focus-ring and --focus-scale themselves. */
+:focus-visible {
+  outline: var(--focus-width) solid var(--focus-color);
+  outline-offset: var(--focus-gap);
+}
+
+::selection {
+  background: var(--color-accent-soft);
+}

@@ -1,0 +1,200 @@
+/* =============================================================================
+   The foundations (`next/foundations/Foundations.kt`): the type roles, the colour roles
+   and one surface, shown on the gallery's Base tab. Goes with the gallery.
+
+   Semantic tokens only.
+   ========================================================================== */
+
+/* ----- layout ----------------------------------------------------------------- */
+
+.fd-grid {
+  display: grid;
+  gap: var(--gap-section);
+}
+
+.fd-column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-group);
+  min-width: 0;
+}
+
+/* Media queries measure rem at the browser's 16px, not the shell's root size, so this is
+   768 CSS px everywhere: a TV panel (960) and a phone in landscape get two columns. */
+@media (min-width: 48rem) {
+  .fd-grid {
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+.fd-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-stack);
+  min-width: 0;
+}
+
+.fd-section-title {
+  font: var(--type-section);
+  font-stretch: var(--type-section-stretch);
+  letter-spacing: var(--type-section-tracking);
+  color: var(--color-text-3);
+}
+
+/* ----- type ramp -------------------------------------------------------------- */
+
+.fd-ramp {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: baseline;
+  gap: var(--space-2) var(--gap-group);
+}
+
+/* Each row lends its two cells to the ramp's grid, so the role names line up. */
+.fd-row {
+  display: contents;
+}
+
+.fd-role {
+  font: var(--type-figure-s);
+  font-stretch: var(--type-figure-stretch);
+  color: var(--color-text-3);
+}
+
+/* One line per role, so the ramp keeps its height on every shell and TV never scrolls. */
+.fd-sample,
+.fd-figures {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--color-text);
+}
+
+.fd-figures {
+  display: flex;
+  align-items: baseline;
+  gap: var(--gap-group);
+}
+
+/* ----- colour ----------------------------------------------------------------- */
+
+.fd-swatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(4.5rem, 1fr));
+  gap: var(--space-3) var(--gap-control);
+}
+
+.fd-swatch {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.fd-chip {
+  height: var(--space-6);
+  border-radius: var(--radius-8);
+  /* Grounds darker than the page still show their edge. */
+  box-shadow: inset 0 0 0 1px var(--color-line);
+}
+
+.fd-swatch-name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font: var(--type-figure-s);
+  font-stretch: var(--type-figure-stretch);
+  color: var(--color-text-2);
+}
+
+/* ----- surface ---------------------------------------------------------------- */
+
+.fd-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3);
+  border-radius: var(--radius-card);
+  background: var(--color-surface-1);
+  box-shadow: var(--elevation-raised);
+}
+
+.fd-thumb {
+  position: relative;
+  flex: none;
+  width: 7.5rem;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: var(--radius-thumb);
+  background: var(--gradient-fallback);
+}
+
+.fd-thumb-figure {
+  position: absolute;
+  right: var(--space-2);
+  bottom: var(--space-1);
+  font: var(--type-figure-l);
+  font-stretch: var(--type-figure-stretch);
+  font-variant-numeric: var(--type-figure-numeric);
+  color: var(--color-on-media-text);
+  text-shadow: var(--shadow-on-media);
+}
+
+.fd-card-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.fd-card-eyebrow {
+  font: var(--type-label-s);
+  font-stretch: var(--type-label-s-stretch);
+  color: var(--color-accent-text);
+}
+
+.fd-card-title {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font: var(--type-title);
+  font-stretch: var(--type-title-stretch);
+  letter-spacing: var(--type-title-tracking);
+}
+
+.fd-progress {
+  height: 0.25rem;
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: var(--color-track);
+}
+
+.fd-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--color-fill);
+}
+
+.fd-card-meta {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font: var(--type-meta);
+  font-stretch: var(--type-meta-stretch);
+  color: var(--color-text-2);
+}
+
+/* ----- TV --------------------------------------------------------------------- */
+
+/* Nothing here takes focus, and a remote only scrolls by moving focus, so on TV the
+   foundations fit under the gallery's tabs on a 960x540 panel: tighter gaps. */
+:root[data-shell="tv"] .fd-column {
+  gap: var(--gap-stack);
+}
+
+:root[data-shell="tv"] .fd-ramp {
+  row-gap: var(--space-1);
+}

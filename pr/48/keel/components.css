@@ -1,0 +1,2005 @@
+/*
+ * The primitives.
+ *
+ * Every value here is a token: no literal colour, no literal radius, no literal
+ * duration, and no literal control size. That is what lets an app change its shape
+ * language, retime its interface, or scale its controls for a different viewing
+ * distance without editing this file.
+ *
+ * One literal remains, deliberate and not a palette's business: black at low alpha,
+ * for the modal scrim. A scrim dims whatever is behind it.
+ *
+ * Reads tokens.css and a palette sheet. Link those first.
+ *
+ * ------------------------------------------------------------------- focus ----
+ *
+ * Every focus rule is a two-branch selector list:
+ *
+ *   .thing:focus-visible,
+ *   .thing[data-keel-focus] { ... }
+ *
+ * The second branch is for a consumer that moves focus itself rather than letting
+ * the browser do it. A ten-foot interface driven by a D-pad is the case that forced
+ * it: there, focus is a cursor the app owns, it lands on a `div` that no browser
+ * would call focusable, and `:focus-visible` heuristics do not fire in a WebView
+ * the way they do on a desktop. Such an app sets `data-keel-focus` on the element
+ * it considers current and gets keel's own ring for free.
+ *
+ * Both branches are specificity (0,2,0), so adding one never reorders an existing
+ * cascade. The attribute is namespaced - `data-keel-focus`, not `data-focus` - so a
+ * consumer's own unrelated `data-focus` cannot be restyled by accident.
+ *
+ * ------------------------------------------------------------------- hover ----
+ *
+ * Every `:hover` rule is wrapped in `@media (hover: hover)`.
+ *
+ * Without it a tap on a touch screen leaves the hover state stuck on the control
+ * until something else is tapped, because there is no pointer to leave. Desktop is
+ * unaffected. Both apps using keel had already hand-rolled this workaround in their
+ * own stylesheets, which is the sign it belonged here.
+ *
+ * ------------------------------------------------------------------- touch ----
+ *
+ * A field grows to `--input-font-size-touch` under `@media (pointer: coarse)`.
+ *
+ * iOS Safari zooms the viewport whenever a focused field is under 16px and never
+ * zooms back out, so a form filled in on an iPhone ends with the page scrolled
+ * sideways. Only the field, and only on a coarse pointer: a desktop form keeps
+ * `--control-font-size`. A consumer had this rule in its own sheet, restating
+ * `.input` from outside - the same sign as the hover fix.
+ */
+
+/* ----------------------------------------------------------------- icon ---- */
+
+.icon {
+  display: inline-flex;
+  /* Never let a flex parent squash an icon into an ellipse. */
+  flex: none;
+  line-height: 0;
+}
+
+.icon > svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* What an icon falls back to when the call site passes no size and no rule sets one.
+   Without it an icon sized only by CSS collapses: the span has no content of its own
+   and the svg inside is 100% of it.
+
+   `em`, not `rem`, so the fallback tracks whatever text the icon sits beside - which
+   is what an icon usually wants, and what an interface scaling itself from one root
+   font size needs. An inline size from `Icon(size = n)` still wins over this. */
+.icon {
+  width: 1em;
+  height: 1em;
+}
+
+/* --------------------------------------------------------------- button ---- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  white-space: nowrap;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font-family: inherit;
+  font-size: var(--control-font-size);
+  font-weight: var(--control-font-weight);
+  cursor: pointer;
+  background: none;
+  color: inherit;
+  /* For the anchor form. `LinkButton` renders a real `<a href>`, and a bare anchor is
+     underlined by every UA stylesheet - so without this every link button arrived
+     underlined, and `.btn--link:hover`'s underline was a no-op because there was
+     nothing left for it to add. `none` at rest is what makes that hover mean
+     something. Harmless on a `<button>`, which is never underlined to begin with. */
+  text-decoration: none;
+  transition:
+    background-color var(--duration-fast) var(--ease),
+    color var(--duration-fast) var(--ease),
+    border-color var(--duration-fast) var(--ease),
+    opacity var(--duration-fast) var(--ease);
+}
+
+/* A ring held off the control by a background-coloured gap, so it stays visible
+   whichever surface the button sits on. The outer layer is the gap plus the ring's
+   own thickness, derived rather than stated, so widening one cannot eat the other.
+   See the focus note in this file's header for the second branch. */
+.btn:focus-visible,
+.btn[data-keel-focus] {
+  outline: none;
+  box-shadow:
+    0 0 0 var(--focus-ring-offset) hsl(var(--background)),
+    0 0 0 calc(var(--focus-ring-offset) + var(--focus-ring-width)) hsl(var(--ring));
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.btn--default {
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+.btn--destructive {
+  background-color: hsl(var(--destructive));
+  color: hsl(var(--destructive-foreground));
+}
+
+.btn--outline {
+  border-color: hsl(var(--input));
+  background-color: hsl(var(--background));
+}
+
+.btn--secondary {
+  background-color: hsl(var(--secondary));
+  color: hsl(var(--secondary-foreground));
+}
+
+.btn--link {
+  color: hsl(var(--primary));
+  text-underline-offset: 4px;
+}
+
+/* Dimmed at rest, lit when reached for.
+
+   The difference from `.btn--ghost` is one property, and it is the whole point:
+   ghost keeps the surrounding ink and only gains a fill on hover, so at rest it
+   reads as a full-strength label with no box. This one steps the ink back to
+   `--muted-foreground` as well, so at rest it reads as available rather than as
+   something the eye should land on.
+
+   That distinction matters wherever a row carries an action it does not want to
+   advertise - a delete on a list row, a "New tag" under a set of tags, a close on a
+   panel. Every one of those wants the ink dimmed too, and every consumer reaching
+   for `Ghost` for them was writing its own `color` rule on top.
+
+   keel had already settled this treatment twice internally, at
+   `.card__icon-button` and `.toolbar__button`, both of which are exactly this
+   colour pair at exactly `--control-h-xs`. Naming it as a variant is what makes it
+   reachable from a call site instead of only from those two components. */
+.btn--quiet {
+  color: hsl(var(--muted-foreground));
+}
+
+/* The same control, for an action that deletes.
+
+   Quiet at rest for the reason above, and `--destructive` under the pointer, so the
+   button says what it will do at the moment someone reaches for it rather than
+   colouring a whole panel red in case they might.
+
+   This is a variant rather than a modifier stacked on `.btn--quiet` because
+   `buttonClasses` returns one variant class, and the alternative is a caller
+   hand-spelling a second keel class - the exact thing that file exists to prevent.
+   It stays a pair rather than a cross-product: there is no quiet-primary and no
+   quiet-secondary, because nothing has asked for one. */
+.btn--quiet-destructive {
+  color: hsl(var(--muted-foreground));
+}
+
+/* A control sitting over picture rather than over the page.
+
+   None of the eight variants above can do this job. Every one of them resolves
+   against a palette colour, and a video frame is not one: `--background` is invisible
+   over a dark scene and opaque over a bright one, `--primary` competes with whatever
+   is playing, and `--outline` is a border around nothing. What reads over unknown
+   content is a translucent wash of the palette's own ink, which is what this is.
+
+   The alpha is a token because the right amount depends on the surface. A phone's
+   control bar over a scene wants more presence than a ten-foot one, where the
+   controls sit in a wide dark bar already. */
+.btn--on-media {
+  background-color: hsl(var(--primary-foreground) / var(--on-media-alpha));
+  color: hsl(var(--primary-foreground));
+}
+
+/* The variants' hover states, collected rather than each sitting under its own
+   variant. One `@media` wrapper for the set reads better than nine, and the order
+   within it cannot matter: a button carries exactly one variant class. */
+@media (hover: hover) {
+  .btn--default:hover {
+    background-color: hsl(var(--primary) / 0.9);
+  }
+
+  .btn--destructive:hover {
+    background-color: hsl(var(--destructive) / 0.9);
+  }
+
+  .btn--outline:hover {
+    background-color: hsl(var(--accent));
+    color: hsl(var(--accent-foreground));
+  }
+
+  .btn--secondary:hover {
+    background-color: hsl(var(--secondary) / 0.8);
+  }
+
+  .btn--ghost:hover {
+    background-color: hsl(var(--accent));
+    color: hsl(var(--accent-foreground));
+  }
+
+  /* `--muted`, where ghost takes `--accent`. The palette orders these
+     `--background` < `--card` < `--muted` < `--accent`, so a quiet control lifting
+     only as far as `--muted` stays quieter on hover than a ghost does, which is the
+     same reasoning that set its rest colour. */
+  .btn--quiet:hover {
+    background-color: hsl(var(--muted));
+    color: hsl(var(--foreground));
+  }
+
+  .btn--quiet-destructive:hover {
+    background-color: hsl(var(--destructive) / var(--quiet-danger-tint));
+    color: hsl(var(--destructive));
+  }
+
+  .btn--link:hover {
+    text-decoration: underline;
+  }
+
+  .btn--on-media:hover {
+    background-color: hsl(var(--primary-foreground) / var(--on-media-alpha-hover));
+  }
+}
+
+.btn--size-default {
+  height: var(--control-h-default);
+  padding: var(--control-py-default) var(--control-px-default);
+}
+.btn--size-sm {
+  height: var(--control-h-sm);
+  padding: 0 var(--control-px-sm);
+}
+.btn--size-lg {
+  height: var(--control-h-lg);
+  padding: 0 var(--control-px-lg);
+}
+.btn--size-icon {
+  height: var(--control-h-default);
+  width: var(--control-h-default);
+  padding: 0;
+}
+
+/* The tier below Small, for a control inside another control's box.
+
+   `--control-h-xs` is not new here - `.card__icon-button` and `.toolbar__button`
+   have both been 1.75rem since they were written, because an action *inside* a card
+   header or a formatting toolbar cannot be a 2.25rem control without becoming the
+   thing the row is about. What was missing is a way to ask for that tier from a call
+   site, so a consumer wanting a 28px button wrote its own rule and picked its own
+   number - four of them, in one app, agreeing on none.
+
+   The type size steps down with the box, unlike Small and Large which share
+   `--control-font-size`; see the note on `--control-font-size-xs`.
+
+   The radius steps down too, to `--radius-sm`, which is again what keel's own two
+   xs controls already use. `--radius-md` on a 28px box is a third of its height and
+   reads as a lozenge rather than a button. */
+.btn--size-xs {
+  height: var(--control-h-xs);
+  padding: 0 var(--control-px-xs);
+  font-size: var(--control-font-size-xs);
+  border-radius: var(--radius-sm);
+}
+
+/* The square form of the tier above. Same box as `.card__icon-button`, reachable
+   for a control that is not in a card header.
+
+   The type size comes along even though there is no text, and that is the point:
+   `.icon` falls back to `1em`, so an `Icon` with no explicit size takes it. Without
+   this line a glyph in a 28px square would arrive at `--control-font-size` - 14px in
+   a box sized for 12px - and only a call site passing an explicit `size` would hide
+   it. `.btn--size-icon` needs no counterpart because 14px is right for its 40px. */
+.btn--size-icon-xs {
+  height: var(--control-h-xs);
+  width: var(--control-h-xs);
+  padding: 0;
+  font-size: var(--control-font-size-xs);
+  border-radius: var(--radius-sm);
+}
+
+/* Start, pause, skip - and the same control when it is the only thing on the screen.
+   Both apps had written one of these by hand and neither used the sizes above, because
+   the sizes stopped below them: 2.75rem with a 10px corner, against a 3.5rem circle in
+   one app and a 78px one in the other.
+
+   Outside the scale above rather than the top of it. A form control's size follows the
+   density of the form around it; these two follow being aimed at, with a thumb or from
+   across a room. Square only - a word in a 3.5rem box is a banner. */
+.btn--size-transport {
+  height: var(--control-h-transport);
+  width: var(--control-h-transport);
+  padding: 0;
+}
+
+.btn--size-transport-lg {
+  height: var(--control-h-transport-lg);
+  width: var(--control-h-transport-lg);
+  padding: 0;
+}
+
+/* A circle rather than a rounded box. One line, and it is the second half of what
+   four hand-written controls across the two apps were reaching for - a timer's
+   transport buttons, a player's centre play, a tile's overlay actions. Every one of
+   them was a keel size and a keel variant plus this.
+
+   Its own class rather than a radius on the icon sizes, because shape and size are
+   separate decisions: the same 2.5rem square is round in a transport row and boxed in
+   a card header, and conflating the two is what left `.btn--size-icon` carrying a
+   radius at all. */
+.btn--circle {
+  border-radius: var(--radius-pill);
+}
+
+/* No box at all, for a link button sitting inside a sentence.
+
+   `ButtonVariant.Link` is documented as being for actions inside a sentence, and none
+   of the six sizes above can give it one: each sets a control height, so a 2.5rem
+   inline-flex box lands in a 0.875rem paragraph and inflates the line it sits in.
+   Both consumers had noticed - one was writing `padding: 0` inline at three call
+   sites, which removes the padding and leaves the height.
+
+   `vertical-align: baseline` is what puts it back on the sentence's baseline; without
+   it an inline-flex box aligns its bottom edge to the text's, which sits the label a
+   descender low. The box stays `inline-flex` rather than `inline` so a leading icon
+   still gets the gap and the centring.
+
+   Only `font-size` is inherited. The weight stays keel's, because a link inside a
+   sentence reading slightly heavier than the sentence is what marks it as one. */
+.btn--size-inline {
+  height: auto;
+  padding: 0;
+  font-size: inherit;
+  vertical-align: baseline;
+}
+
+/* -------------------------------------------------------------- surface ---- */
+/* The panel box on its own: a border, a radius, the card colour, and nothing
+   else. A panel is the largest surface in the shape language, so it takes the
+   largest radius: `--radius-xl` rather than the `--radius-lg` used for smaller
+   surfaces.
+
+   Separate from `card` because a titled panel is the *less* common shape. A login
+   panel, a stat tile and a next-up card are all panels with no header, and before
+   this each app hand-wrote its own box for them - four in two apps, agreeing on
+   none of the four values.
+
+   Padding is a variant rather than one fixed value, because it is what actually
+   differs between those cases, and it is the one part a caller cannot add from
+   outside without already knowing the border is here. */
+
+.surface {
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-xl);
+  background-color: hsl(var(--card));
+  color: hsl(var(--card-foreground));
+}
+
+.surface--pad-sm {
+  padding: 0.75rem;
+}
+
+.surface--pad {
+  padding: 1.25rem;
+}
+
+.surface--pad-lg {
+  padding: 1.875rem;
+}
+
+.surface--elevated {
+  box-shadow: var(--shadow-sm);
+}
+
+/* A smaller corner, for a surface that is a *tile* rather than a panel - a stat in a
+   row of stats, a thumbnail box. The shape language scales radius with size, so a
+   12px-padded box at `--radius-xl` reads as a lozenge: the corner is a third of the
+   box. Only the radius changes, because that is the only thing that was wrong. */
+.surface--radius-sm {
+  border-radius: var(--radius-sm);
+}
+
+/* Clips content to the radius, for a surface whose content reaches its border. A
+   poster in an unpadded surface has square corners inside a rounded box otherwise,
+   which makes the radius decorative.
+
+   Opt-in rather than part of `surface`, because clipping also cuts off anything that
+   is *meant* to leave the box: a focus ring is drawn outside the control, so a card
+   with a button in its header would lose the ring on that button entirely. Which of
+   the two a surface is depends on what is inside it, so the caller says. */
+.surface--clip {
+  overflow: hidden;
+}
+
+/* ----------------------------------------------------------------- card ---- */
+/* Everything that makes a card a card rather than a surface. The border, radius
+   and colour come from `surface`, which `Card` composes, so this rule carries only
+   what a *board* panel adds: filling its column. Both classes are specificity
+   (0,1,0) and they set disjoint properties, so their order does not matter. */
+
+.card {
+  width: 100%;
+}
+
+/* A card filling its container rather than sitting in a column of them. The container
+   is the caller's - keel does not know whether that is a scrim-backed overlay, a route
+   or a pane - but everything inside the box is keel's: a column, the header pinned at
+   the top, and the body taking the rest.
+
+   `overflow: hidden` is what keeps the header pinned. Without it a long body pushes
+   the card past its container and scrolls the page instead, carrying the collapse and
+   close buttons away with it - the same failure `DrawerLayout.Framed` exists for.
+
+   This class was emitted by `Card` before it had a rule, so the app that expanded a
+   card wrote these four lines against keel's own selector from its own sheet. */
+.card--expanded {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Lifted, while the pointer carries it. The larger shadow reads as height and the
+   ring says which card is in hand, which matters on a board where the gap it came
+   from also moves.
+
+   `--shadow-lg` rather than the shadow written out: the token drops to a 0.5 alpha in
+   dark mode, and the hand-written copy this replaces was the light value in both.
+
+   Keyed off a parameter and not off the caller's own class, because the caller's class
+   is on the slot around the card - so styling it from there means naming `.card` in a
+   consumer sheet, and only keel should do that. */
+.card--dragging {
+  box-shadow: var(--shadow-lg);
+  outline: var(--card-drag-ring) solid hsl(var(--primary) / var(--card-drag-ring-alpha));
+}
+
+.card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1.5rem;
+}
+
+.card__title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.card__title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  background: none;
+  border: 0;
+  padding: 0;
+  font-family: inherit;
+  transition: color var(--duration-fast) var(--ease);
+}
+
+/* Only the button form is pressable; the span form is a heading. Scoping the
+   cursor to the element that does something is what keeps that distinction
+   visible to a pointer. */
+button.card__title {
+  cursor: pointer;
+}
+@media (hover: hover) {
+  button.card__title:hover {
+    color: hsl(var(--foreground) / 0.8);
+  }
+}
+
+.card__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+}
+
+/* The drag handle stays invisible until the panel is hovered, so a resting board is
+   quiet. `currentColor` at zero alpha keeps the space reserved either way, so
+   nothing shifts when it appears. */
+.card__grip {
+  display: inline-flex;
+  padding: 0.25rem;
+  color: hsl(var(--muted-foreground) / 0);
+  cursor: grab;
+  transition: color var(--duration-fast) var(--ease);
+}
+@media (hover: hover) {
+  .card:hover .card__grip {
+    color: hsl(var(--muted-foreground) / 0.4);
+  }
+  .card__grip:hover {
+    color: hsl(var(--muted-foreground));
+  }
+}
+.card__grip:active {
+  cursor: grabbing;
+}
+
+.card__icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--control-h-xs);
+  width: var(--control-h-xs);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease),
+    color var(--duration-fast) var(--ease);
+}
+@media (hover: hover) {
+  .card__icon-button:hover {
+    background-color: hsl(var(--muted));
+    color: hsl(var(--foreground));
+  }
+}
+
+.card__content {
+  padding: 0 1.5rem 1.5rem;
+}
+
+.card__content--centered {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* ---------------------------------------------------------------- input ---- */
+
+.input,
+.textarea {
+  width: 100%;
+  border: 1px solid hsl(var(--input));
+  border-radius: var(--radius-lg);
+  background-color: hsl(var(--card));
+  color: hsl(var(--foreground));
+  padding: var(--input-py) var(--input-px);
+  font-size: var(--control-font-size);
+  font-family: inherit;
+  transition: box-shadow var(--duration-fast) var(--ease);
+}
+
+.input::placeholder,
+.textarea::placeholder {
+  color: hsl(var(--muted-foreground));
+}
+
+/* A soft single-layer glow rather than the two-layer ring the buttons get: a field is
+   already a bordered box, so it needs marking, not outlining. `--focus-ring-width` is
+   the right token even though this is not a ring - it is the same "how thick is a
+   focus mark here" decision, and a consumer that scales one wants the other. */
+.input:focus,
+.textarea:focus {
+  outline: none;
+  box-shadow: 0 0 0 var(--focus-ring-width) hsl(var(--ring) / var(--focus-glow-alpha));
+}
+
+.textarea {
+  resize: vertical;
+}
+
+/* See the "touch" note in the header. Both fields, not only `.input`: iOS zooms for
+   any focused field under the threshold, and a textarea is the easier one to miss. */
+@media (pointer: coarse) {
+  .input,
+  .textarea {
+    font-size: var(--input-font-size-touch);
+  }
+}
+
+/* --------------------------------------------------------------- switch ---- */
+/* Hand-built rather than a styled checkbox: a track with a knob inside it, which no
+   native control offers. The default is 36x20 with a 16px knob; all three sizes are
+   tokens, and the knob's travel is derived from them below. */
+
+.switch {
+  position: relative;
+  height: var(--switch-track-h);
+  width: var(--switch-track-w);
+  flex: none;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background-color: hsl(var(--accent));
+  cursor: pointer;
+  padding: 0;
+  transition: background-color var(--duration-fast) var(--ease);
+}
+
+/* Keyed off the same attribute assistive technology reads, so the colour and the
+   announcement can never disagree. */
+.switch[aria-checked='true'] {
+  background-color: hsl(var(--primary));
+}
+
+/* The smaller size, for a switch inside another control.
+
+   It rebinds the four geometry tokens on the element instead of restating the six
+   declarations that read them. That is not brevity: a custom property is resolved
+   per element from its own cascaded value, so the rules above - including the
+   knob's `translateX` derivation, which the knob inherits these from - all follow
+   to the new numbers with nothing else written. A duplicated block would have to
+   restate the `- 2 * inset` travel, which is the one value here that is derived
+   rather than given - see the note on it above for what a stated version costs.
+
+   Only geometry. A small switch is the same control at a different size, so the
+   colours, the transition and the `aria-checked` state all stay one definition. */
+.switch--size-sm {
+  --switch-track-w: var(--switch-track-w-sm);
+  --switch-track-h: var(--switch-track-h-sm);
+  --switch-knob-size: var(--switch-knob-size-sm);
+  --switch-knob-inset: var(--switch-knob-inset-sm);
+}
+
+.switch__knob {
+  position: absolute;
+  top: var(--switch-knob-inset);
+  left: var(--switch-knob-inset);
+  height: var(--switch-knob-size);
+  width: var(--switch-knob-size);
+  border-radius: var(--radius-pill);
+  /* The knob sits on `--primary` when the switch is on, and `--primary-foreground`
+     is by definition the ink that belongs on `--primary`. It is white in all twelve
+     shipped palettes, so this paints exactly as a literal `#fff` did - but a palette
+     that needs a dark knob can now have one, and no rule here has to change. */
+  background-color: hsl(var(--primary-foreground));
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--duration-fast) var(--ease);
+}
+
+/* Derived, not stated. The knob starts one inset in from the left, so it has to stop
+   one inset short of the right: the travel is the track minus the knob minus *both*
+   insets. Written as a literal `1rem` this was correct only for the default three
+   sizes, and a consumer that scaled the track would have got a knob stopping short
+   of the end - or running past it - with nothing to say why. */
+.switch[aria-checked='true'] .switch__knob {
+  transform: translateX(
+    calc(var(--switch-track-w) - var(--switch-knob-size) - 2 * var(--switch-knob-inset))
+  );
+}
+
+.switch:focus-visible,
+.switch[data-keel-focus] {
+  outline: none;
+  box-shadow:
+    0 0 0 var(--focus-ring-offset) hsl(var(--background)),
+    0 0 0 calc(var(--focus-ring-offset) + var(--focus-ring-width)) hsl(var(--ring));
+}
+
+/* ------------------------------------------------------------- checkbox ---- */
+/* One yes-or-no, drawn as a box with a tick in it.
+
+   The same shape as the switch above and for the same reasons: a real `<button>`
+   carrying `role="checkbox"` and `aria-checked`, so the state is one attribute the
+   eye and the screen reader both read, rather than a class beside a hidden input that
+   could disagree with it. A native `<input type="checkbox">` was the alternative and
+   loses here - the appearance is a full repaint anyway, and `appearance: none` on a
+   checkbox is still uneven across engines in a way it is not on a range input.
+
+   The choice between this and a switch is not style. A switch takes effect the
+   moment it moves; a checkbox states a value that something else later commits, or
+   marks an item in a list. A task's "done" box is the second kind.
+
+   Unchecked, the box is *only* its border - no fill - which is why the border is
+   thick. A hairline empty box reads as a rendering failure rather than as an
+   unticked one. */
+
+.checkbox {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* Never let a flex row squash the box into a rectangle. */
+  flex: none;
+  height: var(--checkbox-size);
+  width: var(--checkbox-size);
+  padding: 0;
+  border: var(--checkbox-border-w) solid hsl(var(--muted-foreground) / 0.3);
+  border-radius: var(--checkbox-radius);
+  background: none;
+  cursor: pointer;
+  /* The tick is always in the DOM and hidden by colour alone, never by `display`.
+     Both hover and the checked state show it, and a box that adds and removes a child
+     instead would resize its own content on hover - the row of tasks would twitch
+     under the pointer. Transparent ink costs nothing and moves nothing. */
+  color: transparent;
+  transition:
+    background-color var(--duration-fast) var(--ease),
+    border-color var(--duration-fast) var(--ease),
+    color var(--duration-fast) var(--ease),
+    transform var(--duration-fast) var(--ease);
+}
+
+.checkbox[aria-checked='true'] {
+  border-color: hsl(var(--primary));
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+.checkbox:focus-visible,
+.checkbox[data-keel-focus] {
+  outline: none;
+  box-shadow:
+    0 0 0 var(--focus-ring-offset) hsl(var(--background)),
+    0 0 0 calc(var(--focus-ring-offset) + var(--focus-ring-width)) hsl(var(--ring));
+}
+
+.checkbox:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* A smaller box, for a checkbox on a nested row - a subtask under its task - where
+   the full size would compete with the parent's. Rebinds the two geometry tokens the
+   way `.switch--size-sm` does, rather than restating the rules that read them. */
+.checkbox--small {
+  --checkbox-size: var(--checkbox-size-sm);
+  --checkbox-radius: var(--checkbox-radius-sm);
+}
+
+@media (hover: hover) {
+  /* Hover previews the tick rather than only lighting the border, which is the part
+     worth keeping: the box says what clicking it will do. `:not([aria-checked='true'])`
+     rather than a later override, so an already-ticked box does not animate when the
+     pointer crosses it on the way somewhere else. */
+  .checkbox:hover:not([aria-checked='true']) {
+    border-color: hsl(var(--primary));
+    color: hsl(var(--primary));
+    transform: scale(1.1);
+  }
+
+  /* The nested box keeps the colour change and gives up the growth. At 16px a 10%
+     scale is under two pixels, so it reads as a jitter rather than as a response -
+     and a subtask row is short enough that the box nudges the text beside it. */
+  .checkbox--small:hover:not([aria-checked='true']) {
+    transform: none;
+  }
+}
+
+/* --------------------------------------------------------------- slider ---- */
+/* A native range input, restyled. Native keeps the keyboard stepping and touch
+   dragging that a hand-built slider would have to reimplement badly. */
+
+.slider {
+  width: 100%;
+  height: var(--slider-rail-h);
+  border-radius: var(--radius-pill);
+  background-color: hsl(var(--accent));
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: var(--slider-thumb-size);
+  width: var(--slider-thumb-size);
+  border-radius: var(--radius-pill);
+  background-color: hsl(var(--primary));
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--duration-fast) var(--ease);
+}
+
+/* Duplicated rather than combined with the WebKit selector above: a rule listing
+   both vendor pseudo-elements is dropped whole by both engines. Which is also why
+   the hover and the transition have to be repeated - without them Firefox gets a
+   thumb that never responds to the pointer at all.
+
+   The two hovers cannot share a `@media` block for the same reason they cannot share
+   a selector: the block would still contain one rule each engine discards, but each
+   engine discards only the rule, not the block, so grouping them is safe. They are
+   kept apart anyway to sit beside the thumb each one belongs to. */
+.slider::-moz-range-thumb {
+  height: var(--slider-thumb-size);
+  width: var(--slider-thumb-size);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background-color: hsl(var(--primary));
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--duration-fast) var(--ease);
+}
+
+@media (hover: hover) {
+  .slider::-webkit-slider-thumb:hover {
+    transform: scale(1.1);
+  }
+}
+
+@media (hover: hover) {
+  .slider::-moz-range-thumb:hover {
+    transform: scale(1.1);
+  }
+}
+
+.slider:focus-visible,
+.slider[data-keel-focus] {
+  outline: none;
+  box-shadow:
+    0 0 0 var(--focus-ring-offset) hsl(var(--background)),
+    0 0 0 calc(var(--focus-ring-offset) + var(--focus-ring-width)) hsl(var(--ring));
+}
+
+/* --------------------------------------------------------------- dialog ---- */
+
+/* Its own class and its own z-index rather than `.scrim`, and the tokens file says
+   why: a dialog's overlay has to be inseparable from the dialog, so it sits in the
+   `--z-dialog` layer with it rather than in the standalone scrim's. The dim and the
+   blur are shared, because nothing argues for dimming a dialog's page differently
+   from a drawer's - both mean "nothing behind this is available". */
+.dialog__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-dialog);
+  background-color: rgb(0 0 0 / var(--scrim-alpha));
+  backdrop-filter: blur(var(--scrim-blur));
+  -webkit-backdrop-filter: blur(var(--scrim-blur));
+  animation: keel-fade-in var(--duration-slow) ease-out;
+}
+
+.dialog__content {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  z-index: var(--z-dialog);
+  transform: translate(-50%, -50%);
+  width: 100%;
+  max-width: 48rem;
+  max-height: 85vh;
+  overflow-y: auto;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-lg);
+  background-color: hsl(var(--background));
+  padding: 1.5rem;
+  box-shadow: var(--shadow-lg);
+  animation: keel-dialog-in var(--duration-slow) ease-out;
+}
+
+.dialog__close {
+  position: absolute;
+  right: 1rem;
+  top: 1rem;
+  display: inline-flex;
+  border: 0;
+  background: none;
+  color: hsl(var(--foreground));
+  opacity: 0.7;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: opacity var(--duration-fast) var(--ease);
+}
+@media (hover: hover) {
+  .dialog__close:hover {
+    opacity: 1;
+  }
+}
+
+/* ------------------------------------------------------ formatted text ---- */
+
+.formatted {
+  /* A long address with no spaces in it must not push its row wider than the
+     panel; everything else wraps normally. */
+  overflow-wrap: anywhere;
+}
+
+.formatted__link {
+  color: hsl(var(--primary) / 0.8);
+  text-decoration: underline;
+  text-decoration-color: hsl(var(--primary) / 0.4);
+  text-underline-offset: 2px;
+}
+
+@media (hover: hover) {
+  .formatted__link:hover {
+    color: hsl(var(--primary));
+    text-decoration-color: hsl(var(--primary) / 0.7);
+  }
+}
+
+.formatted__underline {
+  text-decoration: underline;
+  text-decoration-color: hsl(var(--foreground) / 0.5);
+  text-underline-offset: 2px;
+}
+
+.formatted__code {
+  border-radius: var(--radius-xs);
+  padding: 0.125rem 0.375rem;
+  background-color: hsl(var(--muted));
+  /* `--foreground`, not `--accent-foreground`: this sits on `--muted`, and taking
+     the ink named for a different surface is the kind of pairing that reads
+     correctly right up until a palette overrides one of the two. */
+  color: hsl(var(--foreground));
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+}
+
+/* --------------------------------------------------- formatting toolbar ---- */
+
+.toolbar {
+  display: flex;
+  width: fit-content;
+  gap: 0.125rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-sm);
+  padding: 0.25rem;
+  background-color: hsl(var(--popover));
+  box-shadow: var(--shadow-sm);
+}
+
+.toolbar__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--control-h-xs);
+  height: var(--control-h-xs);
+  border: none;
+  border-radius: calc(var(--radius-sm) - 2px);
+  background-color: transparent;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease),
+    color var(--duration-fast) var(--ease);
+}
+
+/* `--accent-foreground`, matching the two button hovers that use the same surface.
+   All three paint identically today only because the token is derived from
+   `--foreground`; a palette that overrides it would otherwise make the toolbar's
+   hover diverge from the buttons' on the very same background. */
+@media (hover: hover) {
+  .toolbar__button:hover {
+    background-color: hsl(var(--accent));
+    color: hsl(var(--accent-foreground));
+  }
+}
+
+/* ------------------------------------------------------------- tag pill ---- */
+/* The fill and the text colour are set inline from the swatch, because they come
+   from stored data rather than from the theme. Everything else is here. */
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.125rem;
+  border: none;
+  border-radius: var(--radius-pill);
+  padding: 0.125rem 0.625rem;
+  font-family: inherit;
+  font-size: 0.625rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.pill--inline {
+  padding: 0 0.375rem;
+  font-size: 0.5625rem;
+}
+
+.pill--small {
+  padding: 0.125rem 0.5rem;
+}
+
+/* A pill standing for no particular tag: the "All" at the head of a filter row, an
+   "Any", a "None". It has no swatch, so it is the one pill whose colour comes from the
+   theme rather than from data - which is exactly why it needs a class. The alternative
+   is a consumer passing a literal hex for it, and a hex cannot follow a theme: the
+   pill would stay dark on a dark palette and dark on a light one.
+
+   Same shape as the rest of the row, so it sits in it rather than beside it. The
+   0.1 matches what a swatch fill resolves to, so "All" reads as one of the pills. */
+.pill--neutral {
+  background-color: hsl(var(--foreground) / 0.1);
+  color: hsl(var(--foreground));
+}
+
+.pill--button {
+  cursor: pointer;
+  transition: opacity var(--duration-fast) var(--ease);
+}
+
+@media (hover: hover) {
+  .pill--button:hover {
+    opacity: 0.8;
+  }
+}
+
+/* A pill used as a filter, where the whole set shows which are on.
+
+   Off is dimmer, not a different colour. That is the design and not a shortcut: this
+   pill's fill is its *data* - the tag it stands for - so repainting an unselected one
+   in a neutral grey would hide which tag it is, and the row would become unreadable
+   at exactly the moment the user is choosing from it.
+
+   `--pill-dim` is separate from `.pill--button`'s hover, which dims an *opaque* pill
+   slightly on hover. Here hover means the opposite - it previews being on - so it
+   goes to full. The two rules have equal specificity and this one is later, which is
+   the only reason it wins; it must stay below. */
+.pill--selectable {
+  opacity: var(--pill-dim);
+}
+
+/* On: full strength, plus a ring in the pill's own colour. The held-off pair the
+   focus styles use, and for the same reason - a background-coloured gap keeps the
+   stroke legible whatever surface the pill sits on. The outer radius is derived from
+   the gap rather than stated, so widening one cannot eat the other. */
+.pill--selected {
+  opacity: 1;
+  box-shadow:
+    0 0 0 var(--pill-ring-gap) hsl(var(--background)),
+    0 0 0 calc(var(--pill-ring-gap) + var(--pill-ring-width)) currentColor;
+}
+
+@media (hover: hover) {
+  .pill--selectable:hover {
+    opacity: 1;
+  }
+}
+
+.pill__emoji {
+  font-size: 0.875em;
+}
+
+/* ---------------------------------------------------------------- swatch ---- */
+/* A colour offered for the user to pick, drawn as the colour itself.
+
+   Three copies of this existed before it was a component, and one of them was in
+   keel's own gallery - which is the clearest evidence there is that the library was
+   missing something. The other two were a tag-colour grid written twice in one app.
+   None of the three agreed: 1.5rem against 1rem, a border against a double ring
+   against a scale, and two different answers to what "selected" looks like.
+
+   The colour arrives inline, from the caller, and that is unavoidable rather than
+   untidy: a picker paints every choice at once while only one palette's variables
+   are live, so the six or ten colours on screen cannot come from tokens. See
+   `Swatches` and `Theme.accentHex`, both of which store a plain hex for this reason.
+
+   A real `<button>` with `aria-pressed`, not a `div` with a click handler. A colour
+   with no label is exactly the control that needs the announcement most. */
+
+.swatch {
+  flex: none;
+  width: var(--swatch-size);
+  height: var(--swatch-size);
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition:
+    transform var(--duration-fast) var(--ease),
+    box-shadow var(--duration-fast) var(--ease);
+}
+
+.swatch--small {
+  width: var(--swatch-size-sm);
+  height: var(--swatch-size-sm);
+}
+
+/* The chosen one. `--foreground` rather than the swatch's own colour, which is what
+   both hand-written versions arrived at independently: a ring in the swatch's colour
+   is a ring you cannot see against the swatch. */
+.swatch--on {
+  box-shadow:
+    0 0 0 var(--swatch-ring-gap) hsl(var(--background)),
+    0 0 0 calc(var(--swatch-ring-gap) + var(--swatch-ring-width)) hsl(var(--foreground));
+}
+
+@media (hover: hover) {
+  /* Growing rather than lightening, because a swatch has nothing to lighten - any
+     colour change under the pointer would be a lie about which colour it is. */
+  .swatch:hover {
+    transform: scale(1.15);
+  }
+}
+
+/* While focused, the focus ring replaces the selection ring rather than stacking
+   outside it. Deliberate: the two want the same few pixels, four stacked shadow
+   layers is not readable in either the CSS or the pixels, and of the two facts the
+   transient one is the more urgent. Nothing is lost to a screen reader, which learns
+   the selection from `aria-pressed` and not from a stroke. */
+.swatch:focus-visible,
+.swatch[data-keel-focus] {
+  outline: none;
+  box-shadow:
+    0 0 0 var(--focus-ring-offset) hsl(var(--background)),
+    0 0 0 calc(var(--focus-ring-offset) + var(--focus-ring-width)) hsl(var(--ring));
+}
+
+/* The same choice with its name beside it. A tile and not a wider swatch: once there
+   is text, the colour stops being the target and becomes a preview of one. */
+.swatch-tile {
+  display: flex;
+  align-items: center;
+  gap: var(--swatch-tile-gap);
+  padding: var(--swatch-tile-pad);
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-sm);
+  background-color: transparent;
+  color: hsl(var(--foreground));
+  font-family: inherit;
+  font-size: var(--swatch-tile-font-size);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease),
+    border-color var(--duration-fast) var(--ease);
+}
+
+/* Border *and* fill, where the bare swatch takes a ring. A tile already has a border
+   at rest, so colouring the one that is there says more than adding a second stroke
+   outside it. */
+.swatch-tile--on {
+  border-color: hsl(var(--primary));
+  background-color: hsl(var(--primary) / var(--swatch-tile-tint));
+}
+
+@media (hover: hover) {
+  .swatch-tile:hover {
+    background-color: hsl(var(--muted));
+  }
+
+  /* The chosen tile keeps its own fill under the pointer. Without this the hover
+     would wash the `--primary` tint out with `--muted` and the selection would
+     disappear exactly while being pointed at. */
+  .swatch-tile--on:hover {
+    background-color: hsl(var(--primary) / var(--swatch-tile-tint));
+  }
+}
+
+.swatch-tile:focus-visible,
+.swatch-tile[data-keel-focus] {
+  outline: none;
+  box-shadow:
+    0 0 0 var(--focus-ring-offset) hsl(var(--background)),
+    0 0 0 calc(var(--focus-ring-offset) + var(--focus-ring-width)) hsl(var(--ring));
+}
+
+/* The preview. Its colour is inline, the same as the bare swatch's. */
+.swatch-tile__dot {
+  flex: none;
+  width: var(--swatch-dot-size);
+  height: var(--swatch-dot-size);
+  border-radius: var(--radius-pill);
+}
+
+/* ------------------------------------------------------ formatting field ---- */
+/* A field with its toolbar under it. The gap is small on purpose: the toolbar acts
+   on the field above it, and space between them would read as two controls. */
+
+.formatting-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+/* ---------------------------------------------------------------- badge ---- */
+/* A short status word: NEW, LIVE, 4K. Uppercase and letterspaced rather than
+   sentence case, because at this size the shape of the word is what is read and
+   not the letters.
+
+   Four tones and no neutral-plus-colour axis, so a tone always means the same
+   thing. `Destructive` and `Success` are the same states they are on a button. */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border-radius: var(--radius-sm);
+  padding: 0.125rem 0.375rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  background-color: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+}
+
+.badge--primary {
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+.badge--success {
+  background-color: hsl(var(--success));
+  color: hsl(var(--success-foreground));
+}
+
+.badge--destructive {
+  background-color: hsl(var(--destructive));
+  color: hsl(var(--destructive-foreground));
+}
+
+/* ------------------------------------------------------------- skeleton ---- */
+/* A shape standing in for content that has not arrived. It carries no size of its
+   own beyond the line form: a skeleton is only honest when it is the size of the
+   thing it replaces, and only the caller knows that.
+
+   The sweep is a moving background rather than an opacity pulse, because a pulse
+   on a page of them reads as the whole page flashing. `--muted` to `--accent` and
+   back is a low-contrast move on purpose - a placeholder that draws the eye is
+   worse than one that does not. */
+
+.skeleton {
+  border-radius: var(--radius-sm);
+  background-image: linear-gradient(
+    90deg,
+    hsl(var(--muted)) 25%,
+    hsl(var(--accent)) 50%,
+    hsl(var(--muted)) 75%
+  );
+  background-size: 200% 100%;
+  animation: keel-skeleton-sweep 1.3s linear infinite;
+}
+
+/* A single line of stand-in text. Sized in `em` so it tracks whatever type it sits
+   in rather than needing a length from the caller. */
+.skeleton--line {
+  height: 0.625em;
+}
+
+.skeleton--circle {
+  border-radius: var(--radius-pill);
+}
+
+/* --------------------------------------------------------------- loader ---- */
+/* A rotating ring, for a wait with no measurable progress. Use a `ProgressBar`
+   whenever there is a number.
+
+   Not `.spinner`: `base.css` already owns that name as the utility that rotates an
+   icon in place, and a component taking it would silently restyle every caller of
+   the utility. Both apps also have a `.spinner` of their own, which is the same
+   collision from the other direction. */
+
+.loader {
+  display: inline-block;
+  width: var(--loader-size);
+  height: var(--loader-size);
+  border: 0.125rem solid hsl(var(--muted-foreground) / 0.25);
+  border-top-color: hsl(var(--primary));
+  border-radius: var(--radius-pill);
+  animation: keel-spin 1s linear infinite;
+}
+
+.loader--sm {
+  width: var(--loader-size-sm);
+  height: var(--loader-size-sm);
+}
+
+.loader--lg {
+  width: var(--loader-size-lg);
+  height: var(--loader-size-lg);
+  border-width: 0.1875rem;
+}
+
+/* ---------------------------------------------------------- empty state ---- */
+/* Nothing here, and what to do about it. The border is dashed rather than solid so
+   it does not read as a panel with content that failed to paint. */
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.875rem;
+  border: 1px dashed hsl(var(--border));
+  border-radius: var(--radius-xl);
+  padding: 3rem 1.5rem;
+  text-align: center;
+  color: hsl(var(--muted-foreground));
+}
+
+.empty-state__title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+
+.empty-state__body {
+  font-size: 0.875rem;
+  max-width: 32ch;
+}
+
+/* ---------------------------------------------------------------- callout ---- */
+/* A bordered strip that says something about the screen it is on: a playback error, a
+   "you have reached the end of this series". Not a toast, which arrives, is about an
+   action just taken, and leaves on a timer - a callout is part of the page and stays
+   as long as the condition does. Not an `EmptyState` either: that one replaces
+   content, this one sits beside it.
+
+   Smaller than body text, because it is an aside. A row rather than a block, so a
+   callout can end in a button - "watch it again" - without the caller building a flex
+   box around keel's box.
+
+   The tone tints and borders; it never recolours the text. Red type on a red tint is
+   the version this replaces, and measured across all twelve palettes it fails: the
+   `--destructive` ink on its own 9% tint lands at 3.0-3.1:1 on the six light palettes
+   and 4.38-4.47:1 on the six dark ones, and this is 13px text, so 4.5:1 is the bar it
+   has to clear rather than 3:1. `--foreground` on the same box is 12.1-14.0:1 in every
+   one of the twelve. The border and the tint already say which tone it is; the text
+   only has to be readable. */
+
+.callout {
+  display: flex;
+  align-items: center;
+  gap: var(--callout-gap);
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-lg);
+  padding: var(--callout-py) var(--callout-px);
+  font-size: var(--callout-font-size);
+  color: hsl(var(--foreground));
+}
+
+.callout--primary {
+  border-color: hsl(var(--primary) / var(--callout-border-alpha));
+  background-color: hsl(var(--primary) / var(--callout-tint));
+}
+
+/* Its own tone rather than `--primary`, which is what "it worked" would otherwise
+   have to borrow. `--primary` is the palette's identity colour and two of the six
+   palettes put it within 25 degrees of `--destructive` - coral at 350 and ember at
+   25, against destructive's 0 - so on those a confirmation and a failure are the same
+   red box. Since a callout shows one at a time, there is nothing beside it to tell
+   them apart. `--success` is fixed at hue 158 and clears every palette. */
+.callout--success {
+  border-color: hsl(var(--success) / var(--callout-border-alpha));
+  background-color: hsl(var(--success) / var(--callout-tint));
+}
+
+.callout--destructive {
+  border-color: hsl(var(--destructive) / var(--callout-border-alpha));
+  background-color: hsl(var(--destructive) / var(--callout-tint));
+}
+
+/* The text side, so that a trailing button keeps its own width and everything else
+   takes the rest. Published as a class rather than left to the caller because the
+   alternative is `flex: 1` in a consumer sheet, which is the same rule written
+   somewhere it cannot be seen from here. */
+.callout__body {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ------------------------------------------------------------- progress ---- */
+/* A determinate bar. Use a `Spinner` when there is no number to show.
+
+   This replaces four hand-written bars across two apps that agreed on nothing:
+   three thicknesses, three different track alphas, one with a radius and three
+   without, one with a width transition and three without. None of those
+   differences was a decision - they were four people solving the same problem on
+   four days - so the variants below are only the ones that carry meaning.
+
+   The radius is always the pill. On a 2px bar spanning a tile it is invisible,
+   which is why three of the four omitted it; on a short standalone bar it is what
+   was wanted. One value costs the invisible case nothing.
+
+   The fill transitions `width` *linearly*. A countdown is the common case and an
+   eased countdown is wrong: it slows near the end of every tick, so a bar that
+   should drain evenly visibly stutters. */
+
+.progress {
+  position: relative;
+  /* Clips the fill's square end to the pill radius. Nothing here is focusable, so
+     this cannot swallow a focus ring the way it would on a card. */
+  overflow: hidden;
+  width: 100%;
+  height: var(--progress-h-default);
+  border-radius: var(--radius-pill);
+  background-color: hsl(var(--muted));
+}
+
+.progress--sm {
+  height: var(--progress-h-sm);
+}
+
+.progress--lg {
+  height: var(--progress-h-lg);
+}
+
+.progress__fill {
+  display: block;
+  height: 100%;
+  width: 0;
+  background-color: hsl(var(--primary));
+  transition: width var(--duration-fast) linear;
+}
+
+/* Laid over a poster, a still, or video, where the page's own colours say nothing
+   about what is behind the bar.
+
+   `--primary-foreground` is the palette's ink for sitting on a saturated fill of
+   the app's own choosing, and it is declared palette-independent for exactly that
+   reason. A picture is a saturated fill whose colour nobody knows in advance, so
+   it is the same job. That is what makes this a token rather than a literal white
+   - the one thing a component may never name. */
+.progress--on-media {
+  background-color: hsl(var(--primary-foreground) / 0.22);
+}
+
+/* Finished. The fill stops being the brand colour, because a bar that is full and
+   a bar that is full *and done* should not look identical - and because a row of
+   finished tiles all shouting in the brand colour is a row of noise. */
+.progress--done .progress__fill {
+  background-color: hsl(var(--muted-foreground));
+}
+
+.progress--on-media.progress--done .progress__fill {
+  background-color: hsl(var(--primary-foreground) / 0.7);
+}
+
+/* ---------------------------------------------------------------- scrub ---- */
+/* A media timeline: draggable, with a buffered layer behind the position.
+
+   Three reasons this is not the `Slider` with extra parameters. It needs a second
+   fill for what has downloaded, which no slider has. Its position is written from
+   a `requestAnimationFrame` loop rather than from state, because recomposing sixty
+   times a second to move one element is the thing real players are careful not to
+   do - so it hands the caller a `ScrubHandle` instead of taking a value. And it
+   lives over picture, so its colours come from the media treatment above rather
+   than from the page.
+
+   It is not the `ProgressBar` either: a progress bar is not draggable, and giving
+   it a knob and a seek callback would make every read-only bar carry both.
+
+   The visible bar is decoration. The control is a real `input[type=range]` on top
+   of it at zero opacity, which is what keyboard stepping, touch dragging and
+   assistive technology actually address - all three for free, and none of them
+   reimplementable correctly by hand. */
+
+.scrub {
+  position: relative;
+  display: flex;
+  align-items: center;
+  /* Several times the rail: a 3px pointer target is not a pointer target. */
+  height: var(--scrub-h);
+  cursor: pointer;
+}
+
+.scrub__track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  overflow: hidden;
+  height: var(--scrub-rail-h);
+  border-radius: var(--radius-pill);
+  background-color: hsl(var(--primary-foreground) / 0.24);
+}
+
+.scrub__buffered,
+.scrub__position {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+}
+
+/* Behind the position and brighter than the track, so the gap between "played"
+   and "downloaded" is legible without competing with either. */
+.scrub__buffered {
+  background-color: hsl(var(--primary-foreground) / 0.4);
+}
+
+.scrub__position {
+  background-color: hsl(var(--primary));
+}
+
+.scrub__knob {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: var(--scrub-knob-size);
+  height: var(--scrub-knob-size);
+  border-radius: var(--radius-pill);
+  background-color: hsl(var(--primary));
+  /* Centred on its position rather than starting at it, so the knob's middle is
+     the time it reports. */
+  transform: translate(-50%, -50%);
+  /* The invisible input underneath is the control; the knob must not intercept. */
+  pointer-events: none;
+}
+
+.scrub__input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* The input is invisible, so its own focus ring is too. The knob has to carry it.
+   A single ring rather than keel's two-layer one: the outer layer of that pair is
+   a gap in `--background`, and there is no page background here - there is a
+   picture. See the focus note in this file's header for the second branch. */
+.scrub__input:focus-visible ~ .scrub__knob,
+.scrub__input[data-keel-focus] ~ .scrub__knob {
+  box-shadow: 0 0 0 var(--focus-ring-width) hsl(var(--ring));
+}
+
+/* ------------------------------------------------------ segmented control ---- */
+/* Pick one of a set. Two visual treatments of the same interaction, which is why
+   they are one component and not two: the difference is entirely in the container.
+
+   `Track` is the compact form - a shared background with the choices inside it,
+   all visible at once. `Rail` detaches them into pills on a horizontal scroller,
+   for a set too long to fit: twelve seasons, forty tags.
+
+   The selected look is keyed off `:checked` rather than off a class the Kotlin
+   adds. That is the same argument the switch makes: `:checked` is what the browser
+   and assistive technology report, so keying the colour off it means the two cannot
+   disagree. A class can, and the failure is silent in the direction that matters -
+   the control looks right and announces wrong.
+
+   The control is a real radio group. That is not tidiness either: a set of buttons
+   with `role="radio"` promises arrow-key navigation and a single tab stop, and
+   delivers neither unless someone reimplements roving tabindex. Native radios
+   sharing a name give both away for free, plus grouping, plus Home and End.
+
+   Every selected-state rule below therefore has a second branch on
+   `.segmented__label[aria-checked='true']`, for a consumer that cannot use a native
+   radio at all. A ten-foot shell is the case: it renders each choice as one flat
+   `Div role="radio" aria-checked` because focus there is a cursor the app owns and a
+   real input brings a UA stylesheet and its own activation to fight with. That
+   consumer has no input to be a sibling of, so `:checked` can never match.
+
+   This is not the class the paragraph above rejects. `aria-checked` *is* the state
+   assistive technology reports for `role="radio"` - the same fact `:checked` reports
+   for a native one - so keying off it keeps the look and the announcement tied
+   together. A `.is-selected` class would not, which is the whole difference. The two
+   branches never both match one element: markup has either the input or the
+   attribute. */
+
+.segmented {
+  display: inline-flex;
+  gap: 0.125rem;
+  padding: 0.125rem;
+  border-radius: var(--radius-pill);
+  background-color: hsl(var(--muted));
+}
+
+/* Each choice takes an equal share rather than only the room its word needs. For a
+   control whose options are a closed set of similar length - a view switcher - the
+   even rhythm reads better and the widths stop moving as the labels change. */
+.segmented--fill {
+  display: flex;
+  width: 100%;
+}
+
+.segmented--fill .segmented__item {
+  flex: 1;
+}
+
+/* No shared track, and it scrolls.
+   The scrollbar is hidden because this rail is swiped or dragged: a horizontal
+   scrollbar under a row of chips reads as a second control sitting under the first.
+   `scrollbar-width` is the standard property, and the legacy pseudo-element is
+   guarded exactly as `base.css` guards its own - Blink and WebKit ignore it on any
+   element that also sets `scrollbar-width`. */
+.segmented--rail {
+  display: flex;
+  gap: 0.375rem;
+  padding: 0;
+  overflow-x: auto;
+  border-radius: 0;
+  background-color: transparent;
+  scrollbar-width: none;
+}
+
+@supports not (scrollbar-width: none) {
+  .segmented--rail::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* The label element: a wrapper, not the visible chip. The chip is the span inside
+   it, so that `:checked` on the input can reach it as a sibling.
+   Positioned, so the hidden input below is clipped where the chip actually is. */
+.segmented__item {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+}
+
+/* Present to the keyboard and to assistive technology, absent to the eye. Not
+   `display: none`, which would take it out of the accessibility tree and out of the
+   tab order along with it - the whole point is that this is still the control.
+
+   The same trick as `.sr-only`, written out rather than reusing that class, because
+   this one has to be clipped *at its own chip*. `.sr-only` positions against
+   whatever positioned ancestor it happens to find, and on a rail that is a
+   scrolling box: a focused chip would then scroll a 1px box somewhere else into
+   view instead of itself. */
+.segmented__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+.segmented__label {
+  display: inline-flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  padding: var(--segmented-py) var(--control-px-sm);
+  font-family: inherit;
+  font-size: var(--segmented-font-size);
+  font-weight: var(--control-font-weight);
+  white-space: nowrap;
+  cursor: pointer;
+  color: hsl(var(--muted-foreground));
+  transition:
+    background-color var(--duration-fast) var(--ease),
+    color var(--duration-fast) var(--ease),
+    border-color var(--duration-fast) var(--ease);
+}
+
+/* A rail chip has no track behind it, so it carries its own fill and a larger tap
+   area - it is a standalone target rather than one cell of a strip. */
+.segmented--rail .segmented__label {
+  padding: var(--segmented-rail-py) var(--control-px-default);
+  font-size: var(--segmented-rail-font-size);
+  background-color: hsl(var(--accent));
+}
+
+/* The chosen one lifts out of the track: the page's own surface colour, plus the
+   smallest shadow, which is the same treatment a `Surface` gets for sitting above
+   rather than in something.
+
+   This is the one place in the file where two palette tokens have to *differ* for a
+   component to work: the chip is `--card` and the track it sits in is `--muted`, and
+   a theme that gives both the same value leaves the selection carried by text colour
+   alone. Every palette in `palettes.css` keeps them a clear step apart, and a theme
+   written by hand should too - both names can honestly be read as "just off the
+   page", which is exactly how they end up equal. */
+.segmented__input:checked ~ .segmented__label,
+.segmented__label[aria-checked='true'] {
+  background-color: hsl(var(--card));
+  color: hsl(var(--foreground));
+  box-shadow: var(--shadow-sm);
+  /* Nothing to click: it is already selected. */
+  cursor: default;
+}
+
+/* On a rail there is no track to lift out of, so the selected chip inverts instead.
+   The shadow goes: it would be a shadow against nothing. */
+.segmented--rail .segmented__input:checked ~ .segmented__label,
+.segmented--rail .segmented__label[aria-checked='true'] {
+  background-color: hsl(var(--primary));
+  border-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  box-shadow: none;
+}
+
+@media (hover: hover) {
+  .segmented__input:not(:checked) ~ .segmented__label:hover,
+  .segmented__label[aria-checked='false']:hover {
+    color: hsl(var(--foreground));
+  }
+
+  .segmented--rail .segmented__input:not(:checked) ~ .segmented__label:hover,
+  .segmented--rail .segmented__label[aria-checked='false']:hover {
+    background-color: hsl(var(--accent) / 0.7);
+  }
+}
+
+/* The input is visually hidden, so its own ring is too - the chip has to carry it.
+   See the focus note in this file's header for the second branch.
+
+   The container class is in the selector purely for specificity. Without it these
+   are (0,3,0) and lose to `.segmented--rail .segmented__input:checked ~ ...`, which
+   sets `box-shadow: none` - so the selected chip on a rail would take focus and show
+   no ring at all. With it they are (0,4,0) and, coming later, win the tie.
+
+   The flat form's two branches sit on the chip itself, since that is the focusable
+   element there. They are (0,3,0), tying with
+   `.segmented--rail .segmented__label[aria-checked='true']` and winning by order for
+   the same reason. On the native form they match nothing: a `<label>` is not
+   focusable and never carries the attribute. */
+.segmented .segmented__input:focus-visible ~ .segmented__label,
+.segmented .segmented__input[data-keel-focus] ~ .segmented__label,
+.segmented .segmented__label:focus-visible,
+.segmented .segmented__label[data-keel-focus] {
+  outline: none;
+  box-shadow:
+    0 0 0 var(--focus-ring-offset) hsl(var(--background)),
+    0 0 0 calc(var(--focus-ring-offset) + var(--focus-ring-width)) hsl(var(--ring));
+}
+
+/* "You have finished this one." Its own colour rather than the label's, because it
+   is a different fact from which choice is selected: an unchosen chip can carry it
+   and the chosen one can too. */
+.segmented__complete {
+  color: hsl(var(--success));
+}
+
+/* On the chosen chip it gives that up and takes the chip's colour, so it stays
+   legible against whatever that chip is filled with. `inherit` rather than a named
+   colour because the two treatments fill differently - the track's chip is --card
+   with --foreground on it, the rail's is --primary with --primary-foreground - and
+   naming either one puts a white check on a light card in half the palettes. */
+.segmented__input:checked ~ .segmented__label .segmented__complete,
+.segmented__label[aria-checked='true'] .segmented__complete {
+  color: inherit;
+}
+
+/* ------------------------------------------------------------------ scrim ---- */
+/* The dim behind a drawer. Five rules across the two apps carried four different
+   values between them - two dim colours, three alphas and two blur radii, none of
+   which was a decision - plus one that was a click-catcher wearing a scrim's class
+   and had to cancel both of the scrim's own properties inline to work.
+
+   Black rather than `--background` at low alpha, which is what one app used: on a
+   light palette a 0.6 wash of near-white over a near-white page dims nothing at
+   all. Black separates on all twelve. */
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-scrim);
+  background-color: rgb(0 0 0 / var(--scrim-alpha));
+  animation: keel-fade-in var(--duration-slow) ease-out;
+}
+
+/* Some scrims exist to dim and some exist only to catch the click outside. A
+   ten-foot shell wants the dim without the blur, because a remote cannot click the
+   page behind anything and the blur is a full-screen composite every frame. */
+.scrim--blurred {
+  backdrop-filter: blur(var(--scrim-blur));
+  -webkit-backdrop-filter: blur(var(--scrim-blur));
+}
+
+/* ----------------------------------------------------------------- drawer ---- */
+/* A panel anchored to one edge, for a long list of controls rather than one
+   decision - which is what makes it a drawer and not a dialog. Both apps had one
+   and they were mirror images: same flex column, same slide, opposite edges.
+
+   `min()` rather than a media query: below the token width the drawer is the
+   viewport less a margin, which is the behaviour a breakpoint would have had to
+   spell out at whatever width happened to be chosen. */
+.drawer {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  z-index: var(--z-drawer);
+  display: flex;
+  flex-direction: column;
+  gap: var(--drawer-gap);
+  width: min(var(--drawer-w), 88vw);
+  padding: var(--drawer-pad);
+  overflow-y: auto;
+  background-color: hsl(var(--card));
+  color: hsl(var(--card-foreground));
+}
+
+/* The box and nothing else. For a sheet the caller divides itself, which in practice
+   means one with a header that must not scroll away: the header and the region below
+   it carry their own padding, and only the lower one scrolls.
+
+   All three properties are the same decision rather than three. Padding here would
+   inset that header and stop its lower border reaching the sheet's edges; a gap would
+   float it above the body it divides; and `overflow-y: auto` here would be a second
+   scrollbar beside the body's, with the header scrolling out of the first one.
+
+   The caller then owns `flex` on its own two children, which is the point: keel
+   cannot know which of them is the fixed one. */
+.drawer--framed {
+  gap: 0;
+  padding: 0;
+  overflow-y: hidden;
+}
+
+/* The border and the radius are on the inner edge only - the outer one is against
+   the viewport, where a line and a corner would just be a seam. */
+.drawer--left {
+  left: 0;
+  border-right: 1px solid hsl(var(--border));
+  border-radius: 0 var(--radius-xl) var(--radius-xl) 0;
+  animation: keel-slide-in-from-left var(--duration-slow) var(--ease) both;
+}
+
+.drawer--right {
+  right: 0;
+  border-left: 1px solid hsl(var(--border));
+  border-radius: var(--radius-xl) 0 0 var(--radius-xl);
+  animation: keel-slide-in-from-right var(--duration-slow) var(--ease) both;
+}
+
+/* --------------------------------------------------------------- dropdown ---- */
+/* A menu hung off the control that opened it. Positioned against the nearest
+   positioned ancestor, so the trigger and the menu go in one element the consumer
+   marks `position: relative` - `.dropdown-anchor` below, which exists only for
+   that and sets nothing else. */
+.dropdown-anchor {
+  position: relative;
+}
+
+.dropdown {
+  position: absolute;
+  top: calc(100% + var(--dropdown-offset));
+  z-index: var(--z-dropdown);
+  min-width: var(--dropdown-min-w);
+  padding: var(--dropdown-offset);
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-lg);
+  background-color: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+  box-shadow: var(--shadow-lg);
+  animation: keel-slide-in-from-top var(--duration-fast) var(--ease) both;
+}
+
+/* Which corner it hangs from is the caller's, because it depends on where the
+   trigger sits: a menu on a right-aligned button must not run off the page. */
+.dropdown--start {
+  left: 0;
+}
+
+.dropdown--end {
+  right: 0;
+}
+
+/* Opening upward, for a trigger near the foot of the viewport - a control bar pinned
+   to the bottom of a video, a toolbar on a page's last row - where a menu hung
+   downward would fall off the screen.
+
+   `top: auto` is load-bearing rather than tidy. `.dropdown` above resolves `top`, and
+   an absolutely positioned box with *both* offsets resolved takes its height from the
+   band between them rather than from its content. Here that band is the trigger's own
+   height minus both offsets, which is negative - so the menu does not overflow, it
+   collapses. Measured on a 36px trigger: 89px tall with this rule, 14px without it.
+
+   Only the animation's name is replaced, not the whole shorthand, so the duration and
+   easing stay whatever the rule above says they are. */
+.dropdown--above {
+  top: auto;
+  bottom: calc(100% + var(--dropdown-offset));
+  animation-name: keel-slide-in-from-bottom;
+}
+
+.dropdown__item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: var(--dropdown-item-py) var(--control-px-sm);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background-color: transparent;
+  font-family: inherit;
+  font-size: var(--segmented-rail-font-size);
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+}
+
+@media (hover: hover) {
+  .dropdown__item:hover {
+    background-color: hsl(var(--accent));
+  }
+}
+
+.dropdown__item:focus-visible,
+.dropdown__item[data-keel-focus] {
+  outline: none;
+  box-shadow:
+    0 0 0 var(--focus-ring-offset) hsl(var(--background)),
+    0 0 0 calc(var(--focus-ring-offset) + var(--focus-ring-width)) hsl(var(--ring));
+}
+
+/* The item that is already the current value, for a menu that picks one of a set -
+   a video quality, a sort order, a rendition.
+
+   Not a `DropdownItemTone`. Tone says how strongly a choice reads and selection says
+   which one is in effect: they are different facts, and one menu can carry both, so
+   folding this into the enum would make "selected" and "destructive" mutually
+   exclusive for no reason. This rule comes *before* `--danger` so that if an item is
+   somehow both, the destructive colour is the one that survives - reading as
+   destructive matters more than reading as current.
+
+   The check beside it is a real element, not a `::after` with a glyph in `content`.
+   Generated content lives in this file, so a consumer that wanted a different mark
+   would have to restate the selector to change it; an element built in Kotlin is the
+   library's own `Icon`, which is where every other glyph here comes from. It is
+   `aria-hidden`, because `aria-current` on the item is what announces this - a "✓"
+   read out after the label would say the same thing twice.
+
+   `margin-left: auto` on the check rather than `justify-content: space-between` on
+   the item: that would also push a `leading` icon away from the label it belongs to. */
+.dropdown__item--selected {
+  color: hsl(var(--primary));
+}
+
+.dropdown__check {
+  margin-left: auto;
+  flex: none;
+  /* A bare `span` is an inline box, so it would sit on the text baseline and bring
+     the descender strip of whatever font is in effect - which centres the glyph
+     against the wrong box. */
+  display: inline-flex;
+}
+
+/* Destructive items are red text on the normal background rather than a red fill.
+   A filled row in a list of plain ones reads as the recommended action, which is
+   the opposite of what "delete everything" wants to say. */
+.dropdown__item--danger {
+  color: hsl(var(--destructive));
+}
+
+/* The click-catcher. One layer below its menu, because that pairing is fixed, and
+   deliberately not a `.scrim`: it must change nothing visually and must not cover
+   the menu it was opened for. One app tried it with `.scrim` plus an inline
+   `background: transparent`, which cleared the dim but not the blur - so the whole
+   page blurred - and at the scrim's z-index it covered its own menu, so neither
+   item could be clicked. */
+.dropdown__catch {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-dropdown-catch);
+  background: none;
+  backdrop-filter: none;
+}
+
+/* ------------------------------------------------------------- toast host ---- */
+/* Transient notices. The host is a fixed strip; `pointer-events: none` on it and
+   nothing turned back on inside, because these are notices and not controls -
+   without it an invisible full-width strip sits over whatever is underneath and
+   swallows clicks. */
+.toast-host {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--z-toast);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: min(var(--toast-w), calc(100vw - 2 * var(--toast-inset)));
+  pointer-events: none;
+}
+
+.toast-host--top {
+  top: var(--toast-inset);
+}
+
+.toast-host--bottom {
+  bottom: var(--toast-inset);
+}
+
+.toast {
+  border: 1px solid hsl(var(--border));
+  border-left: var(--toast-accent-w) solid hsl(var(--foreground));
+  border-radius: var(--radius-lg);
+  padding: var(--toast-py) var(--control-px-default);
+  background-color: hsl(var(--card));
+  color: hsl(var(--card-foreground));
+  box-shadow: var(--shadow-lg);
+  font-size: var(--toast-font-size);
+  animation: keel-toast-in var(--duration-slow) var(--ease) both;
+}
+
+/* The tone is carried by the left edge alone. Recolouring the whole toast would
+   make an error the loudest thing on screen at the moment the user is already
+   dealing with one. */
+.toast--success {
+  border-left-color: hsl(var(--success));
+}
+
+.toast--error {
+  border-left-color: hsl(var(--destructive));
+}
