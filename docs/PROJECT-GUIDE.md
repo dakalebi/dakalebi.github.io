@@ -217,7 +217,8 @@ unambiguous constructor calls.
 ### Tests on Node, not in a browser
 
 `:core`, `:domain`, `:presentation` and the `commonMain` half of `:data` have no browser
-in them, so `./gradlew allTests` runs their tests on Node in about a second.
+in them, so `./gradlew allTests` runs their tests on Node. Each module tests
+itself; the fakes they share are in the test-only `:testing` module.
 Standing up Karma and a headless Chrome to assert things about sorting would be
 slower and more fragile for no gain. The browser-facing code is tested by hand —
 see §8.
@@ -973,8 +974,8 @@ retry.
 
 ## 8. What is verified, and what is not
 
-**Automated.** `./gradlew allTests`, on Node, in `:presentation` for now (258 tests
-on 2026-11-06, covering `:core`, `:domain` and `:data` too), run by CI on every pull request and before every publish: the watched threshold, the never-rewind guard, "continue watching"
+**Automated.** `./gradlew allTests`, on Node, each module's own tests (258 tests
+on 2026-11-06: `:core` 6, `:domain` 85, `:data` 50, `:presentation` 117), run by CI on every pull request and before every publish: the watched threshold, the never-rewind guard, "continue watching"
 and the next episode to play, ordering across season boundaries and the rest of a
 season, hash-route parsing, settings sync (the merge rules, the repository, the
 store, the device copy), the session (guest choice, admin rights, and the

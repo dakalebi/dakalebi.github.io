@@ -29,6 +29,8 @@ include(":core")
 include(":domain")
 include(":data")
 include(":presentation")
+// Test doubles for the other modules' tests. Never a dependency of the app.
+include(":testing")
 
 // The icon catalogue, the shared components (`Button`, `Switch`, `Dialog`, ...)
 // and two small utilities (`classNames`, `DismissOnEscape`) that used to be

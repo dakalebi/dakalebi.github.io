@@ -63,8 +63,8 @@ export JAVA_HOME=$(/usr/libexec/java_home -v 17)
 ./gradlew allTests
 ```
 
-The unit tests live in `:presentation` for now, and test `:core`, `:domain` and the
-plain-Kotlin half of `:data` too. None of that needs a browser (no Compose HTML,
+Each module has its own unit tests, in its `src/commonTest`, and the fakes they
+share are in the test-only `:testing` module. None of that needs a browser (no Compose HTML,
 no Firebase, no DOM), so the tests run on Node. `allTests` runs every module's
 tests. CI runs it on every pull request (`unit-tests`) and before every publish.
 
@@ -139,6 +139,8 @@ presentation/src/commonMain/kotlin/ge/dakalebi/
   i18n/          every user-facing string, one file per language
 presentation/src/jsMain/kotlin/ge/dakalebi/presentation/
   HashRouter.kt  the browser's router: the location hash
+testing/src/commonMain/kotlin/ge/dakalebi/testing/
+                 test-only: the fakes the modules' tests share
 
 src/jsMain/kotlin/ge/dakalebi/
   ui/            Compose HTML only: dashboard/, watch/, player/
@@ -146,8 +148,8 @@ src/jsMain/kotlin/ge/dakalebi/
   ui/tv/focus/   D-pad navigation — geometry within a band, memory across bands
   ui/tv/input/   one window listener and a layer stack, for the whole TV UI
   ui/drive/      driving mode: one native player and big controls
-  ui/dev/        the fixture graph behind `?ui=demo`
-  di/            the composition root that names the implementations
+  di/            the composition roots that name the implementations: AppGraph,
+                 and the fixture graph behind `?ui=demo`
   Main.kt        the entry point
 src/jsMain/resources/
   index.html, web.css    the web page

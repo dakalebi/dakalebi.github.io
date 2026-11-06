@@ -31,5 +31,11 @@ kotlin {
             // every implementation and every caller needs the types.
             api("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
         }
+
+        commonTest.dependencies {
+            implementation(project(":testing"))
+            implementation(kotlin("test"))
+            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")
+        }
     }
 }

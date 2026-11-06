@@ -19,4 +19,10 @@ kotlin {
         }
         nodejs()
     }
+
+    sourceSets {
+        commonTest.dependencies {
+            implementation(kotlin("test"))
+        }
+    }
 }
