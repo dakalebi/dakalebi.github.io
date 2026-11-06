@@ -8,6 +8,7 @@ import ge.dakalebi.i18n.S
 import ge.dakalebi.ui.App
 import ge.dakalebi.ui.SetupNotice
 import ge.dakalebi.ui.Shell
+import ge.dakalebi.ui.blockPinchZoom
 import ge.dakalebi.ui.dev.fixtureGraph
 import ge.dakalebi.ui.drive.DriveApp
 import ge.dakalebi.ui.shell
@@ -29,6 +30,8 @@ import org.jetbrains.compose.web.renderComposable
 fun main() {
     // First, so a crash during the rest of startup is still reported.
     Log.installGlobalHandlers()
+    // Every shell, before anything is drawn that a pinch could zoom.
+    blockPinchZoom()
 
     // `/?ui=demo`, `/tv/?ui=tv-demo` and `/drive/?ui=drive-demo` swap the outside
     // world for fixtures and never touch Firebase. It is how each shell is verified at all: an automated

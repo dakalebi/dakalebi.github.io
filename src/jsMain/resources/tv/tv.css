@@ -366,6 +366,9 @@ body {
  */
 body {
   font-size: var(--t-body);
+  /* No double-tap zoom when this page is opened on a phone, as on the other two
+     pages. A remote never taps, so the television itself does not notice. */
+  touch-action: manipulation;
 }
 
 /* The mount point Compose renders into. It needs an explicit height or the

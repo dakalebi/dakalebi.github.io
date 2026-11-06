@@ -49,6 +49,7 @@ import org.w3c.dom.HTMLElement
 import org.w3c.dom.HTMLVideoElement
 import org.w3c.dom.events.Event
 import org.w3c.dom.events.KeyboardEvent
+import org.w3c.dom.events.MouseEvent
 
 /** Mutable holders that must not trigger recomposition when they change. */
 private class PlayerRefs {
@@ -60,6 +61,13 @@ private class PlayerRefs {
     var hideTimer: Int? = null
     var feedbackTimer: Int? = null
     var clickTimer: Int? = null
+
+    /**
+     * The first click of the current click run already toggled playback: its wait ran out
+     * before the second click came. A double-click is then undone by the `dblclick`.
+     */
+    var clickToggled: Boolean = false
+
     /** Position to restore after a quality swap. */
     var pendingSeek: Double? = null
     var pendingPlay: Boolean = false
@@ -361,17 +369,26 @@ fun CustomVideoPlayer(
                 }
             }
 
-            onClick {
-                // Delay so a double-click can cancel the play/pause toggle.
+            onClick { event ->
                 refs.clickTimer?.let { window.clearTimeout(it) }
+                refs.clickTimer = null
+                // The second click of a double-click. The `dblclick` right after it decides.
+                if (((event.nativeEvent as? MouseEvent)?.detail ?: 1) > 1) return@onClick
+                // Delay so a double-click can cancel the play/pause toggle.
+                refs.clickToggled = false
                 refs.clickTimer = window.setTimeout({
-                    togglePlay()
                     refs.clickTimer = null
+                    refs.clickToggled = true
+                    togglePlay()
                 }, 220)
             }
             onDoubleClick {
                 refs.clickTimer?.let { window.clearTimeout(it) }
                 refs.clickTimer = null
+                // A double-click slower than the wait: the first click has already paused
+                // or played. Put it back, or leaving fullscreen this way pauses the episode.
+                if (refs.clickToggled) togglePlay()
+                refs.clickToggled = false
                 toggleFullscreen()
             }
 

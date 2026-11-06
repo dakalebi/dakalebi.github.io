@@ -11,8 +11,6 @@ import ge.dakalebi.i18n.caps
 import ge.dakalebi.presentation.Route
 import ge.dakalebi.presentation.Router
 import ge.dakalebi.ui.Thumb
-import io.github.bchmsl.keel.components.ProgressBar
-import io.github.bchmsl.keel.components.ProgressBarSize
 import io.github.bchmsl.keel.components.Surface
 import io.github.bchmsl.keel.components.SurfacePadding
 import io.github.bchmsl.keel.icons.Icon
@@ -40,11 +38,13 @@ fun WatchNav(episode: Episode?) {
     }
 }
 
+/**
+ * Offers the next episode near the end of this one. It offers only: there is no
+ * autoplay on the web for now, so nothing counts down.
+ */
 @Composable
 fun NextEpisodeCard(
     episode: Episode,
-    countdown: Double,
-    autoplayOn: Boolean,
     onPlayNext: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -56,18 +56,6 @@ fun NextEpisodeCard(
             Div({ classes("eyebrow") }) { Text(S.nextEpisode.caps) }
             Div({ classes("nextcard-t") }) {
                 Text(S.seasonAndEpisode(episode.seasonNumber, episode.episodeNumber).caps)
-            }
-            if (autoplayOn) {
-                // `aria-hidden`, and keel still requires the label: a bar announcing
-                // "22%" does not tell anyone that autoplay is four seconds away, and
-                // the card already says which episode is next and offers the button.
-                ProgressBar(
-                    fraction = countdown,
-                    ariaLabel = S.nextEpisode,
-                    size = ProgressBarSize.Small,
-                    onMedia = true,
-                    attrs = { classes("nextcard-bar"); attr("aria-hidden", "true") },
-                )
             }
             Div({ classes("nextcard-row") }) {
                 Button(

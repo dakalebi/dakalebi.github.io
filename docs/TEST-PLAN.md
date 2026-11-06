@@ -23,8 +23,8 @@ Not verifiable in the Simulator, and deliberately not claimed as passing:
 - **VLC and season 2** (`I11` to `I16`, `P7`, `P14`) need a real iPhone or iPad.
   The Simulator has no VLC, and fixture links are not on `cdn.formula.ge`, so
   there the button falls back to the single-file link.
-- **Autoplay without a tap** (`P10`). The Simulator does not enforce iOS's rule
-  that only a tap may start playback, so it passes there either way.
+- **Picture in picture** (`I20`, `I21`, `P22`). The Simulator has none:
+  `document.pictureInPictureEnabled` is false there.
 
 A real phone is easiest to test against a pull request's copy at `/pr/<n>/`.
 That copy uses the same Firebase project as production, so what you do there is
@@ -121,7 +121,7 @@ rather than the absence of it.
 | F3 | Centre overlay | Big play button when paused; gone while playing |
 | F4 | Play/pause button | Toggles; icon swaps |
 | F5 | Click the video surface | Toggles play/pause |
-| F6 | Double-click the video | Enters fullscreen and does **not** also toggle play |
+| F6 | Double-click the video | Enters fullscreen and does **not** also toggle play. Same for a slow double-click, and for one that leaves fullscreen |
 | F7 | Back-10s button | Seeks back exactly 10s |
 | F8 | Drag the volume slider | Volume follows |
 | F9 | Volume to 0 | Mutes; icon becomes muted |
@@ -151,12 +151,11 @@ rather than the absence of it.
 |---|---|---|
 | G1 | Seek to 180s before the end | Card appears |
 | G2 | Card content | Next episode's still, title, `სეზონი n · სერია m` |
-| G3 | Autoplay off | No countdown bar (nothing is counting down) |
-| G4 | Autoplay on | Bar fills as the episode approaches its end |
+| G3 | Card | No countdown bar. The web has no autoplay for now |
 | G5 | `ყურება` | Navigates immediately |
 | G6 | `დახურვა` | Dismisses and stays dismissed within the window |
 | G7 | Seek back out past 180s, then in again | Prompt re-arms |
-| G8 | Let it end with autoplay on | Auto-advances to the next episode |
+| G8 | Let it end | Marked watched and stays on this episode. Nothing starts by itself |
 | G9 | Last episode of season 18 | No prompt, no next button |
 | G10 | iOS | No overlay at all |
 
@@ -194,11 +193,14 @@ rather than the absence of it.
 | I10 | AirPlay clock | **Not verifiable** without an Apple TV — record as untested |
 | I11 | Any episode on iPhone or iPad | An orange `Open in VLC` button. None on a computer |
 | I12 | The button's label | `Open in VLC · m:ss` with the saved spot, then the player's spot once it moves. No time at 0:00 |
-| I13 | Press it, autoplay on | VLC opens a queue: this episode from that spot, then the rest of its season, each titled `სეზონი N · სერია M`, and plays the next one by itself |
-| I14 | Press it, autoplay off | VLC gets this episode alone |
-| I15 | The last episode of a season | Opens alone; the queue never crosses into the next season |
+| I13 | Press it | VLC gets this episode alone, from that spot, titled `სეზონი N · სერია M`. No queue: it is autoplay, and the web has none for now |
 | I16 | A season 2 episode in Safari | The message that points to VLC, not a generic playback error |
 | I17 | A phone with no quality picked yet | Starts at 720p or the best rendition below it. A quality picked on any device wins |
+| I18 | iPhone, playing in Apple's fullscreen player, close it with X | Paused inline. iOS pauses it and the app does not play it again. Both with System player on and off |
+| I19 | Same, close it with a swipe down | Paused inline, as in I18 |
+| I20 | iPhone, playing in Apple's fullscreen player, swipe home | Picture in picture opens and keeps playing. **Real iPhone only** |
+| I21 | iPhone, playing inline (not full screen), swipe home | No picture in picture. iOS starts it by itself only from its fullscreen player, so this is expected. **Real iPhone only** |
+| I22 | Pinch or double-tap the page, on `/`, `/drive/` and `/tv/` | The page does not zoom. A pinch out on the video still opens Apple's fullscreen player |
 
 ## J — Failure and resilience
 
@@ -245,16 +247,16 @@ rather than the absence of it.
 
 | ID | Scenario | Expected |
 |---|---|---|
-| M1 | Toggle autoplay, reload | Setting persists |
+| M1 | TV: toggle autoplay, reload | Setting persists. The web and car mode have no autoplay switch for now |
 | M2 | Pick a quality, reload | Preference persists and is applied |
 | M3 | Pause, navigate away, come back | Stays paused |
 | M4 | Change a pref in a second tab | First tab syncs via the `storage` event (TV size); account settings, quality included, arrive through the Firestore listener |
 | M5 | Set a volume, reload | Documented either way — is volume meant to persist? |
 | M6 | Hard reload | Preferences survive |
-| M7 | Two devices on one account: change language, autoplay, and (iPhone/iPad) System player on one | The other follows within seconds, without a reload. Covers the web shell and `/tv/` |
+| M7 | Two devices on one account: change language, autoplay (TV), and (iPhone/iPad) System player on one | The other follows within seconds, without a reload. Covers the web shell and `/tv/` |
 | M7b | Two devices: pick 720p on the phone while the TV is playing | The TV's current episode keeps its stream and label; the next episode it opens starts at 720p (when offered) |
 | M8 | Upgrade: iPhone with System player switched off before this release, account never had it | After sign-in it stays off, and an iPad on the same account turns off too |
-| M9 | Offline (airplane mode): flip autoplay, close the tab, go online, reopen | The switch is still flipped and the other device receives it |
+| M9 | Offline (airplane mode): flip System player (iPhone/iPad) or autoplay (TV), close the tab, go online, reopen | The switch is still flipped and the other device receives it |
 | M10 | Rules not yet published with a new setting's key | Flipping it toasts "not synced" and keeps the local value |
 | M11 | Sign out, sign in as a different account on the same device | The second account's own settings apply; nothing from the first is uploaded over them |
 
@@ -445,7 +447,7 @@ and O4 need the real site.
 | O6 | As a guest, Sign in, then sign in | The account's progress shows, and guest mode ends: a later sign-out returns to the sign-in screen |
 | O7 | As a member, menu → Continue as guest | Straight to the guest dashboard. No flash of the sign-in form, and none of the account's progress |
 | O8 | Back to guest after O6 | The earlier guest progress is still there. It is never moved into the account |
-| O9 | As a guest, change language, autoplay or quality | Applies on this device. No "not synced" toast |
+| O9 | As a guest, change language or quality (and autoplay on TV) | Applies on this device. No "not synced" toast |
 | O10 | As a guest, open the menu | No catalog refresh |
 | O11 | TV: reach `Continue as guest` with the remote | The ring reaches it from the form. **Not yet checked on a real remote** |
 | O12 | TV settings as a guest | A Sign in row instead of Sign out. Pressing it goes to sign-in with no confirmation |
@@ -459,17 +461,24 @@ the car buttons need a real iPhone.
 |---|---|---|
 | P1 | Open `/drive/` | Home is one large button for the episode to watch next: Continue or Play, season, episode, minutes left |
 | P2 | Tap it | Plays at once in the native player, from the saved spot |
-| P3 | Player screen | Back, the autoplay switch, season and episode, time and minutes left, Mark as watched, Open in VLC (iPhone and iPad), −30 s, play/pause, +30 s, next episode. All large |
+| P3 | Player screen | Back, season and episode, time and minutes left, Full screen, Mark as watched, Open in VLC (iPhone and iPad), −30 s, play/pause, +30 s, then previous and next episode side by side. All large. No autoplay switch |
 | P4 | Phone on its side | The video and the two episode buttons on the left, everything else on the right. Fits above Safari's bars |
 | P5 | −30 / +30 | Seeks 30 seconds |
-| P6 | Mark as watched | Becomes a green tick. No undo here; that stays on the web page |
-| P7 | Open in VLC | The car player pauses first. VLC gets the same queue as I13, from the car player's spot |
+| P6 | Mark as watched | Becomes a green tick |
+| P6b | Tap the green tick | The same "Clear progress?" dialog as the web page. Confirm: the episode is no longer watched and the video goes back to 0:00. Cancel: nothing changes |
+| P7 | Open in VLC | The car player pauses first. VLC gets this episode alone, as in I13, from the car player's spot |
 | P8 | Episode page → Driving mode | Car mode on the same episode, at the time the web player was at |
 | P9 | Menu → Driving mode | Car mode home |
-| P10 | An episode ends, autoplay on | The next one starts with no tap. **Real iPhone only** |
+| P10 | An episode ends | Marked watched and stays on it. Nothing starts by itself |
 | P11 | Car, headphone or lock-screen buttons | Play, pause, −30/+30, next, and seeking. "Previous" goes back 30 seconds, not a whole episode |
 | P12 | While playing | The screen stays on |
 | P13 | Lock the phone | Safari pauses the video. Expected |
 | P14 | A season 2 episode on an iPhone | The error sits over the picture and points to VLC |
-| P15 | As a guest | Car mode without signing in. Progress stays on the device, and the autoplay switch gives no sync error |
+| P15 | As a guest | Car mode without signing in. Progress stays on the device |
 | P16 | Back from the player | The player pauses; home offers the same episode |
+| P17 | Full screen | Disabled until the video has loaded. Then opens the video full screen: Safari's own player on an iPhone, the browser's fullscreen elsewhere. Works with Tab and Enter, and a screen reader reads its label |
+| P18 | Leave full screen while playing (X, swipe down, Escape) | On an iPhone it is paused, as in I18, and the big button shows Play. On a computer or Android it keeps playing |
+| P19 | Pause inside full screen, then leave | Stays paused; the big button shows Play |
+| P20 | An episode ends while full screen | Nothing starts by itself. **Real iPhone only** |
+| P21 | Previous episode | Opens the episode before, from its saved spot, and plays. Disabled on the very first episode and until the video has loaded |
+| P22 | Swipe home while playing | From full screen: picture in picture. From the inline player: none, as in I21. **Real iPhone only** |

@@ -3,15 +3,18 @@
   <head>
     <meta charset="utf-8" />
     <!--
-      No `user-scalable=no` and no `maximum-scale`: there is no pinch on a
-      television, so the only thing those would do is make this page worse if it
-      is ever opened on a phone to look at it.
+      No zoom, the same as the other two pages. A television has no pinch, so this
+      only matters when the page is opened on a phone (see `ui/PageZoom.kt` for iOS,
+      which ignores these two).
 
       A 1080p Android TV WebView reports a device pixel ratio of 2, so this page
       gets roughly 960x540 CSS pixels. Design to that, not to 1920x1080 — every
       size in tv.css is a clamp against `vw` with 960 as the reference width.
     -->
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
+    />
     <title>ჩემი ცოლის დაქალები</title>
     <meta name="theme-color" content="#000000" />
 

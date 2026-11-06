@@ -16,13 +16,6 @@
   --d-edge: rgba(255, 255, 255, 0.4);
   --d-fill: #16161a;
 
-  /* keel's switch, at car size. Rebound here rather than restyled, the way tv.css
-     does it, so keel's own rules still draw it. */
-  --switch-track-w: 4rem;
-  --switch-track-h: 2.25rem;
-  --switch-knob-size: 1.875rem;
-  --switch-knob-inset: 0.1875rem;
-
   /* Toasts are the one place this page shows a message it did not plan for. */
   --toast-font-size: 1.125rem;
   --toast-py: 1rem;
@@ -109,8 +102,7 @@ button {
 }
 
 /* Flex items keep their default `min-width: auto`, so each label can wrap but never
-   be cut through a word. On a phone too narrow even for that, the switch drops to
-   its own line rather than running off the screen. */
+   be cut through a word. */
 .drive-top {
   display: flex;
   flex-wrap: wrap;
@@ -144,15 +136,13 @@ button {
 /* Every control here shares one press response: a small shrink that the thumb
    feels through the glass, since there is no hover to say "this is a button". */
 .drive-link:active,
-.drive-toggle:active,
 .drive-start:active,
 .drive-play:active,
 .drive-btn:active:not(:disabled) {
   transform: scale(0.97);
 }
 
-.drive-link,
-.drive-toggle {
+.drive-link {
   display: inline-flex;
   align-items: center;
   gap: 10px;
@@ -167,9 +157,6 @@ button {
   line-height: 1.2;
   text-wrap: balance;
   transition: transform 120ms var(--ease);
-}
-
-.drive-link {
   padding: 0 22px 0 12px;
 }
 
@@ -178,8 +165,7 @@ button {
   height: 1.75rem;
 }
 
-/* The player's way home: a square, so it never competes with the autoplay switch
-   for the row. */
+/* The player's way home: a square, so the bar stays one short row. */
 .drive-back {
   justify-content: center;
   width: 64px;
@@ -189,18 +175,6 @@ button {
 .drive-back .icon {
   width: 2.25rem;
   height: 2.25rem;
-}
-
-.drive-toggle {
-  padding: 0 12px 0 20px;
-  letter-spacing: 0.04em;
-}
-
-/* keel's off-track is a near-black meant for a light-on-dark desk page. On a pure
-   black screen it disappears, so the off state gets a grey that reads as "off"
-   instead of as "missing". The on state keeps keel's brand red. */
-.drive-toggle {
-  --accent: 0 0% 32%;
 }
 
 /* ------------------------------------------------------------------ home */
@@ -435,15 +409,34 @@ button {
   cursor: default;
 }
 
-.drive-next {
-  min-height: clamp(68px, 9vh, 96px);
-  font-size: clamp(1.25rem, 5.4vw, 1.75rem);
-  letter-spacing: 0.04em;
+/* Previous and next episode, two equal halves of one row under the playback row. */
+.drive-steps {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--d-gap);
 }
 
-/* Mark as watched and Open in VLC, side by side under the picture. Smaller than the
-   playback buttons: they are pressed once a visit, while parked, not while driving.
-   One button alone (no VLC off Apple devices) takes the whole row. */
+/* Two abreast leaves no room beside a label, so the icon sits over it, as in the row of
+   extras. That way both labels have the whole width and stay on one line. */
+.drive-step {
+  flex-direction: column;
+  gap: 4px;
+  min-height: clamp(68px, 9vh, 96px);
+  padding: 8px 6px;
+  font-size: clamp(1rem, 4.4vw, 1.5rem);
+  line-height: 1.15;
+  text-align: center;
+  text-wrap: balance;
+}
+
+/* keel has no "skip back" icon; the forward one, mirrored, is the same shape. */
+.drive-flip {
+  transform: scaleX(-1);
+}
+
+/* Full screen, Mark as watched and Open in VLC, side by side under the picture. Smaller
+   than the playback buttons: they are pressed once a visit, while parked, not while
+   driving. Two abreast off Apple devices, which have no VLC button. */
 .drive-extras {
   display: grid;
   grid-auto-flow: column;
@@ -451,19 +444,21 @@ button {
   gap: var(--d-gap);
 }
 
+/* Three abreast on an upright phone leaves no room beside a label, so the icon sits
+   over it. A row of its own instead would push the controls under Safari's bar. */
 .drive-extra {
+  flex-direction: column;
+  gap: 4px;
   min-height: 64px;
-  padding: 6px 12px;
-  font-size: clamp(1rem, 4.4vw, 1.25rem);
+  padding: 8px 6px;
+  font-size: clamp(0.9375rem, 4vw, 1.25rem);
   line-height: 1.15;
   text-align: center;
   text-wrap: balance;
 }
 
-/* Already watched: a state, not a button, so it keeps full strength and the web
-   page's green tick colours. */
-.drive-done:disabled {
-  opacity: 1;
+/* Already watched: the web page's green tick colours. A tap offers to undo it. */
+.drive-done {
   color: var(--ok);
   border-color: rgba(62, 207, 142, 0.45);
 }
@@ -494,8 +489,7 @@ button {
     padding-bottom: 12px;
   }
 
-  .drive-link,
-  .drive-toggle {
+  .drive-link {
     min-height: 56px;
   }
 
@@ -552,11 +546,6 @@ button {
 
   .drive-back {
     width: 56px;
-  }
-
-  .drive-toggle {
-    padding: 0 10px 0 14px;
-    font-size: 1rem;
   }
 
   /* The picture fills what the episode buttons under it leave of the left column. */
@@ -631,10 +620,53 @@ button {
     height: 40px;
   }
 
-  .drive-next {
-    min-height: 52px;
-    font-size: 1.125rem;
+  .drive-steps {
+    gap: 10px;
   }
+
+  .drive-step {
+    gap: 2px;
+    min-height: 52px;
+    padding: 4px 6px;
+    font-size: 1rem;
+  }
+}
+
+/* ----------------------------------------------------------------- dialog
+   The web page's confirmation (`ConfirmDialog`), here to undo "watched". keel draws
+   the panel; this sizes its words and buttons for a hand in a car. */
+
+.drive .dialog__content {
+  width: calc(100% - 2 * var(--d-pad-x));
+  border-radius: var(--d-radius);
+  padding: 24px;
+}
+
+.drive .dialog__content h3 {
+  margin: 0 0 8px;
+  font-size: 1.625rem;
+  line-height: 1.2;
+}
+
+.drive .dialog__content p {
+  margin: 0 0 16px;
+  font-size: 1.25rem;
+  line-height: 1.35;
+  color: var(--tx-dim);
+}
+
+.dialog-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--d-gap);
+}
+
+.drive .dialog-row .btn {
+  min-height: 64px;
+  border-radius: var(--d-radius);
+  font-size: 1.25rem;
+  font-weight: 800;
+  white-space: normal;
 }
 
 /* ---------------------------------------------------------------- sign in
