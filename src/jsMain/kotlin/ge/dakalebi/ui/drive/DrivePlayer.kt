@@ -63,13 +63,16 @@ private external class MediaMetadata(init: dynamic)
  *
  * **One element, never rebuilt.** iOS lets an element start without a tap only after a
  * tap has started it once. The home screen's button starts it inside its tap, before
- * the player screen exists, and every later start, autoplay into the next episode
+ * the player screen exists, and every later start, the steering wheel's next track
  * included, reuses that permission. A fresh element per episode would lose it. The
  * player screen only lends the element a place on the page ([attach]/[detach]).
  *
+ * **No autoplay for now.** An episode that ends stays on its last frame. Next and
+ * Previous are taps.
+ *
  * **Not Compose.** The fields below are Compose state so the screen can draw them, but
- * nothing here waits for a recomposition. The `ended` handler swaps the source and calls
- * `play()` itself, and the route follows.
+ * nothing here waits for a recomposition. [next] and [previous] swap the source and
+ * call `play()` themselves, and the route follows.
  *
  * The rules about what a position means are shared, not repeated: [SAVE_EVERY] for the
  * cadence, and the watched threshold and never-rewind guard inside `SaveProgress`.
@@ -147,6 +150,9 @@ internal class DrivePlayer(
 
     /** Read in composition, so the Next button follows the catalog. */
     val hasNext: Boolean get() = current?.let { catalog.next(it) } != null
+
+    /** Read in composition, so the Previous button follows the catalog. */
+    val hasPrevious: Boolean get() = current?.let { previousOf(it) } != null
 
     // ------------------------------------------------------------ lifecycle
 
@@ -271,6 +277,23 @@ internal class DrivePlayer(
         persist(isWatched = true)
     }
 
+    /**
+     * Undoes "watched" the way the web page's Clear does: the episode's progress is
+     * deleted and the picture goes back to the start, so it looks never watched.
+     * [done] says whether the delete went through.
+     */
+    fun clearProgress(done: (Boolean) -> Unit) {
+        val id = episodeId ?: return
+        val user = viewerId() ?: return
+        scope.launch {
+            val cleared = runCatching { catalog.clearProgress(user, id) }
+                .onFailure { Log.e("progress", "clear failed for $id", it) }
+                .isSuccess
+            if (cleared && episodeId == id) seek(0.0)
+            done(cleared)
+        }
+    }
+
     fun toggle() {
         if (video.paused) playNow() else pause()
     }
@@ -344,6 +367,14 @@ internal class DrivePlayer(
         advanceTo(next)
     }
 
+    /** The episode before this one, crossing back into the previous season when needed. */
+    fun previous() {
+        val previous = current?.let { previousOf(it) } ?: return
+        advanceTo(previous)
+    }
+
+    private fun previousOf(episode: Episode): Episode? = catalog.previous(episode, 1).firstOrNull()
+
     /** Signed out: nothing may keep playing, or saving, for an account that is gone. */
     fun stop() {
         wantsToPlay = false
@@ -385,11 +416,11 @@ internal class DrivePlayer(
         updatePositionState()
     }
 
-    private fun advanceTo(next: Episode) {
-        open(next, play = true)
-        // Only when the player is what is open. An episode ending while the viewer is on
-        // the home screen must not pull them onto another screen.
-        if (router.current is Route.Watch) router.replace(Route.Watch(next.id))
+    private fun advanceTo(episode: Episode) {
+        open(episode, play = true)
+        // Only when the player is what is open. The steering wheel's next track, pressed
+        // while the viewer is on the home screen, must not pull them onto another screen.
+        if (router.current is Route.Watch) router.replace(Route.Watch(episode.id))
     }
 
     /**
@@ -448,8 +479,7 @@ internal class DrivePlayer(
 
     private fun onEnded() {
         persist(isWatched = true)
-        val next = current?.let { catalog.next(it) }
-        if (settings[Setting.AutoplayNext] && next != null) advanceTo(next) else wantsToPlay = false
+        wantsToPlay = false
     }
 
     private fun onError() {

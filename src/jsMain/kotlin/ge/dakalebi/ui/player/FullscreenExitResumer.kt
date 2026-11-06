@@ -78,8 +78,8 @@ class FullscreenExitResumer(private val video: HTMLVideoElement) {
      */
     private fun resume(order: String) {
         // An episode that ended pauses too (`pause`, then `ended`). Playing it again
-        // would start it over and fight the autoplay into the next one. A failed load
-        // and a hidden page (the phone locked mid-exit) are no reason to play either.
+        // would start it over. A failed load and a hidden page (the phone locked
+        // mid-exit) are no reason to play either.
         if (video.ended || video.error != null || document.asDynamic().visibilityState == "hidden") return
         Log.d("player", "iOS paused on leaving fullscreen ($order the exit); playing on")
         video.play().catch { Log.w("player", "play() after leaving fullscreen refused", it) }

@@ -80,7 +80,6 @@ object Ka : Strings {
     override val statStarted = "დაწყებული"
     override val statProgress = "პროგრესი"
     override val autoplayTitle = "შემდეგი სერიის ავტომატურად ჩართვა"
-    override val autoplayBody = "სერიის დასრულებისას შემდეგი ავტომატურად ჩაირთვება."
     override val autoplayShort = "ავტომ. დაკვრა"
     override val nativePlayerTitle = "სისტემური ფლეიერი"
     override val nativePlayerBody =
@@ -125,6 +124,7 @@ object Ka : Strings {
     override val nextEpisodes = "შემდეგი სერიები"
     override val nextEpisode = "შემდეგი სერია"
     override val nextEpisodeAction = "შემდეგი სერია"
+    override val previousEpisodeAction = "წინა სერია"
     override val episodeFinished = "სერია დასრულდა"
     override val watchFromStart = "თავიდან ყურება"
     override val markAsWatched = "ნანახად მონიშვნა"

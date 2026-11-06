@@ -80,7 +80,6 @@ object En : Strings {
     override val statStarted = "Started"
     override val statProgress = "Progress"
     override val autoplayTitle = "Autoplay the next episode"
-    override val autoplayBody = "When an episode ends, the next one starts automatically."
     override val autoplayShort = "Autoplay"
     override val nativePlayerTitle = "System player"
     override val nativePlayerBody =
@@ -125,6 +124,7 @@ object En : Strings {
     override val nextEpisodes = "Up next"
     override val nextEpisode = "Next episode"
     override val nextEpisodeAction = "Next episode"
+    override val previousEpisodeAction = "Previous episode"
     override val episodeFinished = "Episode finished"
     override val watchFromStart = "Watch from the start"
     override val markAsWatched = "Mark as watched"

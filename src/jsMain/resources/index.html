@@ -3,13 +3,11 @@
   <head>
     <meta charset="utf-8" />
     <!--
-      `user-scalable=no` holds the layout at 1x on Android and in Chrome's
-      device emulation. iOS Safari has ignored both it and `maximum-scale`
-      since iOS 10 and will always allow a deliberate pinch — that is not
-      something a page can take away. What the page *can* stop there is the
-      accidental kind, and that is handled in CSS: `touch-action: manipulation`
-      for double-tap, and 16px form fields so focusing one does not yank the
-      viewport in.
+      No zoom, on every page. `user-scalable=no` holds the layout at 1x on
+      Android and in Chrome's device emulation. iOS Safari has ignored both it
+      and `maximum-scale` since iOS 10, so there a pinch is cancelled in script
+      (`ui/PageZoom.kt`), double-tap is `touch-action: manipulation` in CSS, and
+      form fields are 16px so focusing one does not yank the viewport in.
     -->
     <meta
       name="viewport"

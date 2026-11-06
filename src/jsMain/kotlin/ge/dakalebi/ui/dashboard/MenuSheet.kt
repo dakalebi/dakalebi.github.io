@@ -130,14 +130,7 @@ private fun SettingsSection() {
         }
         Div({ classes("settings-list") }) {
             // Everything in this section follows the account to every device.
-            ToggleRow(
-                title = S.autoplayTitle.caps,
-                body = S.autoplayBody,
-                checked = settings[Setting.AutoplayNext],
-                onToggle = {
-                    settings.toggle(Setting.AutoplayNext) { toasts.error(S.settingNotSynced) }
-                },
-            )
+            // No autoplay switch: the web has no autoplay for now (the TV still does).
 
             // Offered only where there are two players to choose between.
             // Everywhere else the custom one is the only one there is, so the

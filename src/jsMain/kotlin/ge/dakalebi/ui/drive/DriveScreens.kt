@@ -2,25 +2,26 @@ package ge.dakalebi.ui.drive
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import ge.dakalebi.core.formatTime
 import ge.dakalebi.di.catalog
 import ge.dakalebi.di.router
 import ge.dakalebi.di.session
-import ge.dakalebi.di.settings
 import ge.dakalebi.di.toasts
 import ge.dakalebi.domain.model.Episode
-import ge.dakalebi.domain.model.Setting
 import ge.dakalebi.domain.service.PlaybackFailure
 import ge.dakalebi.domain.service.vlcOpenUrl
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
 import ge.dakalebi.presentation.Route
+import ge.dakalebi.ui.ConfirmDialog
 import ge.dakalebi.ui.player.isAppleMobile
 import ge.dakalebi.ui.useFixtures
 import io.github.bchmsl.keel.dom.classNames
-import io.github.bchmsl.keel.dom.switchClasses
-import io.github.bchmsl.keel.dom.switchKnobClasses
 import io.github.bchmsl.keel.icons.Icon
 import io.github.bchmsl.keel.icons.LucideIcon
 import kotlinx.coroutines.launch
@@ -108,8 +109,8 @@ private fun DriveStartButton(episode: Episode, player: DrivePlayer) {
 
 /**
  * The native player, with the controls a driver reaches for drawn large around it:
- * play/pause, back and forward 30 seconds, the next episode, and the autoplay switch.
- * The player's own controls stay too, for fullscreen, AirPlay and scrubbing.
+ * play/pause, back and forward 30 seconds, and the previous and next episodes. The
+ * player's own controls stay too, for fullscreen, AirPlay and scrubbing.
  */
 @Composable
 internal fun DrivePlayerScreen(episodeId: String, player: DrivePlayer) {
@@ -127,8 +128,8 @@ internal fun DrivePlayerScreen(episodeId: String, player: DrivePlayer) {
 
     Div({ classes("drive-screen", "drive-watch") }) {
         Div({ classes("drive-top") }) {
-            // The arrow alone: with the autoplay label beside it, the Georgian word for
-            // "home" pushes the bar onto two rows and the controls below the toolbar.
+            // The arrow alone, so the bar stays one short row and leaves the height
+            // to the picture and the controls.
             Button({
                 classes("drive-link", "drive-back")
                 attr("aria-label", S.home)
@@ -136,7 +137,6 @@ internal fun DrivePlayerScreen(episodeId: String, player: DrivePlayer) {
             }) {
                 Icon(LucideIcon.ChevronLeft, size = null)
             }
-            DriveAutoplaySwitch()
         }
 
         if (episode == null) {
@@ -233,13 +233,25 @@ private fun DrivePlayerBody(episode: Episode, player: DrivePlayer) {
                 }
             }
 
-            Button({
-                classes("drive-btn", "drive-next")
-                if (!loaded || !player.hasNext) disabled()
-                onClick { player.next() }
-            }) {
-                Span { Text(S.nextEpisodeAction.caps) }
-                Icon(LucideIcon.SkipForward, size = null)
+            // Previous and next side by side, each icon pointing the way it goes, over its label.
+            Div({ classes("drive-steps") }) {
+                Button({
+                    classes("drive-btn", "drive-step")
+                    if (!loaded || !player.hasPrevious) disabled()
+                    onClick { player.previous() }
+                }) {
+                    // keel has no "skip back" icon. The forward one, mirrored, is the same shape.
+                    Icon(LucideIcon.SkipForward, size = null, className = "drive-flip")
+                    Span { Text(S.previousEpisodeAction.caps) }
+                }
+                Button({
+                    classes("drive-btn", "drive-step")
+                    if (!loaded || !player.hasNext) disabled()
+                    onClick { player.next() }
+                }) {
+                    Icon(LucideIcon.SkipForward, size = null)
+                    Span { Text(S.nextEpisodeAction.caps) }
+                }
             }
         }
     }
@@ -253,11 +265,10 @@ private fun DrivePlayerBody(episode: Episode, player: DrivePlayer) {
 @Composable
 private fun DriveExtras(episode: Episode, player: DrivePlayer, loaded: Boolean) {
     val catalog = catalog()
-    val settings = settings()
     val toasts = toasts()
     val watched = catalog.progress[episode.id]?.isWatched == true
     val vlcUrl = player.sourceUrl.takeIf { loaded && isAppleMobile }
-    val autoplay = settings[Setting.AutoplayNext]
+    var confirmClear by remember(episode.id) { mutableStateOf(false) }
 
     Div({ classes("drive-extras") }) {
         // The native player has a fullscreen button of its own, but a small one, hidden
@@ -274,17 +285,17 @@ private fun DriveExtras(episode: Episode, player: DrivePlayer, loaded: Boolean) 
 
         Button({
             classes("drive-btn", "drive-extra")
-            // Shown as done rather than offered back: undoing it asks for a
-            // confirmation, which belongs on the web page, not in a car.
-            if (watched) {
-                classes("drive-done")
-                disabled()
-            } else if (!loaded) {
-                disabled()
-            }
+            if (watched) classes("drive-done")
+            if (!loaded) disabled()
             onClick {
-                player.markWatched()
-                toasts.ok(S.episodeMarkedWatched)
+                // Watched undoes through the web page's own confirmation: a tap by
+                // mistake must not cost the episode's place.
+                if (watched) {
+                    confirmClear = true
+                } else {
+                    player.markWatched()
+                    toasts.ok(S.episodeMarkedWatched)
+                }
             }
         }) {
             if (watched) {
@@ -296,16 +307,15 @@ private fun DriveExtras(episode: Episode, player: DrivePlayer, loaded: Boolean) 
         }
 
         // As on the web page: every episode on an iPhone or iPad, since VLC also plays
-        // what Safari cannot (all of season 2), and the same link: a playlist from here
-        // to the end of the season (this episode alone with autoplay off), starting
-        // where this player is. The plain fallback starts at 0:00, so the button
-        // carries the time either way. The page's own player pauses first, so the two
-        // never play at once.
+        // what Safari cannot (all of season 2), and the same link: this episode alone,
+        // since a queue would be autoplay, starting where this player is. The plain
+        // fallback starts at 0:00, so the button carries the time either way. The
+        // page's own player pauses first, so the two never play at once.
         if (vlcUrl != null) {
             val href = vlcOpenUrl(
                 current = episode,
                 currentUrl = vlcUrl,
-                upcoming = if (autoplay) catalog.restOfSeason(episode) else emptyList(),
+                upcoming = emptyList(),
                 quality = player.qualityFor(episode),
                 startSeconds = player.position,
                 title = { S.seasonAndEpisode(it.seasonNumber, it.episodeNumber) },
@@ -321,31 +331,22 @@ private fun DriveExtras(episode: Episode, player: DrivePlayer, loaded: Boolean) 
             }
         }
     }
-}
 
-/**
- * The account's own autoplay setting, the one the web drawer and the TV player show.
- * Not a driving-mode copy of it: the next episode starting by itself is the feature
- * here, so it must agree with every other device.
- */
-@Composable
-private fun DriveAutoplaySwitch() {
-    val settings = settings()
-    val toasts = toasts()
-    val on = settings[Setting.AutoplayNext]
-
-    Button({
-        classes("drive-toggle")
-        attr("role", "switch")
-        attr("aria-checked", on.toString())
-        onClick { settings.toggle(Setting.AutoplayNext) { toasts.error(S.settingNotSynced) } }
-    }) {
-        Span { Text(S.autoplayShort.caps) }
-        // The same keel switch the drawer draws. Its `aria-checked` copy is only for
-        // keel's rule to paint; the role lives on the button around it.
-        Span({ classNames(switchClasses()); attr("aria-checked", on.toString()) }) {
-            Span({ classNames(switchKnobClasses()) })
-        }
+    // The web page's dialog and words, so undoing "watched" means the same everywhere.
+    if (confirmClear) {
+        ConfirmDialog(
+            title = S.clearProgressTitle,
+            body = S.clearProgressBody,
+            confirmLabel = S.delete.caps,
+            destructive = true,
+            onConfirm = {
+                confirmClear = false
+                player.clearProgress { cleared ->
+                    if (cleared) toasts.ok(S.progressCleared) else toasts.error(S.clearFailed)
+                }
+            },
+            onDismiss = { confirmClear = false },
+        )
     }
 }
 

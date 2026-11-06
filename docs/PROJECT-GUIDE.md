@@ -80,6 +80,9 @@ Explicit instructions, not inferences. Do not quietly revisit these.
   firestore that the user is admin or not."*
 - **Autoplay must sync between devices**, hence Firestore rather than
   `localStorage`.
+- **No autoplay on the web or in driving mode, for now.** Their words: *"Remove
+  auto play, it's not smooth and we can think about it later."* TV keeps its
+  autoplay and its switch.
 - **Language must be switchable and must sync between devices.**
 - **On Apple devices only**, a switch between the native player and the web
   player, **default on**. Originally per device in `localStorage`; it now
@@ -94,7 +97,8 @@ Explicit instructions, not inferences. Do not quietly revisit these.
 - **Georgian set in Mtavruli** (uppercase Georgian: `ქართული` → `ᲥᲐᲠᲗᲣᲚᲘ`) for
   UI chrome, and a distinct font for times and numbers.
 - **Application version, plus deployment date and time, visible in the drawer.**
-- **Restrict zooming on small devices.**
+- **No zoom on any page.** First "restrict zooming on small devices", then
+  widened to the whole website: `/`, `/drive/` and `/tv/`.
 - **Watch-screen action buttons full width on mobile.**
 - **Tab title while watching**: `სეზონი X ⋅ სერია XX - ჩცდ`. (The owner reordered
   this after the first attempt put the initials first — keep their order.)
@@ -415,7 +419,7 @@ events carry nothing else to tell them apart. What keeps a real pause a pause:
   never reach the page, so a touch means the viewer is back on it, and a tap on the
   inline controls right after closing is theirs;
 - an episode that ended (`pause`, then `ended`), a failed load and a hidden page
-  are never played again, so autoplay into the next episode is untouched.
+  are never played again, so an episode that ended stays ended.
 
 Desktop browsers do not pause on leaving fullscreen, so nothing is installed there.
 TV has no fullscreen exit of this kind.
@@ -479,8 +483,10 @@ iOS has to use that decoder. Desktop browsers and VLC bring their own and play i
   `workers/vlc-playlist` (`VLC_PLAYLIST_ENDPOINT`), which answers with an M3U that
   VLC for iOS 3.7.3+ expands into its queue:
   - this episode first, starting at the label's time (`#EXTVLCOPT:start-time`);
-  - then the rest of its season (`CatalogQueries.restOfSeason`), so the queue
-    stops at the season's end. With autoplay off, this episode alone;
+  - then, when the caller passes them, the rest of its season
+    (`CatalogQueries.restOfSeason`), so the queue stops at the season's end. VLC
+    plays its queue through, which is autoplay, so for now both the web page and
+    driving mode pass none and VLC gets this episode alone;
   - each titled "სეზონი N · სერია M" from the catalog's own numbers, never from
     the file path (season 15's "(5)" lives in `episode_54`);
   - the current episode uses the page's fresh link, the next ones their stored
@@ -502,10 +508,11 @@ player screen is the native player with big controls around it.
 - **Home**: one large Continue or Play button. Whatever the player already holds
   wins; otherwise the episode comes from `CatalogStore.nextToPlay`.
 - **Player**: the browser's native `<video controls playsinline>`, the same
-  attributes as `NativeVideoPlayer`. Around it, all large: back, the autoplay
-  switch, season and episode, time and minutes left, Full screen, Mark as watched,
-  Open in VLC (iPhone and iPad), −30 s, play/pause, +30 s and Next episode. A
-  playback error sits over the picture, so it takes no room from the buttons.
+  attributes as `NativeVideoPlayer`. Around it, all large: back, season and
+  episode, time and minutes left, Full screen, Mark as watched, Open in VLC
+  (iPhone and iPad), −30 s, play/pause, +30 s, then Previous and Next episode side
+  by side. A playback error sits over the picture, so it takes no room from the
+  buttons.
 - **Full screen** (`DrivePlayer.enterFullscreen`) uses the standard Fullscreen API
   on the video where the page may use it (desktop, Android, iPad). An iPhone has
   none for a page, so there it opens Safari's own player with
@@ -516,16 +523,19 @@ player screen is the native player with big controls around it.
 - **One `<video>` for the whole visit** (`DrivePlayer`). iOS lets an element start
   without a tap only after a tap has started it once. The home button starts it
   inside its tap, before the player screen exists; the player screen only lends it
-  a frame. Autoplay into the next episode swaps the source in the `ended` handler
-  and reuses that first permission.
+  a frame. Previous and Next swap the source on that element and reuse that first
+  permission. Nothing moves on by itself at `ended`: the episode is marked watched
+  and stays.
 - **Same rules as the web player**: progress saves every `SAVE_EVERY` seconds,
   resume retries the seek (up to eight tries), one fresh link after a media error, the
   picked quality or the best rendition capped at 720p on a phone, and a `#t=`
   fragment on iOS.
 - **Car and headphone buttons** through the Media Session API (play/pause, ∓30 s,
   next, seek), and a screen wake lock while playing.
-- **Mark as watched** shows a green tick once done. There is no undo here: undoing
-  asks for a confirmation, which stays on the web page.
+- **Mark as watched** shows a green tick once done. Tapping the tick asks the same
+  "Clear progress?" confirmation as the web page (`ConfirmDialog`). Confirming
+  deletes the progress (`DrivePlayer.clearProgress`) and takes the picture back to
+  0:00.
 - **Open in VLC** builds the same playlist as the web page, from where the car
   player is, and pauses the car player first.
 - **Getting there**: "Driving mode" in the web menu, and a Driving mode button on
@@ -533,8 +543,8 @@ player screen is the native player with big controls around it.
   seconds (`DRIVE_SAVE_WAIT_MS`), because car mode is another page that reads the
   saved spot, and a save started while a page unloads may never arrive.
   `driveHref` is relative, so `/pr/<n>/` opens its own car mode.
-- **Guests** get driving mode too. Autoplay and quality are the synced settings,
-  so a member's choice matches every other device; a guest's stay on the device.
+- **Guests** get driving mode too. Quality is the synced setting here, so a
+  member's choice matches every other device; a guest's stays on the device.
 
 ### Language and settings
 
@@ -889,10 +899,13 @@ outright.
 
 ### iOS Safari ignores `user-scalable=no`
 
-It has since iOS 10 and always permits a deliberate pinch. What *can* be stopped
-there is the accidental kind: `touch-action: manipulation` kills double-tap
-zoom, and 16px form fields stop the focus zoom that used to leave you signing in
-on a sideways-scrolled page.
+It has since iOS 10. The tag still stops pinch zoom on Android and in desktop
+device emulation, so all three pages carry it. On iOS, `touch-action:
+manipulation` kills double-tap zoom, and 16px form fields stop the focus zoom that
+used to leave you signing in on a sideways-scrolled page. A pinch is stopped by
+cancelling WebKit's own `gesturestart` and `gesturechange` (`ui/PageZoom.kt`,
+installed once in `main` for every shell). Not on a `<video>`: a pinch out there
+is how iOS opens its fullscreen player.
 
 ### iOS reports code 4 for more than undecodable files
 
@@ -905,8 +918,16 @@ plays fine elsewhere.
 
 A real iPhone starts media only from a tap, or on an element a tap has already
 started. The Simulator lets a script start it either way, so it cannot prove
-anything about autoplay without a tap. That is the whole risk in driving mode's
-autoplay, and it needs a real device.
+anything about autoplay without a tap. Only TV autoplays today; if the web or
+driving mode gets autoplay back, that needs a real device.
+
+### iOS starts picture in picture by itself only from its fullscreen player
+
+Swiping home while a video plays in Apple's fullscreen player opens picture in
+picture. From inline playback it does not, on the web page and in driving mode
+alike. It is iOS's rule, not something the page can change, and it is why picture
+in picture seems to work "sometimes". The Simulator has no picture in picture at
+all (`document.pictureInPictureEnabled` is false), so this needs a real iPhone.
 
 ### iCloud Drive and the build
 
@@ -969,10 +990,10 @@ time and autoplay.
   reasoned about, not exercised against real data.
 - **The AirPlay clock** on real hardware. It is written from the documented
   behaviour and the original app's workarounds.
-- **Driving mode on a real iPhone**: real playback, autoplay into the next
-  episode without a tap, native fullscreen while the source swaps, Media Session
-  buttons and the wake lock. All of it was checked only in the Simulator, which
-  does not enforce the tap rule (§7).
+- **Driving mode on a real iPhone**: real playback, Previous and Next, native
+  fullscreen, picture in picture, Media Session buttons and the wake lock. All of
+  it was checked only in the Simulator, which does not enforce the tap rule and
+  has no picture in picture (§7).
 - **Guest mode with a real TV remote**, reaching "Continue as guest".
 - **Settings sync on two real devices** after the final #28 fix and the
   combined rules: no such check is recorded.

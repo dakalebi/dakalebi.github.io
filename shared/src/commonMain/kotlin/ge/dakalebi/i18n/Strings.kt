@@ -115,10 +115,10 @@ interface Strings {
     val statWatched: String
     val statStarted: String
     val statProgress: String
+    /** The TV's autoplay setting. The web and driving mode have no autoplay for now. */
     val autoplayTitle: String
-    val autoplayBody: String
 
-    /** Compact label for the autoplay toggle in the player's control row. */
+    /** Compact label for the autoplay toggle in the TV player's control row. */
     val autoplayShort: String
 
     /** Only offered on iPhone and iPad, which are the only devices with two. */
@@ -187,6 +187,9 @@ interface Strings {
     val nextEpisodes: String
     val nextEpisode: String
     val nextEpisodeAction: String
+
+    /** Driving mode's button to the episode before this one. */
+    val previousEpisodeAction: String
     val episodeFinished: String
     val watchFromStart: String
     val markAsWatched: String

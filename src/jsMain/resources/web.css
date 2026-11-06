@@ -743,11 +743,6 @@ h3 {
   font-size: 11px;
   color: var(--mut);
 }
-/* keel's `ProgressBar` at `Small` + `onMedia`: the same 2px and the same
-   white-at-0.22 track, and keel's own `width` transition in place of this one. */
-.nextcard-bar {
-  margin-top: 6px;
-}
 .nextcard-row {
   display: flex;
   gap: 6px;
