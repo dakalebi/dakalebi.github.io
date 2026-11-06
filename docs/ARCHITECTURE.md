@@ -134,6 +134,16 @@ plays and Back still closes the player. `queue` lists the next `QUEUE_LENGTH`
 episodes across seasons. `stop` saves and lets go; `close`, used when the viewer
 changes, lets go without saving, because a playback reads the viewer at each save.
 
+On the redesign's web page, `AppShell` holds that holder and one `WebPlayer`: a
+single `<video>` made once for the shell's life, which `attachTo` moves between
+places without a reload. `NowPlaying` draws the episode in one of three places: the
+mini-player on a phone's tab bar, the phone's full-screen sheet on a watch route,
+and from 64rem a panel on the right whenever an episode is loaded. The tab under
+the player is the last route that was not a watch route. Collapsing goes Back when
+that route is in the page's history, and replaces the address when the link was
+opened cold. On an iPhone or iPad with the native player chosen, the video gets
+Apple's controls and nothing is drawn over it.
+
 The redesign adds two routes: `Route.Seasons` (`#/seasons`) and `Route.Season`
 (`#/seasons/3`). A season that is not a positive number parses to the list. The
 old UI has no screen for either and draws its dashboard or browse screen.

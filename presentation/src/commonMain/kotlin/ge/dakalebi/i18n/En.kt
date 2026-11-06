@@ -194,6 +194,11 @@ object En : Strings {
     override val quality = "Quality"
     override val fullscreen = "Fullscreen"
     override val timeline = "Timeline"
+    override val nowPlaying = "Now playing"
+    override val collapsePlayer = "Minimize player"
+    override val closePlayer = "Close player"
+    override val pictureInPicture = "Picture in picture"
+    override val cast = "Play on another screen"
 
     override fun volumeFeedback(percent: Int) = "Volume: $percent%"
     override fun seekForward(seconds: Int) = "$seconds s ▸"

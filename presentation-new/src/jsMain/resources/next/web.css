@@ -545,6 +545,368 @@
 
 /* ----- desktop: the side menu takes over from the tab bar ---------------------- */
 
+/* ----- now playing: the mini-player, the sheet, the desktop panel -------------- */
+
+/* Focus never lands under the bars (WCAG 2.4.11). */
+:root:has(.app) {
+  scroll-padding-bottom: calc(var(--tabbar-h) + var(--safe-bottom));
+}
+
+:root:has(.app--mini) {
+  scroll-padding-bottom: calc(var(--tabbar-h) + var(--mini-h) + var(--mini-inset) + var(--safe-bottom));
+}
+
+/* The mini-player lifts the toasts and the end of the page above itself. */
+.app--mini {
+  --toast-offset: calc(var(--tabbar-h) + var(--mini-h) + var(--mini-inset));
+}
+
+.app--mini .app-main {
+  padding-bottom: calc(
+    var(--tabbar-h) + var(--mini-h) + var(--mini-inset) + var(--safe-bottom) + var(--gap-section)
+  );
+}
+
+.app--sheet {
+  --toast-offset: 0px;
+}
+
+/* While the sheet is open, the page under it stays still. */
+.np-sheet-open,
+.np-sheet-open body {
+  overflow: hidden;
+}
+
+.np {
+  display: flex;
+  flex-direction: column;
+}
+
+/* The picture, and everything drawn over it. */
+.np-stage {
+  position: relative;
+  flex: none;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  background: var(--color-stage);
+  outline: none;
+}
+
+.np-stage:fullscreen {
+  aspect-ratio: auto;
+  width: 100%;
+  height: 100%;
+}
+
+.np-stage:-webkit-full-screen {
+  aspect-ratio: auto;
+  width: 100%;
+  height: 100%;
+}
+
+.np-stage--idle {
+  cursor: none;
+}
+
+.np-picture {
+  position: absolute;
+  inset: 0;
+}
+
+.np-video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: var(--color-stage);
+}
+
+.np-center {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--on-media-fg);
+  pointer-events: none;
+}
+
+.np-feedback {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-pill);
+  background: var(--on-media-bg);
+  color: var(--on-media-fg);
+  font: var(--type-label);
+  font-stretch: var(--type-label-stretch);
+  letter-spacing: var(--type-label-tracking);
+  white-space: nowrap;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  -webkit-backdrop-filter: blur(var(--on-media-blur));
+  backdrop-filter: blur(var(--on-media-blur));
+  animation: overlay-fade var(--dur-fade) var(--ease-enter);
+}
+
+/* The controls over the picture. They fade while it plays untouched, unless a menu is open. */
+.np-controls {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-fade) var(--ease-out);
+}
+
+.np-controls > * {
+  pointer-events: auto;
+}
+
+.np-stage--idle .np-controls:not(:has(.menu)) {
+  opacity: 0;
+}
+
+.np-stage--idle .np-controls:not(:has(.menu)) > * {
+  pointer-events: none;
+}
+
+.np-tools {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  display: flex;
+  gap: var(--space-2);
+}
+
+/* The quality pick is a chip with its value; over the picture it takes the buttons' glass. */
+.np-tools .chip--menu {
+  min-height: var(--icon-button-size);
+  background: var(--on-media-bg);
+  color: var(--on-media-fg);
+  -webkit-backdrop-filter: blur(var(--on-media-blur));
+  backdrop-filter: blur(var(--on-media-blur));
+}
+
+/* Full screen only: the timeline and the transport along the bottom. */
+.np-fsbar {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-10) max(var(--space-8), var(--safe-right)) max(var(--space-6), var(--safe-bottom))
+    max(var(--space-8), var(--safe-left));
+  background: linear-gradient(to top, var(--color-on-media), transparent);
+}
+
+.np-upnext-over {
+  position: absolute;
+  right: max(var(--space-8), var(--safe-right));
+  bottom: 9rem;
+  width: min(26rem, calc(100% - 2 * var(--space-8)));
+  animation: overlay-fade var(--dur-fade) var(--ease-enter);
+}
+
+/* The mini-player: a bar on the tab bar. The whole bar opens the player. */
+.np--mini {
+  position: fixed;
+  right: calc(var(--mini-inset) + var(--safe-right));
+  bottom: calc(var(--tabbar-h) + var(--safe-bottom) + var(--mini-inset));
+  left: calc(var(--mini-inset) + var(--safe-left));
+  z-index: var(--z-mini);
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-3);
+  height: var(--mini-h);
+  padding: var(--space-2) var(--space-1) var(--space-2) var(--space-2);
+  overflow: hidden;
+  border-radius: var(--mini-radius);
+  background: var(--mini-bg);
+  box-shadow: var(--mini-shadow);
+  animation: overlay-fade var(--dur-fade) var(--ease-enter);
+}
+
+.np--mini .np-stage {
+  width: var(--mini-thumb-w);
+  border-radius: var(--radius-8);
+}
+
+.np--mini .np-picture {
+  pointer-events: none;
+}
+
+.np-mini-open {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+  color: var(--color-text);
+}
+
+.np-mini-open::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+.np-mini-button {
+  position: relative;
+  z-index: 1;
+}
+
+.np-mini-title {
+  overflow: hidden;
+  font: var(--type-item);
+  font-stretch: var(--type-item-stretch);
+  letter-spacing: var(--type-item-tracking);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.np-mini-time {
+  color: var(--color-text-2);
+  font: var(--type-figure-s);
+  font-stretch: var(--type-figure-stretch);
+  font-variant-numeric: var(--type-figure-numeric);
+}
+
+.np-mini-progress {
+  position: absolute;
+  right: var(--space-4);
+  bottom: 0;
+  left: var(--space-4);
+  height: var(--mini-progress-h);
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: var(--mini-progress-track);
+}
+
+.np-mini-progress-fill {
+  height: 100%;
+  background: var(--mini-progress-fill);
+}
+
+/* The phone's open player: the whole screen, over the tabs. */
+.np--sheet {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-sheet);
+  padding-top: var(--safe-top);
+  background: var(--np-bg);
+  animation: sheet-rise var(--dur-enter) var(--ease-enter);
+}
+
+.np-head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) max(var(--space-2), var(--safe-right)) var(--space-1) max(var(--space-2), var(--safe-left));
+}
+
+.np-head-title {
+  flex: 1;
+  color: var(--color-text-2);
+  font: var(--type-label-s);
+  font-stretch: var(--type-label-s-stretch);
+  letter-spacing: var(--type-label-s-tracking);
+  text-align: center;
+}
+
+.np-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-group);
+  padding: var(--np-pad) calc(var(--np-pad) + var(--safe-right)) calc(var(--np-pad) + var(--safe-bottom))
+    calc(var(--np-pad) + var(--safe-left));
+}
+
+.np--sheet .np-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.np-heading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.np-title {
+  font: var(--type-title);
+  font-stretch: var(--type-title-stretch);
+  letter-spacing: var(--type-title-tracking);
+}
+
+.np-meta {
+  color: var(--color-text-2);
+  font: var(--type-meta);
+  font-stretch: var(--type-meta-stretch);
+  letter-spacing: var(--type-meta-tracking);
+}
+
+.np-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap-inline);
+}
+
+.chip--done .icon {
+  color: var(--chip-done);
+}
+
+.np-queue {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* The end-of-episode card. */
+.upnext {
+  display: grid;
+  grid-template-columns: var(--row-thumb-w) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-3) var(--space-4);
+  padding: var(--pad-card);
+  border-radius: var(--radius-card);
+  background: var(--color-surface-2);
+  box-shadow: var(--elevation-raised);
+}
+
+.upnext-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.upnext-eyebrow {
+  color: var(--color-accent-text);
+  font: var(--type-label-s);
+  font-stretch: var(--type-label-s-stretch);
+  letter-spacing: var(--type-label-s-tracking);
+}
+
+.upnext-title {
+  font: var(--type-item);
+  font-stretch: var(--type-item-stretch);
+  letter-spacing: var(--type-item-tracking);
+}
+
+.upnext-actions {
+  display: flex;
+  grid-column: 1 / -1;
+  gap: var(--gap-control);
+}
+
+.upnext-actions .button:first-child {
+  flex: 1;
+}
+
 @media (min-width: 64rem) {
   .app {
     --toast-offset: 0px;
@@ -556,6 +918,35 @@
 
   .tabbar {
     display: none;
+  }
+
+  .app--docked {
+    grid-template-columns: var(--sidenav-w) minmax(0, 1fr) var(--dock-w);
+  }
+
+  /* The panel on the right, whenever an episode is loaded. */
+  .np--dock {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    height: 100dvh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border-left: 1px solid var(--color-line);
+    background: var(--dock-bg);
+    animation: overlay-fade var(--dur-fade) var(--ease-enter);
+  }
+
+  .np--dock .np-head {
+    padding: var(--space-3) var(--space-2) var(--space-3) var(--dock-pad);
+  }
+
+  .np--dock .np-head-title {
+    text-align: start;
+  }
+
+  .np--dock .np-body {
+    padding: var(--dock-pad);
   }
 
   .app-main {

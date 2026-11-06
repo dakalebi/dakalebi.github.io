@@ -194,6 +194,11 @@ object Ka : Strings {
     override val quality = "ხარისხი"
     override val fullscreen = "სრულ ეკრანზე"
     override val timeline = "დროის ხაზი"
+    override val nowPlaying = "ახლა იკვრება"
+    override val collapsePlayer = "პლეერის ჩაკეცვა"
+    override val closePlayer = "პლეერის დახურვა"
+    override val pictureInPicture = "სურათი სურათში"
+    override val cast = "სხვა ეკრანზე ჩვენება"
 
     override fun volumeFeedback(percent: Int) = "ხმა: $percent%"
     override fun seekForward(seconds: Int) = "$seconds წმ ▸"

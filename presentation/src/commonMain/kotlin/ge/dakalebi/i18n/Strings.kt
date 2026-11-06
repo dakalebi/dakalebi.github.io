@@ -259,6 +259,21 @@ interface Strings {
     val fullscreen: String
     val timeline: String
 
+    /** The title of the open player: the phone's sheet and the desktop's side panel. */
+    val nowPlaying: String
+
+    /** Shrinks the open player to the mini-player. The episode keeps playing. */
+    val collapsePlayer: String
+
+    /** Stops the episode and takes the player off the screen. */
+    val closePlayer: String
+
+    /** Floats the video over other apps and pages. */
+    val pictureInPicture: String
+
+    /** Plays on a television or speaker: AirPlay, or a Cast receiver. */
+    val cast: String
+
     fun volumeFeedback(percent: Int): String
     fun seekForward(seconds: Int): String
     fun seekBackward(seconds: Int): String

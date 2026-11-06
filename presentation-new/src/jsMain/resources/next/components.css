@@ -1306,6 +1306,137 @@
   transform: scale(var(--focus-scale));
 }
 
+/* ----- player: scrubber and transport ----------------------------------------- */
+
+/* A native range over the progress line, with the times under its ends. */
+.scrub {
+  --scrub-track: var(--scrub-h);
+  --scrub-fill: var(--progress-fill);
+  --scrub-rest: var(--progress-track);
+  display: flex;
+  flex-direction: column;
+  color: var(--color-text-2);
+}
+
+.scrub--on-media {
+  --scrub-fill: var(--on-media-fg);
+  --scrub-rest: var(--color-track);
+  color: var(--on-media-fg);
+}
+
+.scrub-input {
+  display: block;
+  width: 100%;
+  height: var(--scrub-hit);
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.scrub-input:active,
+.scrub-input:focus-visible {
+  --scrub-track: var(--scrub-h-active);
+}
+
+.scrub-input:disabled {
+  cursor: default;
+}
+
+.scrub-input::-webkit-slider-runnable-track {
+  height: var(--scrub-track);
+  border-radius: var(--progress-radius);
+  background: linear-gradient(
+    to right,
+    var(--scrub-fill) var(--scrub-value, 0%),
+    var(--scrub-rest) var(--scrub-value, 0%)
+  );
+}
+
+.scrub-input::-moz-range-track {
+  height: var(--scrub-track);
+  border-radius: var(--progress-radius);
+  background: var(--scrub-rest);
+}
+
+.scrub-input::-moz-range-progress {
+  height: var(--scrub-track);
+  border-radius: var(--progress-radius);
+  background: var(--scrub-fill);
+}
+
+.scrub-input::-webkit-slider-thumb {
+  width: var(--scrub-knob);
+  height: var(--scrub-knob);
+  margin-top: calc((var(--scrub-track) - var(--scrub-knob)) / 2);
+  border: 0;
+  border-radius: 50%;
+  background: var(--scrub-fill);
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.scrub-input::-moz-range-thumb {
+  width: var(--scrub-knob);
+  height: var(--scrub-knob);
+  border: 0;
+  border-radius: 50%;
+  background: var(--scrub-fill);
+}
+
+.scrub-input:disabled::-webkit-slider-thumb {
+  opacity: 0;
+}
+
+.scrub-input:disabled::-moz-range-thumb {
+  opacity: 0;
+}
+
+.scrub-times {
+  display: flex;
+  justify-content: space-between;
+  margin-top: calc((var(--scrub-hit) - var(--scrub-h)) / -2 + var(--space-1));
+  font: var(--type-figure-s);
+  font-stretch: var(--type-figure-stretch);
+  font-variant-numeric: var(--type-figure-numeric);
+}
+
+/* Previous, back 10, play (the amber one), forward 10, next. */
+.transport {
+  --icon-button-size: var(--transport);
+  --icon-size: var(--transport-icon);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 22rem;
+  margin-inline: auto;
+}
+
+.transport .icon-button--quiet {
+  color: var(--color-text);
+}
+
+.transport .transport-primary {
+  --icon-button-size: var(--transport-primary);
+  background: var(--transport-primary-bg);
+  color: var(--transport-primary-fg);
+}
+
+/* Over the picture in full screen: smaller, on dark discs. */
+.transport--compact {
+  --icon-button-size: var(--target-min);
+  --icon-size: var(--icon-size-s);
+  justify-content: center;
+  gap: var(--space-3);
+  max-width: none;
+}
+
+.transport--compact .transport-primary {
+  --icon-button-size: var(--transport);
+}
+
 /* ----- reduced motion ---------------------------------------------------------- */
 
 /* The tokens already zero the durations. The two loops are not durations: the shimmer
