@@ -749,17 +749,18 @@ Local preview is a static server over the built output — see
 | Push to `master` | the site root, with `/tv/` and `/drive/` inside it | `deploy.yml` |
 | Pull request from this repository: opened, pushed, reopened | `/pr/<number>/` | `checks.yml`, `preview` job |
 | That pull request closed | removes `/pr/<number>/` | `checks.yml`, `remove-preview` job |
+| Push to `redesign/develop` | `/redesign/`, with `/redesign/tv/` and `/redesign/drive/` inside it | `redesign.yml` |
 
-`deploy.yml` and the `preview` job build and run the CSS check, then call the
-reusable `publish.yml`; `remove-preview` calls it with no build:
+`deploy.yml`, `redesign.yml` and the `preview` job build and run the CSS check,
+then call the reusable `publish.yml`; `remove-preview` calls it with no build:
 
 - **`write`** runs `tools/publish-site.sh <folder> <build>`. The site's state is
   the `gh-pages` branch, kept as **one commit with no history**. The script
-  clones it, replaces only its own folder (`.` or `pr/<n>`), writes `.nojekyll`
-  and `robots.txt` (which blocks `/pr/`), and replaces the commit with
-  `--force-with-lease`, retrying from the new tip if another writer got there
-  first. A root publish keeps `pr/` and drops any other top-level folder nothing
-  owns. Don't push to `gh-pages` by hand: there is no history to review it in,
+  clones it, replaces only its own folder (`.`, `pr/<n>` or `redesign`), writes
+  `.nojekyll` and `robots.txt` (which blocks `/pr/` and `/redesign/`), and
+  replaces the commit with `--force-with-lease`, retrying from the new tip if
+  another writer got there first. A root publish keeps `pr/` and `redesign/` and
+  drops any other top-level folder nothing owns. Don't push to `gh-pages` by hand: there is no history to review it in,
   and the next publish of that folder overwrites it anyway.
 - **`deploy`** runs one at a time across the repository (concurrency group
   `pages-deploy`) and uploads whatever `gh-pages` holds when it starts. A queued
@@ -772,8 +773,9 @@ Repository settings this depends on:
 
 - **Settings → Pages → Source: GitHub Actions.** If it ever reverts to `legacy`,
   the workflow goes green while the site 404s. That has happened.
-- **Settings → Environments → github-pages → Deployment branches**: `master` and
-  `refs/pull/*/merge`. Pull request runs are matched by their merge ref.
+- **Settings → Environments → github-pages → Deployment branches**: `master`,
+  `refs/pull/*/merge` and `redesign/develop`. Pull request runs are matched by
+  their merge ref.
 - **`master` is protected**: a pull request is required (no approvals), the
   `css-classes` check must pass, no force pushes or deletion, admins included. A
   direct push to `master` is refused. By convention, pull requests are squash-merged.
@@ -783,6 +785,9 @@ Other things worth knowing:
 - **There is no shared preview branch.** The old `preview` branch and its
   `/preview/` folder are retired (#33). To try a branch on the real site, open a
   draft pull request and use `/pr/<n>/`.
+- **`redesign/develop` is the one long-running branch with its own folder**,
+  `/redesign/`, for the redesign. A push there publishes it; nothing removes the
+  folder when the branch is deleted. Pull requests into it get `/pr/<n>/` as usual.
 - **Every folder uses the production Firebase project**, because the config is
   compiled in. A preview is a staging surface for the interface, not an isolated
   environment: anything done there is real data.

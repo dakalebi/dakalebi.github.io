@@ -3,8 +3,8 @@
 #
 #   tools/publish-site.sh <folder> [<build>]
 #
-#   <folder>  "." for the site root, or "pr/<number>". Only that folder
-#             changes; everything else on the site is kept as it is.
+#   <folder>  "." for the site root, "pr/<number>", or "redesign". Only that
+#             folder changes; everything else on the site is kept as it is.
 #   <build>   the directory to publish there. Omit it to remove the folder.
 #
 #   PUBLISH_REMOTE   the repository to push to (required)
@@ -30,15 +30,16 @@ branch=gh-pages
 
 # The top-level folders other writers own. Publishing the root replaces
 # everything at the top level except these, so a folder nothing owns any more
-# (the old /preview, say) goes with the next production publish.
-owned_elsewhere=(pr)
+# (the old /preview, say) goes with the next production publish. `redesign` is
+# the redesign/develop branch's (redesign.yml).
+owned_elsewhere=(pr redesign)
 
 if [ "$folder" = "." ]; then
   if [ -z "$build" ]; then
     echo "::error::The site root cannot be removed, only replaced." >&2
     exit 1
   fi
-elif ! [[ "$folder" =~ ^pr/[1-9][0-9]*$ ]]; then
+elif ! [[ "$folder" =~ ^(pr/[1-9][0-9]*|redesign)$ ]]; then
   echo "::error::'${folder}' is not a folder anything publishes to." >&2
   exit 1
 fi
@@ -95,10 +96,10 @@ for attempt in $(seq 1 "$attempts"); do
   # Both files belong to the site rather than to any one build, so every
   # publish writes them. Pages runs Jekyll by default, and Jekyll drops files
   # whose names begin with an underscore, which Kotlin/JS and webpack emit. The
-  # copies under /pr are the production app on the same host, so leaving them
+  # copies under /pr and /redesign are the app on the same host, so leaving them
   # indexable would have them competing with it in search results.
   touch "$site/.nojekyll"
-  printf 'User-agent: *\nDisallow: /pr/\n' > "$site/robots.txt"
+  printf 'User-agent: *\nDisallow: /pr/\nDisallow: /redesign/\n' > "$site/robots.txt"
 
   git -C "$site" add -A
   tree="$(git -C "$site" write-tree)"

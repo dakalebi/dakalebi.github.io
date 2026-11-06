@@ -1,7 +1,8 @@
 name: Checks
 
-# Everything except master. Pushes to master are covered by the deploy workflow, which
-# runs the same guard against the same build before it publishes anything.
+# Everything except master and redesign/develop. Pushes to those are covered by their
+# deploy workflows (deploy.yml, redesign.yml), which run the same guard against the
+# same build before they publish anything.
 #
 # A pull request from this repository also gets its own copy of the site at
 # /pr/<number>/, rebuilt on every push and removed when the pull request closes.
@@ -9,7 +10,7 @@ name: Checks
 # and they skip the preview jobs rather than fail them.
 on:
   push:
-    branches-ignore: [master]
+    branches-ignore: [master, redesign/develop]
   pull_request:
     types: [opened, synchronize, reopened, closed]
   workflow_dispatch:
