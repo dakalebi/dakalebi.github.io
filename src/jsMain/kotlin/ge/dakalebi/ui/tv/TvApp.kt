@@ -5,7 +5,6 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
-import ge.dakalebi.di.catalog
 import ge.dakalebi.di.router
 import ge.dakalebi.di.sessionState
 import ge.dakalebi.di.toasts
@@ -54,7 +53,6 @@ fun TvApp() {
     val input = remember { TvInput() }
     val router = router()
     val sessionState = sessionState()
-    val catalog = catalog()
     val toasts = toasts()
 
     val route = router.current
@@ -214,23 +212,16 @@ fun TvApp() {
         }
     }
 
-    // The viewer's data. A LaunchedEffect because it is ordinary app behaviour that
-    // wants the real frame clock; the fixture path pre-loads instead so the screens
-    // are complete on the first paint. See `Main.kt`.
+    // Loading the viewer's catalog, settings sync and dropping the catalog on
+    // sign-out follow the session on their own (`SessionViewModel`). No admin
+    // check: this shell has no admin controls to show.
     //
-    // Keyed on the viewer, so a guest loads the catalog and their device progress
-    // too. Settings sync and dropping the catalog on sign-out follow the session on
-    // their own (`SessionViewModel`). No admin check: this shell has no admin
-    // controls to show.
+    // What is left is this shell's own: one account's place in a rail is not
+    // another's, and neither is the season they were part-way through.
     LaunchedEffect(viewer?.id) {
-        val viewerId = viewer?.id
-        if (viewerId == null) {
-            // One account's place in a rail is not another's, and neither is the
-            // season they were part-way through.
+        if (viewer == null) {
             FocusMemory.clear()
             BrowseState.clear()
-        } else {
-            catalog.ensureLoaded(viewerId)
         }
     }
 

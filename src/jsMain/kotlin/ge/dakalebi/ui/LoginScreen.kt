@@ -1,15 +1,10 @@
 package ge.dakalebi.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
-import ge.dakalebi.core.Log
-import ge.dakalebi.di.session
-import ge.dakalebi.di.toasts
-import ge.dakalebi.presentation.ErrorMessages
+import ge.dakalebi.di.rememberLoginViewModel
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
 import ge.dakalebi.ui.tv.focus.FocusAxis
@@ -21,7 +16,6 @@ import io.github.bchmsl.keel.components.ButtonVariant
 import io.github.bchmsl.keel.dom.buttonClasses
 import io.github.bchmsl.keel.dom.classNames
 import io.github.bchmsl.keel.dom.inputClasses
-import kotlinx.coroutines.launch
 import org.jetbrains.compose.web.attributes.AttrsScope
 import org.jetbrains.compose.web.attributes.InputType
 import org.jetbrains.compose.web.attributes.disabled
@@ -49,37 +43,16 @@ import org.w3c.dom.HTMLInputElement
  * the TV needs on top of the web version is not a different design but a different *input* — a
  * remote has a D-pad and no pointer — and that is added by the `dpad*` helpers below, which write
  * attributes on a TV page and nothing at all on a web one.
+ *
+ * The form, its requests and what they say are [ge.dakalebi.presentation.LoginViewModel]'s.
+ * This file is the markup and the remote's stops.
  */
 @Composable
 fun LoginScreen() {
-    val session = session()
-    val toasts = toasts()
-    val scope = rememberCoroutineScope()
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var signUpMode by remember { mutableStateOf(false) }
-    var busy by remember { mutableStateOf(false) }
+    val login = rememberLoginViewModel()
+    val ui by login.state.collectAsState()
     val emailField = remember { FieldRef() }
     val passwordField = remember { FieldRef() }
-
-    fun run(block: suspend () -> Unit, onOk: () -> Unit = {}) {
-        if (busy) return
-        busy = true
-        scope.launch {
-            try {
-                block()
-                onOk()
-            } catch (e: Throwable) {
-                // Log the raw Firebase error alongside the friendly text: the
-                // mapped message hides the code, and auth failures are the
-                // hardest thing to diagnose remotely.
-                Log.e("auth", "sign-in failed", e)
-                toasts.error(ErrorMessages.signIn(e))
-            } finally {
-                busy = false
-            }
-        }
-    }
 
     Div({ classes("login-wrap") }) {
         Div({ classes("login-bg") })
@@ -102,13 +75,7 @@ fun LoginScreen() {
                 classes("login-form")
                 onSubmit { event ->
                     event.preventDefault()
-                    val mode = signUpMode
-                    run({
-                        if (mode) session.signUp(email, password)
-                        else session.signIn(email, password)
-                    }) {
-                        if (mode) toasts.ok(S.accountCreated)
-                    }
+                    login.submit()
                 }
             }) {
                 Div({ classes("auth-field"); dpadField("email", emailField, entry = true) }) {
@@ -117,8 +84,8 @@ fun LoginScreen() {
                         name("email")
                         placeholder(S.emailPlaceholder)
                         required()
-                        value(email)
-                        onInput { email = it.value }
+                        value(ui.email)
+                        onInput { login.setEmail(it.value) }
                         dpadEntry(emailField)
                     }
                 }
@@ -129,18 +96,18 @@ fun LoginScreen() {
                         placeholder(S.passwordPlaceholder)
                         required()
                         minLength(6)
-                        value(password)
-                        onInput { password = it.value }
+                        value(ui.password)
+                        onInput { login.setPassword(it.value) }
                         dpadEntry(passwordField)
                     }
                 }
                 Button({
                     classNames(buttonClasses())
                     style { property("justify-content", "center") }
-                    if (busy) disabled()
+                    if (ui.busy) disabled()
                     dpadItem("submit")
                 }) {
-                    Text((if (signUpMode) S.signUp else S.signIn).caps)
+                    Text((if (ui.signUpMode) S.signUp else S.signIn).caps)
                 }
             }
 
@@ -156,27 +123,19 @@ fun LoginScreen() {
                     classNames(buttonClasses(ButtonVariant.Link))
                     style { property("padding", "0") }
                     dpadItem("mode")
-                    onClick { signUpMode = !signUpMode }
+                    onClick { login.toggleMode() }
                 }) {
                     Text(
-                        (if (signUpMode) S.promptSignIn else S.promptSignUp).caps,
+                        (if (ui.signUpMode) S.promptSignIn else S.promptSignUp).caps,
                     )
                 }
 
-                if (!signUpMode) {
+                if (!ui.signUpMode) {
                     Button({
                         classNames(buttonClasses(ButtonVariant.Link))
                         style { property("padding", "0") }
                         dpadItem("reset")
-                        onClick {
-                            if (email.isBlank()) {
-                                toasts.error(S.enterEmailFirst)
-                            } else {
-                                run({ session.resetPassword(email) }) {
-                                    toasts.ok(S.resetLinkSent)
-                                }
-                            }
-                        }
+                        onClick { login.sendPasswordReset() }
                     }) { Span { Text(S.forgotPassword.caps) } }
                 }
             }
@@ -187,9 +146,9 @@ fun LoginScreen() {
             Button({
                 classNames(buttonClasses(ButtonVariant.Outline))
                 style { property("justify-content", "center") }
-                if (busy) disabled()
+                if (ui.busy) disabled()
                 dpadItem("guest")
-                onClick { session.continueAsGuest() }
+                onClick { login.continueAsGuest() }
             }) { Text(S.continueAsGuest.caps) }
             P({
                 style {

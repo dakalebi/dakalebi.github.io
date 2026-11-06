@@ -25,4 +25,6 @@ private fun AppGraph.providedValues(): Array<ProvidedValue<*>> = arrayOf(
     LocalSettings provides settings,
     LocalPreferences provides preferences,
     LocalPlayback provides playback,
+    LocalDashboard provides dashboard,
+    LocalLogin provides login,
 )

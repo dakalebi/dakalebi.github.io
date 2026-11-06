@@ -39,8 +39,8 @@ fun LoadingRails() {
 
 /**
  * Shown when the catalog could not be read. It carries a retry because the
- * alternative is a dead end: nothing else in the app calls `ensureLoaded`
- * again, so without this the only way out was a full page reload.
+ * alternative is a dead end: the session loads once per viewer and nothing
+ * else loads again, so without this the only way out was a full page reload.
  */
 @Composable
 fun LoadFailed(message: String, onRetry: () -> Unit) {

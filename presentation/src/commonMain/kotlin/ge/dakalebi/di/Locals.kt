@@ -9,6 +9,10 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import ge.dakalebi.presentation.CatalogStore
+import ge.dakalebi.presentation.DashboardViewModel
+import ge.dakalebi.presentation.DashboardViewModelFactory
+import ge.dakalebi.presentation.LoginViewModel
+import ge.dakalebi.presentation.LoginViewModelFactory
 import ge.dakalebi.presentation.PlaybackUiState
 import ge.dakalebi.presentation.PlaybackViewModel
 import ge.dakalebi.presentation.PlaybackViewModelFactory
@@ -45,6 +49,8 @@ val LocalCatalog = local<CatalogStore>("LocalCatalog")
 val LocalSettings = local<SettingsStore>("LocalSettings")
 val LocalPreferences = local<PreferencesStore>("LocalPreferences")
 val LocalPlayback = local<PlaybackViewModelFactory>("LocalPlayback")
+val LocalDashboard = local<DashboardViewModelFactory>("LocalDashboard")
+val LocalLogin = local<LoginViewModelFactory>("LocalLogin")
 
 /**
  * Shorthands, so a screen reads `catalog()` rather than `LocalCatalog.current`.
@@ -78,6 +84,23 @@ fun rememberPlaybackViewModel(episodeId: String, maxQuality: Int?, appleMobile: 
     val viewModel = remember(episodeId) { factory.create(episodeId, maxQuality, appleMobile) }
     DisposableEffect(viewModel) { onDispose { viewModel.close() } }
     return viewModel
+}
+
+/**
+ * This visit's [DashboardViewModel]. Made when the screen appears and dropped
+ * with it, so coming back starts from the suggested season again.
+ */
+@Composable
+fun rememberDashboardViewModel(): DashboardViewModel {
+    val factory = LocalDashboard.current
+    return remember { factory.create() }
+}
+
+/** The sign-in form's ViewModel, made once per visit to the screen. */
+@Composable
+fun rememberLoginViewModel(): LoginViewModel {
+    val factory = LocalLogin.current
+    return remember { factory.create() }
 }
 
 /**

@@ -13,7 +13,6 @@ import ge.dakalebi.core.formatTime
 import ge.dakalebi.di.catalog
 import ge.dakalebi.di.collectState
 import ge.dakalebi.di.rememberPlaybackViewModel
-import ge.dakalebi.di.sessionState
 import ge.dakalebi.di.settings
 import ge.dakalebi.di.toasts
 import ge.dakalebi.domain.model.Setting
@@ -63,7 +62,6 @@ import kotlin.math.abs
  */
 @Composable
 fun WatchScreen(episodeId: String) {
-    val sessionState = sessionState()
     val catalog = catalog()
     val toasts = toasts()
     val settings = settings()
@@ -77,12 +75,8 @@ fun WatchScreen(episodeId: String) {
         appleMobile = isAppleMobile,
     )
     val ui by playback.collectState()
-    // Whose progress this is: the account's, or a guest's on this device.
-    val uid = sessionState.viewerId
     val refs = remember(episodeId) { WatchRefs() }
     var confirmReset by remember(episodeId) { mutableStateOf(false) }
-
-    LaunchedEffect(uid) { if (uid != null) catalog.ensureLoaded(uid) }
 
     val episode = catalog.byId(episodeId)
     val entry = episode?.let { catalog.progress[it.id] }
