@@ -17,8 +17,14 @@ dependencyResolutionManagement {
 
 // The root project stays the web app, so the GitHub Pages artifact keeps coming
 // out of `build/dist/js/productionExecutable` and the deploy workflow needs no
-// path change. `:shared` is everything the web app and a future TV app both
-// need: the domain, the string catalogue, and the state holders above them.
+// path change.
+//
+// `:core` (logging, formatting, the clock) and `:domain` (models, repository
+// interfaces, use cases) depend on nothing. `:shared` holds the rest of the
+// plain-Kotlin code above them: the data sources, the string catalogue, and the
+// state holders. It shrinks as `:data` and `:presentation` take it over.
+include(":core")
+include(":domain")
 include(":shared")
 
 // The icon catalogue, the shared components (`Button`, `Switch`, `Dialog`, ...)

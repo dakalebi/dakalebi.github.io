@@ -29,7 +29,7 @@ https://cdn.formula.ge/…/10.mp4
   build a file per request.
 
 The site builds the link in
-`shared/src/commonMain/kotlin/ge/dakalebi/domain/service/VlcLink.kt`.
+`domain/src/commonMain/kotlin/ge/dakalebi/domain/service/VlcLink.kt`.
 `VLC_PLAYLIST_ENDPOINT` there points at the deployed worker,
 `https://dakalebi-vlc.bachanamosulishvili.workers.dev/playlist.m3u`. With it set to
 `null`, or for a link that is not on the CDN, "Open in VLC" falls back to the

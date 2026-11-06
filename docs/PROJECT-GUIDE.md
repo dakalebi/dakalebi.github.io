@@ -216,15 +216,16 @@ unambiguous constructor calls.
 
 ### Tests on Node, not in a browser
 
-`:shared` has no browser in it, so `:shared:jsNodeTest` runs it on Node in about a
-second.
+`:core`, `:domain` and `:shared` have no browser in them, so `./gradlew allTests`
+runs their tests on Node in about a second.
 Standing up Karma and a headless Chrome to assert things about sorting would be
 slower and more fragile for no gain. The browser-facing code is tested by hand —
 see §8.
 
-That split is now a Gradle module rather than a convention, so the property is
-enforced by the compiler: `:shared` does not depend on the root, and the browser
-is reachable from exactly three `expect` functions. See
+That split is now Gradle modules rather than a convention, so the property is
+enforced by the compiler: none of the three depends on the root, `:domain` depends
+on nothing at all, and the browser is reachable from exactly three `expect`
+functions. See
 [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
 ### The cache serialises a DTO, not the domain model
@@ -540,7 +541,7 @@ player screen is the native player with big controls around it.
 ### Language and settings
 
 Every setting that follows the account is one line in the `Setting` registry
-(`shared/.../domain/model/UserSettings.kt`): language, autoplay, System player,
+(`domain/.../domain/model/UserSettings.kt`): language, autoplay, System player,
 preferred quality.
 Everything that moves settings around iterates that registry — the Firestore
 document, the device copy (`LocalSettingsCache`), `SettingsStore` and the
@@ -808,7 +809,7 @@ Other things worth knowing:
 
 `workers/vlc-playlist` is deployed by hand, not by CI, to the owner's Cloudflare
 account (free plan). The site points at it through `VLC_PLAYLIST_ENDPOINT` in
-`shared/.../domain/service/VlcLink.kt`. From that folder:
+`domain/.../domain/service/VlcLink.kt`. From that folder:
 
 ```bash
 node --test          # its own tests; Node 18+, no dependencies
@@ -948,8 +949,8 @@ retry.
 
 ## 8. What is verified, and what is not
 
-**Automated.** `./gradlew allTests`, on Node, in `:shared` (175 tests
-on 2026-11-06), run by CI on every pull request and before every publish: the watched threshold, the never-rewind guard, "continue watching"
+**Automated.** `./gradlew allTests`, on Node, in `:shared` for now (175 tests
+on 2026-11-06, covering `:core` and `:domain` too), run by CI on every pull request and before every publish: the watched threshold, the never-rewind guard, "continue watching"
 and the next episode to play, ordering across season boundaries and the rest of a
 season, hash-route parsing, settings sync (the merge rules, the store, the device
 copy), guest sessions and guest storage, playback-failure classification, the

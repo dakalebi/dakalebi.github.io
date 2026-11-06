@@ -26,6 +26,10 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
+            // `api`: the state holders take use cases and hand out domain models,
+            // so a consumer needs the domain types to call them.
+            api(project(":domain"))
+            implementation(project(":core"))
             // `api`, not `implementation`: `CompositionLocal`, `CoroutineScope` and
             // the state holders' types all appear in signatures the root module
             // reads, so consumers need them on their own compile classpath.

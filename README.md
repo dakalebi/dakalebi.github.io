@@ -63,10 +63,10 @@ export JAVA_HOME=$(/usr/libexec/java_home -v 17)
 ./gradlew allTests
 ```
 
-The unit tests live in `:shared`, which is plain Kotlin (no Compose HTML, no
-Firebase, no DOM), so they run on Node with no browser. `allTests` runs every
-module's tests. CI runs it on every pull request (`unit-tests`) and before every
-publish.
+The unit tests live in `:shared` for now, and test `:core` and `:domain` too. All
+three are plain Kotlin (no Compose HTML, no Firebase, no DOM), so the tests run on
+Node with no browser. `allTests` runs every module's tests. CI runs it on every
+pull request (`unit-tests`) and before every publish.
 
 ```bash
 ./gradlew jsBrowserDistribution
@@ -112,20 +112,25 @@ remote reaches the page, and what was verified:
 
 ## Layout
 
-Two Gradle modules. The root is the web app; `:shared` is everything that is not
-about being a web page.
+Four Gradle modules, on the way to one per layer. The root is the web app. `:core`
+and `:domain` depend on nothing. `:shared` is the rest of what is not about being
+a web page, until `:data` and `:presentation` take it over.
 
 ```
+core/src/commonMain/kotlin/ge/dakalebi/core/
+                 logging and formatting policy
+core/src/jsMain/kotlin/ge/dakalebi/core/
+  *.js.kt        two platform halves: console, clock
+domain/src/commonMain/kotlin/ge/dakalebi/domain/
+                 models, repository interfaces, use cases, pure queries
 shared/src/commonMain/kotlin/ge/dakalebi/
-  domain/        models, repository interfaces, use cases, pure queries
   presentation/  Compose state holders, error-to-text mapping, routes
   data/          the Formula API, the catalog cache, device storage
                  (settings copy, guest progress, guest choice)
   di/            the composition locals
-  core/          logging and formatting policy
   i18n/          every user-facing string, one file per language
 shared/src/jsMain/kotlin/ge/dakalebi/
-  *.js.kt        the three platform halves: console, clock, fetch
+  *.js.kt        the third platform half: fetch
 
 src/jsMain/kotlin/ge/dakalebi/
   ui/            Compose HTML only: dashboard/, watch/, player/
@@ -146,8 +151,9 @@ firebase/firestore.rules the whole security boundary
 tools/                   the CSS check and the site publish script
 ```
 
-Dependencies point inwards, and the whole of `commonMain` names no framework at
-all. The greps that check this are in
+Dependencies point inwards, and no `commonMain` names a framework at all.
+`:domain` cannot: nothing but Kotlin is on its classpath. The greps that check the
+rest are in
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ## Data model

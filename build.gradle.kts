@@ -122,6 +122,10 @@ kotlin {
             // BuildInfo.kt is always regenerated before compilation.
             kotlin.srcDir(generateBuildInfo)
             dependencies {
+                // Named directly rather than reached through `:shared`: the UI and
+                // the composition root use both, and `:shared` is going away.
+                implementation(project(":core"))
+                implementation(project(":domain"))
                 implementation(project(":shared"))
                 // The icon catalogue and the shared components. See the note on
                 // `includeBuild("keel")` in settings.gradle.kts for what this app

@@ -29,8 +29,12 @@ sealed class Setting<T : Any>(
 
     class Text internal constructor(key: String, default: String) : Setting<String>(key, default)
 
-    /** [into] plus this setting's value from [from], when [from] has one. */
-    internal fun copy(from: UserSettings, into: UserSettings): UserSettings =
+    /**
+     * [into] plus this setting's value from [from], when [from] has one.
+     *
+     * Public because `SettingsStore` uploads one setting at a time with it.
+     */
+    fun copy(from: UserSettings, into: UserSettings): UserSettings =
         from[this]?.let { into.with(this, it) } ?: into
 
     override fun toString(): String = key
