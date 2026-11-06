@@ -4,14 +4,18 @@ The app is a static Kotlin/JS bundle on GitHub Pages talking straight to
 Firebase from the browser. There is no server, so the only structure it has is
 the one in the source tree.
 
-## Two modules
+## Modules
 
-The layering below used to be a convention inside one module. It is now a module
-boundary, which the compiler enforces rather than a grep.
+The layering below used to be a convention inside one module. It is now a set of
+module boundaries, which the compiler enforces rather than a grep. A refactor
+toward one module per layer is under way: `:core` and `:domain` are done, and
+`:shared` is what is left to split into `:data` and `:presentation`.
 
 | Module | Holds | Why |
 |---|---|---|
-| `:shared` | `commonMain`: `domain`, `presentation`, `i18n`, `core`, the composition locals, the Formula API and DTOs, and the storage that is plain Kotlin over a `KeyValueStore`: the catalog cache, the settings device copy, guest progress, the guest choice, and `ViewerProgressRepository`, which routes progress between the account and the device. `jsMain`: three `.js.kt` files | Everything that is not about being a web page, so a second front end reuses it instead of reimplementing it |
+| `:core` | `commonMain`: logging and formatting policy. `jsMain`: the console and the clock, two `.js.kt` files | Depends on nothing. Every other module may use it |
+| `:domain` | models, repository interfaces, a use case per operation, pure queries | Depends on nothing, not even `:core`, so "the domain names no framework" is the compile classpath and not only a convention |
+| `:shared` | `commonMain`: `presentation`, `i18n`, the composition locals, the Formula API and DTOs, and the storage that is plain Kotlin over a `KeyValueStore`: the catalog cache, the settings device copy, guest progress, the guest choice, and `ViewerProgressRepository`, which routes progress between the account and the device. `jsMain`: the bare GET, one `.js.kt` file. `commonTest`: every unit test, for now | Everything else that is not about being a web page, so a second front end reuses it instead of reimplementing it. Depends on `:domain` and `:core` |
 | root | `ui` (Compose HTML) for all three shells (`/`, `/tv/`, `/drive/`), `data/firebase`, `data/local` (the browser's `localStorage`), the composition root, `Main.kt` | The web app. It also owns the webpack build, so the GitHub Pages artifact path never moves |
 
 The root project stays the application deliberately: renaming it to `:web` would
@@ -21,9 +25,9 @@ working-looking 404.
 
 `commonMain` has no `expect` for convenience. There are exactly three, and each
 one exists because a shared library would break something documented: the
-console (`platformLog`), the clock (`nowMillis`, `dateParts`), and a bare GET
-(`httpGetText`, where any HTTP library's default headers would break Formula's
-CORS contract — see the KDoc on it).
+console (`platformLog`) and the clock (`nowMillis`, `dateParts`), both in
+`:core`, and a bare GET in `:shared` (`httpGetText`, where any HTTP library's
+default headers would break Formula's CORS contract — see the KDoc on it).
 
 ## The dependency rule
 
@@ -63,25 +67,27 @@ Two rules carry most of the weight:
   restructure every repository built its own message, so translating the app
   meant editing Firestore code.
 
-Checking the rules holds is a grep, not a ceremony. Every one of these returns
-nothing, including for `core` and `presentation` — the browser handles that
-`Router` and `Log` used to reach for now live in the root module and in
-`shared/src/jsMain`:
+Most of the rules are now module boundaries. `:domain` and `:core` depend on
+nothing, and `:shared` does not depend on the root, so a reference the wrong way
+round does not compile. In `:domain`, a Compose, Firebase, coroutines or `i18n`
+import does not resolve.
+
+The browser APIs are the one thing a build file cannot keep out: Kotlin/JS ships
+them with the standard library, to every module. So that part is still a grep.
+Every one of these returns nothing. The browser handles that `Router` and `Log`
+used to reach for now live in the root module and in the `jsMain` source sets:
 
 ```bash
 S=shared/src/commonMain/kotlin/ge/dakalebi
-grep -rn "androidx.compose\|firebase\|kotlinx.browser\|i18n" $S/domain/
-grep -rn "kotlinx.browser\|org.w3c\|compose.web\|dynamic" $S/core/ $S/presentation/ $S/data/
-grep -rn "compose.web\|firebase" $S
+grep -rn "kotlinx.browser\|org.w3c\|dynamic" domain/src/
+grep -rn "kotlinx.browser\|org.w3c\|compose.web\|dynamic" core/src/commonMain/ $S/presentation/ $S/data/
+grep -rn "compose.web\|firebase" core/src/commonMain/ $S
 ```
-
-The one thing a grep cannot check is the module boundary itself, and it does not
-need to: `:shared` has no dependency on the root, so a reference the wrong way
-round does not compile.
 
 ## Where a change goes
 
-Paths below are in `:shared` unless they say root.
+`domain/...` paths below are in `:domain`. Other paths are in `:shared` unless
+they say root.
 
 - **A new screen** → root `ui/`, reading stores from `di/Locals.kt`.
 - **A new thing to store** → a method on an interface in
@@ -111,7 +117,9 @@ Paths below are in `:shared` unless they say root.
 ## Testing
 
 `shared/src/commonTest` (and one `jsTest` for the bare GET) runs on Node via
-`./gradlew :shared:jsNodeTest` — no browser, no Karma, about a second. It covers
+`./gradlew allTests` — no browser, no Karma, about a second. The tests for
+`:domain` and `:core` are still there too: they share fakes with the rest, and they
+move to their modules before `:shared` is deleted. It covers
 the watched-threshold and never-rewind-a-finished-episode rules, the "continue
 watching" and next-to-play choices, episode ordering across season boundaries,
 hash-route parsing, settings sync (the merge rules, `SettingsStore`, the device
