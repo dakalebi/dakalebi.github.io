@@ -1,8 +1,7 @@
 /* =============================================================================
-   The component gallery (`next/gallery/Gallery.kt`): what every /next/ page shows until
-   its shell has real screens. Every component in every state, drawn with the shell's
-   tokens, so a change is checked by eye on all three at once. Goes when the last shell
-   gets its screens.
+   The component gallery (`next/gallery/Gallery.kt`), drawn at `?gallery` on every page.
+   Every component in every state, drawn with the shell's tokens, so a change is checked
+   by eye on all three at once.
 
    Layout only, from semantic tokens. The components bring their own looks.
    ========================================================================== */

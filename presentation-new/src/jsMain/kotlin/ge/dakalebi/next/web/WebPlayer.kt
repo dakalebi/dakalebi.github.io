@@ -52,7 +52,7 @@ private const val VOLUME_STEP = 0.1
 /**
  * The web app's one `<video>`, for as long as the signed-in app is on the page.
  *
- * **One element, never rebuilt.** The redesign keeps playing while the viewer browses:
+ * **One element, never rebuilt.** The web app keeps playing while the viewer browses:
  * the element moves between the mini-player, the phone's sheet and the desktop's panel,
  * and a move must never reload or restart the video. A new element per episode would also
  * lose what iOS grants an element once a tap has started it: later starts without a tap.

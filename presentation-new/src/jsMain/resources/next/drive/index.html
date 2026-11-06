@@ -1,41 +1,12 @@
 <!doctype html>
-<!--
-  The redesign's driving-mode page. Same bundle as every other page; `data-shell="drive"`
-  picks the drive root and the tokens' larger drive sizes, `data-ui="next"` the new UI.
--->
-<html lang="ka" data-shell="drive" data-ui="next">
+<!-- A saved `/next/drive/` link lands on `/drive/`. See `next/index.html`. -->
+<html lang="ka">
   <head>
     <meta charset="utf-8" />
-    <!-- Same viewport as /next/: no zoom, and `viewport-fit=cover` for landscape notches. -->
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
-    />
-    <title>ჩემი ცოლის დაქალები</title>
-    <meta name="theme-color" content="#1d1512" />
     <meta name="robots" content="noindex" />
-
-    <link rel="icon" href="../../favicon.ico" sizes="any" />
-    <link rel="apple-touch-icon" sizes="180x180" href="../../icon-180.png" />
-
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..100,400..900&family=Noto+Sans+Georgian:wdth,wght@62.5..100,400..900&display=swap"
-    />
-    <!-- The shared sheets, then the web page's sign-in and this page's screens. The
-         size differences live in tokens.css, under `data-shell="drive"`. -->
-    <link rel="stylesheet" href="../tokens.css" />
-    <link rel="stylesheet" href="../base.css" />
-    <link rel="stylesheet" href="../components.css" />
-    <link rel="stylesheet" href="../signin.css" />
-    <link rel="stylesheet" href="drive.css" />
-    <link rel="stylesheet" href="../foundations.css" />
-    <link rel="stylesheet" href="../gallery.css" />
+    <title>ჩემი ცოლის დაქალები</title>
+    <script>location.replace("../../drive/" + location.search + location.hash);</script>
+    <meta http-equiv="refresh" content="0; url=../../drive/" />
   </head>
-  <body>
-    <div id="root"></div>
-    <script src="../../app.js"></script>
-  </body>
+  <body></body>
 </html>

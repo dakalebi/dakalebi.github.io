@@ -1,7 +1,7 @@
 /* =============================================================================
-   The redesign's web screens (`next/web/`): the app frame (tab bar on a phone, side
-   menu from 64rem), and the Home, Seasons and Settings tabs. Linked after
-   components.css on `/next/` only. Sign-in is in signin.css.
+   The web screens (`next/web/`): the app frame (tab bar on a phone, side menu from
+   64rem), and the Home, Seasons and Settings tabs. Linked after components.css on `/`
+   only. Sign-in is in signin.css.
 
    Semantic (layer 2) and component (layer 3) tokens only, like the components.
    Phone first; the desktop changes sit in one block at the end.

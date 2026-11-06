@@ -142,33 +142,29 @@ presentation/src/jsMain/kotlin/ge/dakalebi/presentation/
 testing/src/commonMain/kotlin/ge/dakalebi/testing/
                  test-only: the fakes the modules' tests share
 presentation-new/src/jsMain/kotlin/ge/dakalebi/next/
-                 the redesign's UI on the /next/ pages, and the engines the old UI
-                 shares with it until the switch:
+                 the UI, Compose HTML, for all three pages:
   Shell.kt       which UI a page is; PageZoom.kt stops pinch zoom
-  components/    the redesign's components and its 27 icons, for all three shells
+  components/    the components and the 27 icons, for all three shells
   web/           the web screens: sign-in, Home, Seasons, Settings, the tab bar and
                  side menu around them, and the player (mini-player, sheet, panel)
-  gallery/       every component in every state, on any /next/ page with ?gallery
+  gallery/       every component in every state, on any page with ?gallery
   tv/            the TV screens: sign-in, Home, Seasons, Settings, and the rail
                  around them
   tv/focus/      D-pad navigation — geometry within a band, memory across bands
   tv/input/      one window listener and a layer stack, for the whole TV UI
-  tv/player/     the TV player: its state, keys and video element, shared with the
-                 old TV UI, and the redesign's chrome and shelf
+  tv/player/     the TV player: its state, keys, video element, chrome and shelf
   drive/         driving mode: the one-button Home, the player screen, and the
-                 player, its media session and wake lock (shared with the old UI)
+                 player, its media session and wake lock
   player/        media helpers: the AirPlay clock, device checks, player keys
+presentation-new/src/jsMain/resources/
+  index.html, web.css    the web page, with the shared tokens and component sheets
+  tv/, drive/            the other two pages, one folder each
 
 src/jsMain/kotlin/ge/dakalebi/
-  ui/            Compose HTML only: dashboard/, watch/, player/
-  ui/tv/         the 10-foot UI: a navigation rail, shelves, and a remote's player
-  ui/drive/      driving mode: one native player and big controls
   di/            the composition roots that name the implementations: AppGraph,
                  and the fixture graph behind `?ui=demo`
   Main.kt        the entry point
-src/jsMain/resources/
-  index.html, web.css    the web page
-  tv/, drive/            the other two pages, one folder each
+src/jsMain/resources/    the icons and the logo, at the site root
 workers/vlc-playlist/    the Cloudflare Worker behind "Open in VLC"
 firebase/firestore.rules the whole security boundary
 tools/                   the CSS check and the site publish script

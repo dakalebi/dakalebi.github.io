@@ -89,8 +89,7 @@ All defaults were taken.
 ## 5. Building and installing
 
 Needs an Android SDK: a gitignored `local.properties` with `sdk.dir`, or
-`ANDROID_HOME`. The web build also needs the `keel` submodule
-(`git submodule update --init keel`).
+`ANDROID_HOME`.
 
 ```bash
 ./gradlew :tv:assembleDebug

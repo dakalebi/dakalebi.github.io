@@ -36,9 +36,9 @@ internal fun DriveHome(player: DrivePlayer) {
     val catalog = catalog()
     val session = session()
 
-    Main({ classes("drive-page", "drive-home") }) {
+    Main({ classes("drive-page") }) {
         Div({ classes("drive-top") }) {
-            // Back to the full site, the redesign's web page one folder up. The fixture
+            // Back to the full site, the web page one folder up. The fixture
             // keeps its fixture, so a check of this page does not land on the real sign-in.
             Button(
                 label = S.driveExit,

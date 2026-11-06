@@ -13,11 +13,11 @@ data class NowPlayingUiState(
 )
 
 /**
- * The episode the redesigned app plays, on every screen.
+ * The episode the web app plays, on every screen.
  *
- * The old players are pages: leaving `#/watch/…` closes the player. The redesign
- * keeps playing under a mini-player while the viewer browses, so the episode and
- * its [PlaybackViewModel] live here, as long as the app, not as long as a screen.
+ * The web app keeps playing under a mini-player while the viewer browses, so the
+ * episode and its [PlaybackViewModel] live here, as long as the app, not as long as
+ * a screen. (The TV and driving-mode players are pages, and do not use this.)
  *
  * Whether the full player is open is the route's business: a watch route is open,
  * anything else shows the mini-player. One source of truth, so Back closes the

@@ -5,22 +5,18 @@ import ge.dakalebi.core.Log
 import ge.dakalebi.data.firebase.FirebaseConfig
 import ge.dakalebi.di.AppGraph
 import ge.dakalebi.di.Provide
+import ge.dakalebi.di.fixtureGraph
 import ge.dakalebi.i18n.S
-import ge.dakalebi.next.drive.DriveRoot
-import ge.dakalebi.next.tv.TvRoot
-import ge.dakalebi.next.web.AppBuild
-import ge.dakalebi.next.web.WebRoot
-import ge.dakalebi.ui.App
-import ge.dakalebi.ui.SetupNotice
 import ge.dakalebi.next.Shell
 import ge.dakalebi.next.blockPinchZoom
-import ge.dakalebi.di.fixtureGraph
-import ge.dakalebi.ui.drive.DriveApp
-import ge.dakalebi.next.isNextUi
+import ge.dakalebi.next.drive.DriveRoot
 import ge.dakalebi.next.shell
-import ge.dakalebi.ui.tv.TvApp
+import ge.dakalebi.next.tv.TvRoot
 import ge.dakalebi.next.tv.applyInterfaceScale
 import ge.dakalebi.next.useFixtures
+import ge.dakalebi.next.web.AppBuild
+import ge.dakalebi.next.web.SetupNotice
+import ge.dakalebi.next.web.WebRoot
 import kotlinx.browser.document
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
@@ -73,8 +69,7 @@ fun main() {
     graph.session.start()
 
     // Which front end this page is comes from the document, not from the device.
-    // Every page loads the same bundle; see `Shell.kt` in `:presentation-new`. The `/next/` pages draw
-    // the redesign (`:presentation-new`) on the same graph; the rest draw the old UI.
+    // Every page loads the same bundle; see `Shell.kt` in `:presentation-new`.
     val build = AppBuild(
         number = BuildInfo.BUILD_NUMBER,
         commit = BuildInfo.COMMIT,
@@ -84,18 +79,10 @@ fun main() {
     val render = {
         renderComposable(rootElementId = "root") {
             graph.Provide {
-                if (isNextUi) {
-                    when (shell) {
-                        Shell.Tv -> TvRoot(build)
-                        Shell.Drive -> DriveRoot()
-                        Shell.Web -> WebRoot(build)
-                    }
-                } else {
-                    when (shell) {
-                        Shell.Tv -> TvApp()
-                        Shell.Drive -> DriveApp()
-                        Shell.Web -> App()
-                    }
+                when (shell) {
+                    Shell.Tv -> TvRoot(build)
+                    Shell.Drive -> DriveRoot()
+                    Shell.Web -> WebRoot(build)
                 }
             }
         }

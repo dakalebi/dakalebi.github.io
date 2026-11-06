@@ -1,0 +1,66 @@
+<!doctype html>
+<!--
+  The web page: phones and desktop browsers. `/tv/` and `/drive/` load the same bundle;
+  `data-shell` says which UI this page is (`Shell.kt`), and sits on <html> because the
+  tokens' shell overrides read it there.
+-->
+<html lang="ka" data-shell="web">
+  <head>
+    <meta charset="utf-8" />
+    <!--
+      No zoom, on every page. `user-scalable=no` holds the layout at 1x on Android and
+      in Chrome's device emulation. iOS Safari has ignored both it and `maximum-scale`
+      since iOS 10, so there a pinch is cancelled in script (`PageZoom.kt`), double-tap
+      is `touch-action: manipulation` in base.css, and form fields are 16px so focusing
+      one does not yank the viewport in.
+    -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
+    <title>ჩემი ცოლის დაქალები — სანახავი დაფა</title>
+    <meta
+      name="description"
+      content="ჩემი ცოლის დაქალები — სერიების სანახავი დაფა ფორმულას ოფიციალური წყაროდან"
+    />
+    <meta name="theme-color" content="#1d1512" />
+    <meta property="og:title" content="ჩემი ცოლის დაქალები — სანახავი დაფა" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://dakalebi.github.io/icon-512.png" />
+
+    <!--
+      `favicon.ico` is here for the clients that request it blind at the site root
+      regardless of what these tags say.
+    -->
+    <link rel="icon" href="favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" sizes="32x32" href="icon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="icon-16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png" />
+
+    <!--
+      Noto Sans Georgian for words (it carries Latin and Mtavruli too) and Archivo for
+      figures. Both are variable: the width axis is what the condensed roles use, the
+      weight axis covers 400 to 850. `display=swap` keeps text visible if the font host
+      is slow or blocked; the stacks in tokens.css are the fallback then.
+    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..100,400..900&family=Noto+Sans+Georgian:wdth,wght@62.5..100,400..900&display=swap"
+    />
+    <!-- Tokens first, then the page rules, the components, then the screens. The last
+         two are the component gallery's, drawn at `?gallery`. -->
+    <link rel="stylesheet" href="tokens.css" />
+    <link rel="stylesheet" href="base.css" />
+    <link rel="stylesheet" href="components.css" />
+    <link rel="stylesheet" href="signin.css" />
+    <link rel="stylesheet" href="web.css" />
+    <link rel="stylesheet" href="foundations.css" />
+    <link rel="stylesheet" href="gallery.css" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script src="app.js"></script>
+  </body>
+</html>

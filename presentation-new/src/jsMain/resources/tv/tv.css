@@ -1,6 +1,6 @@
 /* =============================================================================
-   The TV shell's own layout (`next/tv/`). Linked on /next/tv/ only, after the
-   shared sheets. The TV sizes themselves are tokens, in tokens.css.
+   The TV shell's own layout (`next/tv/`). Linked on /tv/ only, after the shared
+   sheets. The TV sizes themselves are tokens, in tokens.css.
 
    Semantic and component tokens only, like the components. Designed at 960x540
    CSS pixels (a 1080p panel at a device pixel ratio of 2), where 1rem is 16px.

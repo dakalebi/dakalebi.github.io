@@ -29,28 +29,11 @@ include(":core")
 include(":domain")
 include(":data")
 include(":presentation")
-// The redesign's UI, with its own design system and no keel. It reuses
-// `:presentation` and is drawn on the `/next/` pages until the switch.
+// The UI ("Presentation-New"): its design system and the web, TV and driving-mode
+// screens. It reuses `:presentation`'s state, routes and strings.
 include(":presentation-new")
 // Test doubles for the other modules' tests. Never a dependency of the app.
 include(":testing")
-
-// The icon catalogue, the shared components (`Button`, `Switch`, `Dialog`, ...)
-// and two small utilities (`classNames`, `DismissOnEscape`) that used to be
-// duplicated here and in Dayboard now live in one place. A submodule, included
-// as a composite build so `implementation("io.github.bchmsl:keel")` resolves to
-// it - never `project(":keel")`, which would resolve to this build's own
-// (nonexistent) project of that name instead of being substituted for the
-// included one.
-//
-// keel/tokens.css, keel/base.css and keel/components.css are linked in
-// index.html, painted with this app's own single dark palette from
-// keel-theme.css rather than one of keel/palettes.css's switchable ones - this
-// app has exactly one theme and no `ThemeController` to switch it with. The
-// season chips and the video tiles/rails stay this app's own CSS: keel has no
-// tag-filter or media-card component that either one is actually an instance
-// of, so there is nothing there to adopt.
-includeBuild("keel")
 
 // `:tv` is an Android application module and needs the Android SDK to configure.
 // Gradle configures EVERY included project even for a JS-only task, so an

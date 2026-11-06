@@ -20,7 +20,7 @@ import org.jetbrains.compose.web.dom.Ul
  * drawn with the tokens of the shell it is on. The gallery's Base tab.
  *
  * It is how a shell's token overrides are checked by eye: the same markup is larger on
- * `/next/drive/` and scaled to the panel on `/next/tv/`. The words come from `S`, so they
+ * `/drive/` and scaled to the panel on `/tv/`. The words come from `S`, so they
  * follow the language like the app does.
  *
  * Token names are read in a loop, so this sets `var(--...)` inline instead of one class

@@ -20,7 +20,7 @@ import kotlinx.browser.document
 import org.jetbrains.compose.web.dom.Div
 
 /**
- * The redesign's driving-mode root, drawn on `/next/drive/`.
+ * The driving-mode root, drawn on `/drive/`.
  *
  * A phone in a car mount, read at a glance and pressed with one thumb. No browsing:
  * the home screen offers one episode ([DriveHome]) and the player screen is the

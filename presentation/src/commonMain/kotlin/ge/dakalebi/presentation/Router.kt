@@ -21,8 +21,7 @@ sealed interface Route {
     data object Settings : Route
 
     /**
-     * Every season, as a list. The redesigned web app's second tab; the old UI has
-     * no screen for it and falls back to the dashboard.
+     * Every season, as a list: the web app's second tab.
      */
     data object Seasons : Route
 

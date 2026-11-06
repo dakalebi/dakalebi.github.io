@@ -130,18 +130,13 @@ kotlin {
                 implementation(project(":core"))
                 implementation(project(":domain"))
                 // Only the composition roots (`di/`, with the fixture graph, and
-                // `Main.kt`) may name it. `ui/` reaches data through the domain
+                // `Main.kt`) may name it. The UI reaches data through the domain
                 // interfaces. docs/ARCHITECTURE.md has the grep.
                 implementation(project(":data"))
                 implementation(project(":presentation"))
-                // The redesign's UI. `Main.kt` draws it on the `/next/` pages only;
-                // its pages and stylesheets are copied in by `jsProcessResources` below.
+                // The UI. Its pages and stylesheets are copied in by
+                // `jsProcessResources` below.
                 implementation(project(":presentation-new"))
-                // The icon catalogue and the shared components. See the note on
-                // `includeBuild("keel")` in settings.gradle.kts for what this app
-                // still keeps its own CSS for, and the `jsProcessResources` block
-                // below for why this line alone is not enough to paint any of it.
-                implementation("io.github.bchmsl:keel")
                 implementation("org.jetbrains.compose.runtime:runtime:1.11.1")
                 // Compose HTML is Kotlin/JS only and has no multiplatform
                 // variant, and `:presentation` must not know how a screen is drawn,
@@ -157,25 +152,16 @@ kotlin {
 }
 
 /*
- * Take keel's stylesheets into this module's own resources.
+ * Take `:presentation-new`'s pages and stylesheets into this module's own resources.
  *
  * Not optional, and there is no way to leave it out safely: a Kotlin Multiplatform
  * library's `jsMain/resources` do NOT reach a consumer's distribution on their own -
  * not copied into `jsProcessResources`, not packed into the klib, absent from
- * `build/dist`. See keel/ARCHITECTURE.md, "How the CSS gets there".
+ * `build/dist`.
  *
- * The failure without this block is silent: an unresolved `var()` falls back to the
- * property's initial value, so the page renders unstyled with a clean console and a
- * green build.
- *
- * The path is `keel/keel/...` because the submodule root is `keel/` and the library
- * module inside it is also named `keel` - the in-repo form keel's own gallery uses,
- * `keel/src/...`, is one level too shallow from here.
+ * The failure without this block is a site with no pages at all. This module's own
+ * resources are only the icons and the logo, which sit next to them at the site root.
  */
 tasks.named<Copy>("jsProcessResources") {
-    from(rootProject.layout.projectDirectory.dir("keel/keel/src/jsMain/resources"))
-    // The same rule holds for `:presentation-new`: its `/next/` pages, tokens and
-    // stylesheets reach the distribution only through this line. Everything there
-    // sits under `next/`, so nothing it ships can replace a file of the old UI.
     from(rootProject.layout.projectDirectory.dir("presentation-new/src/jsMain/resources"))
 }

@@ -37,8 +37,6 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v5
-        with:
-          submodules: true
 
       - uses: actions/setup-java@v5
         with:
@@ -47,9 +45,9 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      # The guard reads the *built* stylesheets: keel's four sheets come from the
-      # submodule and only sit beside this app's own in the output, and the check is
-      # about what each shell's page actually links.
+      # The guard reads the *built* stylesheets: `:presentation-new`'s sheets only
+      # reach the output through `jsProcessResources`, and the check is about what
+      # each shell's page actually links.
       - name: Build Kotlin/JS bundle
         run: ./gradlew jsBrowserDistribution
 
@@ -76,8 +74,6 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v5
-        with:
-          submodules: true
 
       - uses: actions/setup-java@v5
         with:
