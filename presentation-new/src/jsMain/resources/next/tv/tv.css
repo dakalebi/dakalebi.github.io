@@ -1,6 +1,13 @@
 /* =============================================================================
-   The TV shell's own layout (`next/tv/TvRoot.kt`). Linked on /next/tv/ only, after the
+   The TV shell's own layout (`next/tv/`). Linked on /next/tv/ only, after the
    shared sheets. The TV sizes themselves are tokens, in tokens.css.
+
+   Semantic and component tokens only, like the components. Designed at 960x540
+   CSS pixels (a 1080p panel at a device pixel ratio of 2), where 1rem is 16px.
+
+   Sign-in, Settings, the player, and the loading, error and empty states were not
+   drawn by the design pass. They are built from the same tokens and components and
+   need a design review.
    ========================================================================== */
 
 /* The one scroller. A remote scrolls only by moving the ring, and the focus engine
@@ -15,4 +22,963 @@
 
 .tv-stage::-webkit-scrollbar {
   display: none;
+}
+
+.tv-starting,
+.tv-note {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: var(--pad-page-y) var(--pad-page-x);
+  color: var(--color-text-2);
+  font: var(--type-body);
+  font-stretch: var(--type-body-stretch);
+  text-align: center;
+}
+
+/* ----- rail -------------------------------------------------------------------- */
+
+/* The left edge: the mark and three places. Fixed, which is what the focus engine reads
+   as chrome. The box reaches the panel edge and its contents sit inside the overscan
+   margin, so the rows that scroll under it disappear behind a ground, not mid-air. */
+.tv-rail {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: var(--z-sticky);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  width: calc(var(--pad-page-x) + var(--rail-w));
+  padding: var(--pad-page-y) 0 var(--pad-page-y) var(--pad-page-x);
+  background: var(--rail-bg);
+  transition: width var(--dur-state) var(--ease-move), box-shadow var(--dur-state) var(--ease-move);
+}
+
+/* Open while the ring is in it: wider, with the names, over a dimmed page. The shadow
+   alone: the overlay's edge light would draw a line along the panel's top edge. */
+.tv-rail--open {
+  width: calc(var(--pad-page-x) + var(--rail-w-open));
+  box-shadow: var(--shadow-3);
+}
+
+.tv-rail-mark {
+  display: grid;
+  place-items: center;
+  width: var(--rail-item);
+  height: var(--rail-item);
+  margin-inline-start: calc((var(--rail-w) - var(--rail-item)) / 2);
+  border-radius: 50%;
+  background: var(--color-accent);
+  color: var(--color-text-on-accent);
+  font: var(--type-label);
+  font-stretch: var(--type-label-stretch);
+  letter-spacing: var(--type-label-tracking);
+}
+
+.tv-rail-items {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-2);
+  padding-inline: calc((var(--rail-w) - var(--rail-item)) / 2);
+}
+
+.tv-rail-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  width: var(--rail-item);
+  height: var(--rail-item);
+  padding-inline: calc((var(--rail-item) - var(--icon-size)) / 2);
+  border-radius: var(--radius-pill);
+  color: var(--rail-item-fg);
+  white-space: nowrap;
+}
+
+.tv-rail--open .tv-rail-item {
+  width: 100%;
+}
+
+/* The place on show. Amber on the icon, and in the open rail a raised ground too. */
+.tv-rail-item[aria-current="page"] {
+  color: var(--rail-item-fg-active);
+}
+
+.tv-rail--open .tv-rail-item[aria-current="page"] {
+  background: var(--color-surface-1);
+}
+
+.tv-rail-label {
+  display: none;
+  color: var(--color-text);
+  font: var(--type-label);
+  font-stretch: var(--type-label-stretch);
+  letter-spacing: var(--type-label-tracking);
+}
+
+.tv-rail--open .tv-rail-label {
+  display: inline;
+}
+
+/* The ring on a wide row needs no lift: the row is already the thing that moved. */
+:root[data-shell="tv"] .tv-rail--open .tv-rail-item[data-tv-focus] {
+  transform: none;
+  background: var(--color-surface-2);
+}
+
+/* ----- the page beside the rail ------------------------------------------------ */
+
+.tv-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  min-height: 100vh;
+  padding: var(--pad-page-y) var(--pad-page-x) calc(var(--pad-page-y) * 2) var(--tv-content-x);
+  transition: opacity var(--dur-state) var(--ease-out);
+}
+
+/* Behind the open rail: still there, plainly not where the ring is. */
+.tv-main--behind {
+  opacity: 0.35;
+}
+
+.tv-head {
+  font: var(--type-headline);
+  font-stretch: var(--type-headline-stretch);
+  letter-spacing: var(--type-headline-tracking);
+}
+
+/* A titled band: the label with its figure, then one row of stops. */
+.tv-band {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.tv-band-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.tv-band-title {
+  color: var(--color-text-2);
+  font: var(--type-section);
+  font-stretch: var(--type-section-stretch);
+  letter-spacing: var(--type-section-tracking);
+}
+
+.tv-band-meta {
+  color: var(--color-text-3);
+  font: var(--type-figure-s);
+  font-stretch: var(--type-figure-stretch);
+  font-variant-numeric: var(--type-figure-numeric);
+}
+
+/* A sideways row, edge to edge: it runs under the rail on the left and to the panel
+   edge on the right, and the first tile lines up with the page. The block padding is
+   room for the ring and its glow, given back by the margin. */
+.tv-row {
+  display: flex;
+  gap: var(--space-4);
+  margin: calc(-1 * var(--tv-ring-room)) calc(-1 * var(--pad-page-x)) calc(-1 * var(--tv-ring-room))
+    calc(-1 * var(--tv-content-x));
+  padding: var(--tv-ring-room) var(--pad-page-x) var(--tv-ring-room) var(--tv-content-x);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-padding-inline: var(--tv-content-x) var(--pad-page-x);
+  scrollbar-width: none;
+}
+
+.tv-row::-webkit-scrollbar {
+  display: none;
+}
+
+.tv-row--seasons {
+  gap: var(--space-5);
+}
+
+/* The ring of a tile goes on its still, not on the still and the words under it. */
+:root[data-shell="tv"] .ep-tile[data-tv-focus],
+:root[data-shell="tv"] .ep-tile[data-tv-item]:focus,
+:root[data-shell="tv"] .tv-season[data-tv-focus],
+:root[data-shell="tv"] .tv-season[data-tv-item]:focus {
+  box-shadow: none;
+  transform: none;
+}
+
+:root[data-shell="tv"] .ep-tile .thumb,
+:root[data-shell="tv"] .tv-season .ring {
+  transition:
+    transform var(--dur-focus) var(--ease-move),
+    box-shadow var(--dur-focus) var(--ease-move);
+}
+
+:root[data-shell="tv"] .ep-tile[data-tv-focus] .thumb,
+:root[data-shell="tv"] .ep-tile[data-tv-item]:focus .thumb,
+:root[data-shell="tv"] .tv-season[data-tv-focus] .ring,
+:root[data-shell="tv"] .tv-season[data-tv-item]:focus .ring {
+  box-shadow: var(--focus-ring);
+  transform: scale(var(--focus-scale));
+}
+
+/* The focused tile's name comes up to full strength. */
+:root[data-shell="tv"] .ep-tile .ep-tile-name {
+  color: var(--color-text-2);
+}
+
+:root[data-shell="tv"] .ep-tile[data-tv-focus] .ep-tile-name {
+  color: var(--color-text);
+}
+
+/* One season: its ring and how many are watched. */
+.tv-season {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* The season on screen in Seasons: a cream outline. Amber is the season you are on. */
+.tv-season[aria-current="page"] .ring {
+  box-shadow: 0 0 0 var(--focus-gap) var(--color-bg), 0 0 0 calc(var(--focus-gap) + var(--focus-width)) var(--color-text-3);
+}
+
+.tv-season-count {
+  color: var(--color-text-3);
+  font: var(--type-figure-s);
+  font-stretch: var(--type-figure-stretch);
+  font-variant-numeric: var(--type-figure-numeric);
+}
+
+.tv-season[data-tv-focus] .tv-season-count {
+  color: var(--color-text);
+}
+
+/* ----- home -------------------------------------------------------------------- */
+
+/* The episode to continue: the words and the one amber button, the still beside them. */
+.tv-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.85fr);
+  align-items: center;
+  gap: var(--space-8);
+  padding-top: var(--space-4);
+}
+
+.tv-hero-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.tv-hero-eyebrow {
+  color: var(--color-accent-text);
+  font: var(--type-section);
+  font-stretch: var(--type-section-stretch);
+  letter-spacing: var(--type-section-tracking);
+}
+
+.tv-hero-title {
+  font: var(--type-headline);
+  font-stretch: var(--type-headline-stretch);
+  letter-spacing: var(--type-headline-tracking);
+}
+
+.tv-hero-meta,
+.tv-hero-note {
+  color: var(--color-text-3);
+  font: var(--type-body-s);
+  font-stretch: var(--type-body-s-stretch);
+  font-variant-numeric: var(--type-figure-numeric);
+}
+
+.tv-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap-control);
+  margin-top: var(--space-4);
+}
+
+.tv-hero-still .thumb {
+  border-radius: var(--radius-card);
+}
+
+/* ----- loading, error, empty --------------------------------------------------- */
+
+.tv-loading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.tv-loading-row {
+  display: flex;
+  gap: var(--space-4);
+  overflow: hidden;
+}
+
+.tv-loading-row > * {
+  flex: none;
+  width: var(--tile-w);
+}
+
+.tv-gate {
+  display: grid;
+  place-items: center;
+  min-height: 60vh;
+}
+
+/* ----- seasons ----------------------------------------------------------------- */
+
+.tv-season-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.tv-season-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.tv-season-title {
+  font: var(--type-title);
+  font-stretch: var(--type-title-stretch);
+  letter-spacing: var(--type-title-tracking);
+}
+
+.tv-season-meta {
+  color: var(--color-text-3);
+  font: var(--type-body-s);
+  font-stretch: var(--type-body-s-stretch);
+  font-variant-numeric: var(--type-figure-numeric);
+}
+
+.tv-season-actions {
+  position: relative;
+  display: flex;
+  flex: none;
+}
+
+/* The picked season's episodes, as many to a line as fit. */
+.tv-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--tile-w), 1fr));
+  gap: var(--space-6) var(--space-4);
+}
+
+.tv-grid .ep-tile {
+  width: auto;
+}
+
+/* ----- settings ---------------------------------------------------------------- */
+
+.tv-settings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  max-width: 40rem;
+}
+
+.tv-account {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--pad-card);
+  border-radius: var(--radius-card);
+  background: var(--color-surface-1);
+}
+
+.tv-account-who {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.tv-account-email {
+  font: var(--type-item);
+  font-stretch: var(--type-item-stretch);
+  overflow-wrap: anywhere;
+}
+
+.tv-account-note {
+  color: var(--color-text-3);
+  font: var(--type-body-s);
+  font-stretch: var(--type-body-s-stretch);
+}
+
+.tv-account-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap-control);
+}
+
+.tv-settings-progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.tv-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.tv-stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-card);
+  background: var(--color-surface-1);
+}
+
+.tv-stat-value {
+  font: var(--type-figure-l);
+  font-stretch: var(--type-figure-stretch);
+  font-variant-numeric: var(--type-figure-numeric);
+}
+
+.tv-stat-label {
+  color: var(--color-text-3);
+  font: var(--type-label-s);
+  font-stretch: var(--type-label-s-stretch);
+  letter-spacing: var(--type-label-s-tracking);
+}
+
+.tv-settings-foot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  color: var(--color-text-3);
+  font: var(--type-body-s);
+  font-stretch: var(--type-body-s-stretch);
+}
+
+.tv-build {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.tv-build-commit {
+  font: var(--type-figure-s);
+  font-stretch: var(--type-figure-stretch);
+}
+
+/* A control as wide as its column says it has the ring with the ring alone: scaled,
+   it would grow past the column's edges. */
+:root[data-shell="tv"] .switch[data-tv-focus],
+:root[data-shell="tv"] .field-control[data-tv-focus] {
+  transform: none;
+}
+
+/* ----- sign-in ----------------------------------------------------------------- */
+
+.tv-signin {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-12);
+  min-height: 100vh;
+  padding: var(--pad-page-y) var(--pad-page-x);
+}
+
+.tv-signin-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  text-align: center;
+}
+
+.tv-signin-mark {
+  width: 6rem;
+  height: auto;
+  margin-bottom: var(--space-2);
+}
+
+.tv-signin-eyebrow {
+  color: var(--color-accent-text);
+  font: var(--type-section);
+  font-stretch: var(--type-section-stretch);
+  letter-spacing: var(--type-section-tracking);
+}
+
+.tv-signin-title {
+  font: var(--type-headline);
+  font-stretch: var(--type-headline-stretch);
+  letter-spacing: var(--type-headline-tracking);
+}
+
+.tv-signin-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: min(100%, 24rem);
+}
+
+.tv-signin-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.tv-signin-form .button {
+  margin-top: var(--space-2);
+}
+
+.tv-signin-links {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.tv-signin-guest {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-2);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-line);
+}
+
+.tv-signin-note {
+  color: var(--color-text-3);
+  font: var(--type-body-s);
+  font-stretch: var(--type-body-s-stretch);
+  text-align: center;
+}
+
+/* ----- player ------------------------------------------------------------------ */
+
+.tv-player {
+  position: relative;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--black);
+  color: var(--on-media-fg);
+  /* Text over a frame that changes every second: a shadow under all of it. */
+  text-shadow: var(--shadow-on-media);
+}
+
+.tv-player video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* `contain`: cropping the episode to fill the panel is worse than the bars. */
+  object-fit: contain;
+}
+
+.tv-player-spinner {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+/* What is playing, top left, shown with the chrome. */
+.tv-player-title {
+  position: absolute;
+  top: var(--pad-page-y);
+  right: var(--pad-page-x);
+  left: var(--pad-page-x);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  transition: opacity var(--dur-state) var(--ease-out);
+}
+
+.tv-player-title--hidden {
+  opacity: 0;
+}
+
+.tv-player-eyebrow {
+  color: var(--color-accent-text);
+  font: var(--type-section);
+  font-stretch: var(--type-section-stretch);
+  letter-spacing: var(--type-section-tracking);
+}
+
+.tv-player-heading {
+  font: var(--type-title);
+  font-stretch: var(--type-title-stretch);
+  letter-spacing: var(--type-title-tracking);
+}
+
+/* The bar and the buttons. They sit on the shelf's peek, so the slice of the first band
+   under them stays in view. */
+.tv-ctl {
+  position: absolute;
+  right: 0;
+  bottom: var(--shelf-peek);
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-12) var(--pad-page-x) var(--space-4);
+  background: linear-gradient(to top, rgb(var(--walnut-rgb) / 0.92) 35%, rgb(var(--walnut-rgb) / 0));
+  transition: opacity var(--dur-state) var(--ease-out);
+}
+
+/* Hidden, still focusable: the bar takes the ring in the frame the chrome comes back. */
+.tv-ctl--hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.tv-ctl-times {
+  display: flex;
+  justify-content: space-between;
+  font: var(--type-figure-s);
+  font-stretch: var(--type-figure-stretch);
+  font-variant-numeric: var(--type-figure-numeric);
+}
+
+/* The bar: a D-pad stop that says it has the ring by growing, not by a ring. */
+.tv-scrub {
+  position: relative;
+  height: var(--scrub-h);
+  border-radius: var(--radius-pill);
+  background: var(--color-track);
+  transition: height var(--dur-focus) var(--ease-move);
+}
+
+:root[data-shell="tv"] .tv-scrub[data-tv-focus],
+:root[data-shell="tv"] .tv-scrub[data-tv-item]:focus {
+  height: var(--scrub-h-active);
+  box-shadow: none;
+  transform: none;
+}
+
+.tv-scrub-buf,
+.tv-scrub-cur {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  border-radius: inherit;
+}
+
+.tv-scrub-buf {
+  background: rgb(var(--cream-rgb) / 0.32);
+}
+
+.tv-scrub-cur {
+  background: var(--progress-fill);
+}
+
+/* The playhead. Its `left` is written every frame, so only its size moves smoothly. */
+.tv-scrub-thumb {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 0.875rem;
+  height: 0.875rem;
+  border-radius: 50%;
+  background: var(--scrub-knob);
+  transform: translate(-50%, -50%);
+  transition:
+    width var(--dur-focus) var(--ease-move),
+    height var(--dur-focus) var(--ease-move);
+  pointer-events: none;
+}
+
+.tv-scrub[data-tv-focus] .tv-scrub-thumb {
+  width: 1.25rem;
+  height: 1.25rem;
+  box-shadow: var(--focus-glow);
+}
+
+/* Where a scrub would land, only while one is open. */
+.tv-scrub-ghost {
+  position: absolute;
+  top: 50%;
+  width: 0.25rem;
+  height: 1.5rem;
+  margin-left: -0.125rem;
+  border-radius: var(--radius-pill);
+  background: var(--color-text);
+  transform: translateY(-50%);
+  opacity: 0;
+  transition: opacity var(--dur-focus) var(--ease-out);
+}
+
+.tv-scrub-ghost--on {
+  opacity: 1;
+}
+
+/* Three cells: autoplay and "from the start", the transport centred, the quality.
+   `minmax(0, 1fr)` so a wide side cell cannot push the transport off centre. */
+.tv-ctl-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.tv-ctl-start,
+.tv-ctl-mid,
+.tv-ctl-end {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.tv-ctl-start {
+  justify-self: start;
+}
+
+.tv-ctl-mid {
+  justify-self: center;
+}
+
+.tv-ctl-end {
+  position: relative;
+  justify-self: end;
+}
+
+.tv-ctl-row .icon-button {
+  --icon-button-size: var(--transport);
+}
+
+.tv-ctl-row .icon-button .icon {
+  --icon-size: var(--transport-icon);
+}
+
+/* Play and pause: the one button aimed at without looking. */
+.tv-ctl-row .tv-ctl-play {
+  --icon-button-size: var(--transport-primary);
+  background: var(--transport-primary-bg);
+  color: var(--transport-primary-fg);
+}
+
+/* Autoplay as a labelled pill: the word and its switch, one stop. */
+.tv-ctl-autoplay {
+  width: auto;
+  min-height: var(--transport);
+  margin: 0;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-pill);
+  background: var(--on-media-bg);
+  color: var(--on-media-fg);
+}
+
+.tv-ctl-autoplay .switch-label {
+  font: var(--type-label-s);
+  font-stretch: var(--type-label-s-stretch);
+  letter-spacing: var(--type-label-s-tracking);
+  white-space: nowrap;
+}
+
+/* The rendition playing: text, so it grows to its label. */
+.tv-ctl-row .tv-ctl-quality {
+  width: auto;
+  min-width: var(--transport);
+  padding-inline: var(--space-4);
+  font: var(--type-figure-s);
+  font-stretch: var(--type-figure-stretch);
+}
+
+/* Directly above its button, over everything else in the chrome. */
+.tv-quality-menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + var(--space-3));
+  z-index: var(--z-menu);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 8rem;
+  padding: var(--space-2);
+  border-radius: var(--menu-radius);
+  background: var(--menu-bg);
+  box-shadow: var(--menu-shadow);
+  text-shadow: none;
+}
+
+.tv-quality-item {
+  min-height: var(--menu-item-h);
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-8);
+  color: var(--color-text-2);
+  font: var(--type-figure-s);
+  font-stretch: var(--type-figure-stretch);
+  text-align: start;
+}
+
+.tv-quality-item[aria-checked="true"] {
+  background: var(--color-surface-2);
+  color: var(--color-accent-text);
+}
+
+/* The episode shelf: a window at the bottom with the bands sliding inside it.
+   `overflow: hidden` crops a band to its peek, and keeps the focus engine's scroller
+   out, so the transform written from Kotlin is the one thing moving the column. */
+.tv-shelf {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: var(--shelf-h);
+  padding: 0 var(--pad-page-x);
+  overflow: hidden;
+  transition: opacity var(--dur-state) var(--ease-out);
+}
+
+.tv-shelf--hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* A ground only once the shelf is what the viewer reads, not while it is a peek. Nearly
+   solid under the tiles' words, which a bright frame would otherwise wash out, and a
+   short fade at the top so the picture above is not cut off by a hard edge. */
+.tv-shelf--raised {
+  background: linear-gradient(
+    to top,
+    rgb(var(--walnut-rgb) / 0.92) 70%,
+    rgb(var(--walnut-rgb) / 0.6) 88%,
+    rgb(var(--walnut-rgb) / 0)
+  );
+}
+
+.tv-shelf-track {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  transform: translateY(calc(var(--shelf-h) - var(--shelf-peek)));
+  transition: transform var(--dur-enter) var(--ease-move);
+}
+
+/* A shelf row runs to the panel's edges and starts at the shelf's own margin. */
+.tv-shelf .tv-row {
+  margin-inline: calc(-1 * var(--pad-page-x));
+  padding-inline: var(--pad-page-x);
+  scroll-padding-inline: var(--pad-page-x);
+}
+
+.tv-shelf .tv-band-title {
+  color: var(--on-media-fg);
+}
+
+/* The hairline, whenever the chrome is not there. */
+.tv-thinbar {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  transition: opacity var(--dur-state) var(--ease-out);
+}
+
+.tv-thinbar .progress {
+  border-radius: 0;
+}
+
+.tv-thinbar--hidden {
+  opacity: 0;
+}
+
+/* The scrub readout, the only sign a held press registered before the picture moves. */
+.tv-seek-osd {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  padding: var(--space-2) var(--space-6);
+  border-radius: var(--radius-16);
+  background: var(--color-scrim);
+  font: var(--type-figure-l);
+  font-stretch: var(--type-figure-stretch);
+  font-variant-numeric: var(--type-figure-numeric);
+  white-space: pre;
+  transform: translate(-50%, -50%);
+}
+
+/* The last minutes: the next episode, bottom right, above the chrome. Never a stop. */
+.tv-upnext {
+  position: absolute;
+  right: var(--pad-page-x);
+  bottom: calc(var(--shelf-peek) + 9rem);
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: min(23rem, calc(100% - 2 * var(--pad-page-x)));
+  text-shadow: none;
+}
+
+.tv-upnext-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-card);
+  background: var(--color-surface-1);
+  box-shadow: var(--elevation-float);
+}
+
+.tv-upnext-still {
+  flex: none;
+  width: 6rem;
+}
+
+.tv-upnext-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.tv-upnext-eyebrow {
+  color: var(--color-accent-text);
+  font: var(--type-label-s);
+  font-stretch: var(--type-label-s-stretch);
+  letter-spacing: var(--type-label-s-tracking);
+}
+
+.tv-upnext-title {
+  color: var(--color-text);
+  font: var(--type-item);
+  font-stretch: var(--type-item-stretch);
+}
+
+.tv-upnext-bar {
+  height: 0.25rem;
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: var(--color-track);
+}
+
+.tv-upnext-fill {
+  height: 100%;
+  background: var(--progress-fill);
+}
+
+/* ----- reduced motion ---------------------------------------------------------- */
+
+/* The durations are already zero (tokens.css). These move by transform or size and
+   are named so nothing slides even where a duration is stated here. */
+@media (prefers-reduced-motion: reduce) {
+  .tv-rail,
+  .tv-shelf-track,
+  .tv-scrub,
+  .tv-scrub-thumb {
+    transition: none;
+  }
 }

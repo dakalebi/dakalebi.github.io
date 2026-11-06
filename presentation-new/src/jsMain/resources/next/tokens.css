@@ -541,6 +541,16 @@
   --tile-w: 8.5rem;
   --tile-radius: var(--radius-12);
   --tile-number: var(--type-figure-l);
+  --rail-w-open: 14rem;
+  --tv-content-x: calc(var(--pad-page-x) + var(--rail-w) + var(--space-6)); /* where a page starts, past the rail */
+  /* around a row, so the ring and its glow are not clipped: the ring (0.375), the glow's
+     spread and blur (2.375), and a little for the lift */
+  --tv-ring-room: var(--space-12);
+  --shelf-h: 18rem; /* the player's episode shelf */
+  --shelf-peek: 4.5rem; /* how much of its first band shows at rest */
+  --transport: 3.25rem;
+  --transport-primary: 4.25rem;
+  --transport-icon: var(--fs-28);
 }
 
 /* ----- drive: glanceable, large targets ------------------------------------- */

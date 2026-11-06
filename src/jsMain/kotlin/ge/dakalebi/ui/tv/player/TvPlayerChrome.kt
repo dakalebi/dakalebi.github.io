@@ -61,10 +61,11 @@ internal fun TvPlayerChrome(
         // Hidden while the ring is down in the shelf, which is the other half of
         // the progressive reveal: the room the bands move into is the room the
         // transport was using. `.hide` is opacity, not `visibility`, so the bar
-        // stays focusable and Up out of the first band still finds it.
+        // stays focusable and Up out of the first band still finds it. Shown while a
+        // scrub is open too: the ghost knob on the bar is where it lands.
         classNames(
             "tv-ctl",
-            if (player.mode == Mode.Controls && player.shelfLevel == 0) null else "hide",
+            if (player.mode != Mode.Idle && player.shelfLevel == 0) null else "hide",
         )
         focusGroup("player-chrome", FocusAxis.Y)
     }) {

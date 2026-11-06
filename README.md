@@ -150,9 +150,12 @@ presentation-new/src/jsMain/kotlin/ge/dakalebi/next/
                  side menu around them, and the player (mini-player, sheet, panel)
   gallery/       every component in every state, on any /next/ page with ?gallery,
                  and on the pages that have no screens yet
+  tv/            the TV screens: sign-in, Home, Seasons, Settings, and the rail
+                 around them
   tv/focus/      D-pad navigation — geometry within a band, memory across bands
   tv/input/      one window listener and a layer stack, for the whole TV UI
-  tv/player/     the TV player's state, keys and video element
+  tv/player/     the TV player: its state, keys and video element, shared with the
+                 old TV UI, and the redesign's chrome and shelf
   drive/         the driving-mode player, its media session and wake lock
   player/        media helpers: the AirPlay clock, device checks, player keys
 

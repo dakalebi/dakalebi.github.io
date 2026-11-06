@@ -293,7 +293,7 @@ fun TvVideoPlayer(
             size = ProgressBarSize.Small,
             onMedia = true,
             attrs = {
-                classNames("tv-thinbar", if (player.mode == Mode.Controls) "hide" else null)
+                classNames("tv-thinbar", if (player.mode != Mode.Idle) "hide" else null)
                 attr("aria-hidden", "true")
             },
         )

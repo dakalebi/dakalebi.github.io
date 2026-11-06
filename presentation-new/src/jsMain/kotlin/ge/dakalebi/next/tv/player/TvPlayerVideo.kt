@@ -64,8 +64,11 @@ fun TvPlayerVideo(
         addEventListener("pause") {
             player.playing = false; player.buffering = false
             player.stopLoop()
-            // Paused chrome stays up: there is nothing to watch behind it.
-            player.mode = Mode.Controls
+            // Paused chrome stays up: there is nothing to watch behind it. Not
+            // mid-scrub: the scrub pauses the video itself and this event lands a
+            // moment later, so forcing Controls here ended the gesture it belongs
+            // to. OK then toggled play instead of committing, and the ghost went out.
+            if (player.mode != Mode.Scrubbing) player.mode = Mode.Controls
             events.onPause()
         }
         addEventListener("waiting") { player.buffering = refs.video?.paused == false }
