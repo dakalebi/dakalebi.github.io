@@ -55,5 +55,11 @@ kotlin {
             // `@JsModule` externals that use it are browser-only anyway.
             implementation(npm("firebase", "12.17.0"))
         }
+
+        commonTest.dependencies {
+            implementation(project(":testing"))
+            implementation(kotlin("test"))
+            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")
+        }
     }
 }

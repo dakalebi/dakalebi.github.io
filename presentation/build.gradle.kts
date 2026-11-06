@@ -43,9 +43,10 @@ kotlin {
         }
 
         commonTest.dependencies {
-            // Every unit test still lives here, including the ones for `:core`,
-            // `:domain` and `:data`. They move to their own modules in the
-            // cleanup phase. Test code only: the main classpath has no `:data`.
+            implementation(project(":testing"))
+            // The playback and settings-store tests run the real settings sync
+            // (`SyncedSettingsRepository`) over fakes. Test code only: the main
+            // classpath has no `:data`.
             implementation(project(":data"))
             implementation(kotlin("test"))
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")
