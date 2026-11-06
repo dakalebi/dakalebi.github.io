@@ -185,6 +185,9 @@ interface Strings {
     val back: String
     val previousEpisodes: String
     val nextEpisodes: String
+
+    /** The link from a row of next episodes to their whole season. */
+    val allEpisodes: String
     val nextEpisode: String
     val nextEpisodeAction: String
 

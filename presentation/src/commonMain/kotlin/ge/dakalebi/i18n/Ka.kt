@@ -122,6 +122,7 @@ object Ka : Strings {
     override val back = "უკან"
     override val previousEpisodes = "წინა სერიები"
     override val nextEpisodes = "შემდეგი სერიები"
+    override val allEpisodes = "ყველა სერია"
     override val nextEpisode = "შემდეგი სერია"
     override val nextEpisodeAction = "შემდეგი სერია"
     override val previousEpisodeAction = "წინა სერია"

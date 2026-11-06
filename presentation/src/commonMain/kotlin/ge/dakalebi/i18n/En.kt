@@ -122,6 +122,7 @@ object En : Strings {
     override val back = "Back"
     override val previousEpisodes = "Previously"
     override val nextEpisodes = "Up next"
+    override val allEpisodes = "All episodes"
     override val nextEpisode = "Next episode"
     override val nextEpisodeAction = "Next episode"
     override val previousEpisodeAction = "Previous episode"

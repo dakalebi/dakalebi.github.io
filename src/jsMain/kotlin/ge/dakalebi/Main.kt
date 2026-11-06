@@ -1,5 +1,6 @@
 package ge.dakalebi
 
+import ge.dakalebi.core.BuildInfo
 import ge.dakalebi.core.Log
 import ge.dakalebi.data.firebase.FirebaseConfig
 import ge.dakalebi.di.AppGraph
@@ -7,6 +8,7 @@ import ge.dakalebi.di.Provide
 import ge.dakalebi.i18n.S
 import ge.dakalebi.next.drive.DriveRoot
 import ge.dakalebi.next.tv.TvRoot
+import ge.dakalebi.next.web.AppBuild
 import ge.dakalebi.next.web.WebRoot
 import ge.dakalebi.ui.App
 import ge.dakalebi.ui.SetupNotice
@@ -80,7 +82,14 @@ fun main() {
                     when (shell) {
                         Shell.Tv -> TvRoot()
                         Shell.Drive -> DriveRoot()
-                        Shell.Web -> WebRoot()
+                        Shell.Web -> WebRoot(
+                            AppBuild(
+                                number = BuildInfo.BUILD_NUMBER,
+                                commit = BuildInfo.COMMIT,
+                                publishedAtMillis = BuildInfo.PUBLISHED_AT_MILLIS,
+                                commitUrl = BuildInfo.commitUrl,
+                            ),
+                        )
                     }
                 } else {
                     when (shell) {
