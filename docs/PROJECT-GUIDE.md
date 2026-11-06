@@ -216,16 +216,16 @@ unambiguous constructor calls.
 
 ### Tests on Node, not in a browser
 
-`:core`, `:domain` and `:shared` have no browser in them, so `./gradlew allTests`
-runs their tests on Node in about a second.
+`:core`, `:domain`, `:shared` and the `commonMain` half of `:data` have no browser
+in them, so `./gradlew allTests` runs their tests on Node in about a second.
 Standing up Karma and a headless Chrome to assert things about sorting would be
 slower and more fragile for no gain. The browser-facing code is tested by hand —
 see §8.
 
 That split is now Gradle modules rather than a convention, so the property is
-enforced by the compiler: none of the three depends on the root, `:domain` depends
-on nothing at all, and the browser is reachable from exactly three `expect`
-functions. See
+enforced by the compiler: no module depends on the root, `:domain` depends on
+nothing at all, and `:data` cannot see presentation or `i18n`. From `commonMain`,
+the browser is reachable only through three `expect` functions. See
 [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
 ### The cache serialises a DTO, not the domain model
@@ -950,7 +950,7 @@ retry.
 ## 8. What is verified, and what is not
 
 **Automated.** `./gradlew allTests`, on Node, in `:shared` for now (175 tests
-on 2026-11-06, covering `:core` and `:domain` too), run by CI on every pull request and before every publish: the watched threshold, the never-rewind guard, "continue watching"
+on 2026-11-06, covering `:core`, `:domain` and `:data` too), run by CI on every pull request and before every publish: the watched threshold, the never-rewind guard, "continue watching"
 and the next episode to play, ordering across season boundaries and the rest of a
 season, hash-route parsing, settings sync (the merge rules, the store, the device
 copy), guest sessions and guest storage, playback-failure classification, the

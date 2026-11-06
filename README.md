@@ -63,10 +63,10 @@ export JAVA_HOME=$(/usr/libexec/java_home -v 17)
 ./gradlew allTests
 ```
 
-The unit tests live in `:shared` for now, and test `:core` and `:domain` too. All
-three are plain Kotlin (no Compose HTML, no Firebase, no DOM), so the tests run on
-Node with no browser. `allTests` runs every module's tests. CI runs it on every
-pull request (`unit-tests`) and before every publish.
+The unit tests live in `:shared` for now, and test `:core`, `:domain` and the
+plain-Kotlin half of `:data` too. None of that needs a browser (no Compose HTML,
+no Firebase, no DOM), so the tests run on Node. `allTests` runs every module's
+tests. CI runs it on every pull request (`unit-tests`) and before every publish.
 
 ```bash
 ./gradlew jsBrowserDistribution
@@ -112,9 +112,10 @@ remote reaches the page, and what was verified:
 
 ## Layout
 
-Four Gradle modules, on the way to one per layer. The root is the web app. `:core`
-and `:domain` depend on nothing. `:shared` is the rest of what is not about being
-a web page, until `:data` and `:presentation` take it over.
+Five Gradle modules, on the way to one per layer. The root is the web app. `:core`
+and `:domain` depend on nothing, and `:data` implements the domain's
+repositories. `:shared` is the rest of what is not about being a web page, until
+`:presentation` takes it over.
 
 ```
 core/src/commonMain/kotlin/ge/dakalebi/core/
@@ -123,14 +124,18 @@ core/src/jsMain/kotlin/ge/dakalebi/core/
   *.js.kt        two platform halves: console, clock
 domain/src/commonMain/kotlin/ge/dakalebi/domain/
                  models, repository interfaces, use cases, pure queries
+data/src/commonMain/kotlin/ge/dakalebi/data/
+  formula/       the Formula API and its DTOs
+  local/         the catalog cache and device storage over a `KeyValueStore`
+                 (settings copy, guest progress, guest choice)
+data/src/jsMain/kotlin/ge/dakalebi/data/
+  firebase/      the Firestore and Auth SDK, behind the domain interfaces
+  local/         localStorage
+  formula/       the third platform half: a bare fetch
 shared/src/commonMain/kotlin/ge/dakalebi/
   presentation/  Compose state holders, error-to-text mapping, routes
-  data/          the Formula API, the catalog cache, device storage
-                 (settings copy, guest progress, guest choice)
   di/            the composition locals
   i18n/          every user-facing string, one file per language
-shared/src/jsMain/kotlin/ge/dakalebi/
-  *.js.kt        the third platform half: fetch
 
 src/jsMain/kotlin/ge/dakalebi/
   ui/            Compose HTML only: dashboard/, watch/, player/
@@ -139,8 +144,6 @@ src/jsMain/kotlin/ge/dakalebi/
   ui/tv/input/   one window listener and a layer stack, for the whole TV UI
   ui/drive/      driving mode: one native player and big controls
   ui/dev/        the fixture graph behind `?ui=demo`
-  data/firebase/ the Firestore and Auth SDK, behind the domain interfaces
-  data/local/    localStorage
   di/            the composition root that names the implementations
   Main.kt        the entry point
 src/jsMain/resources/
@@ -192,7 +195,7 @@ The consoles are yours; the code is already written against them.
 4. **Firestore Database** → create in production mode.
 5. **Project settings → General → Your apps → Web app** → register one and copy
    the config into
-   `src/jsMain/kotlin/ge/dakalebi/data/firebase/FirebaseConfig.kt`. Those keys
+   `data/src/jsMain/kotlin/ge/dakalebi/data/firebase/FirebaseConfig.kt`. Those keys
    are public by design: they identify the project, they authorize nothing.
 6. **Firestore → Rules** → paste `firebase/firestore.rules` and publish. These
    rules are the entire security boundary — there is no server behind them.
