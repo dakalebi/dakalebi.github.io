@@ -111,7 +111,7 @@ kotlin {
             }
             // Nothing in this module is testable without a browser and a
             // signed-in session, and there is no fake for either. Everything
-            // that can be tested lives in `:shared` and runs on Node in about a
+            // that can be tested lives in `:presentation` and runs on Node in about a
             // second, which is why there is no Karma here.
             testTask { enabled = false }
         }
@@ -125,15 +125,15 @@ kotlin {
             // BuildInfo.kt is always regenerated before compilation.
             kotlin.srcDir(generateBuildInfo)
             dependencies {
-                // Named directly rather than reached through `:shared`: the UI and
-                // the composition root use both, and `:shared` is going away.
+                // Named directly rather than reached through `:presentation`: the
+                // UI and the composition root use both.
                 implementation(project(":core"))
                 implementation(project(":domain"))
                 // Only the composition root (`di/`, `Main.kt`) and the fixture graph
                 // (`ui/dev/`) may name it. The rest of `ui/` reaches data through
                 // the domain interfaces. docs/ARCHITECTURE.md has the grep.
                 implementation(project(":data"))
-                implementation(project(":shared"))
+                implementation(project(":presentation"))
                 // The icon catalogue and the shared components. See the note on
                 // `includeBuild("keel")` in settings.gradle.kts for what this app
                 // still keeps its own CSS for, and the `jsProcessResources` block
@@ -141,13 +141,14 @@ kotlin {
                 implementation("io.github.bchmsl:keel")
                 implementation("org.jetbrains.compose.runtime:runtime:1.11.1")
                 // Compose HTML is Kotlin/JS only and has no multiplatform
-                // variant, so it cannot move into `:shared`.
+                // variant, and `:presentation` must not know how a screen is drawn,
+                // so it stays here.
                 implementation("org.jetbrains.compose.html:html-core:1.11.1")
                 implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
             }
         }
 
-        // No `jsTest`: the tests are in `:shared`, where the code they exercise
+        // No `jsTest`: the tests are in `:presentation`, where the code they exercise
         // now lives. `./gradlew jsNodeTest` still runs them.
     }
 }

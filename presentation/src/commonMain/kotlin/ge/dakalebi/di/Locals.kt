@@ -2,12 +2,14 @@ package ge.dakalebi.di
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.staticCompositionLocalOf
 import ge.dakalebi.domain.usecase.ResolveEpisodeVideo
 import ge.dakalebi.presentation.CatalogStore
 import ge.dakalebi.presentation.PreferencesStore
 import ge.dakalebi.presentation.Router
-import ge.dakalebi.presentation.SessionStore
+import ge.dakalebi.presentation.SessionUiState
+import ge.dakalebi.presentation.SessionViewModel
 import ge.dakalebi.presentation.SettingsStore
 import ge.dakalebi.presentation.ToastStore
 
@@ -32,7 +34,7 @@ private fun <T> local(name: String) = staticCompositionLocalOf<T> {
 
 val LocalRouter = local<Router>("LocalRouter")
 val LocalToasts = local<ToastStore>("LocalToasts")
-val LocalSession = local<SessionStore>("LocalSession")
+val LocalSession = local<SessionViewModel>("LocalSession")
 val LocalCatalog = local<CatalogStore>("LocalCatalog")
 val LocalSettings = local<SettingsStore>("LocalSettings")
 val LocalPreferences = local<PreferencesStore>("LocalPreferences")
@@ -46,7 +48,13 @@ val LocalResolveEpisodeVideo = local<ResolveEpisodeVideo>("LocalResolveEpisodeVi
 
 @Composable @ReadOnlyComposable fun toasts(): ToastStore = LocalToasts.current
 
-@Composable @ReadOnlyComposable fun session(): SessionStore = LocalSession.current
+@Composable @ReadOnlyComposable fun session(): SessionViewModel = LocalSession.current
+
+/**
+ * The session's current state, read so the caller recomposes when it changes.
+ * The actions are on [session].
+ */
+@Composable fun sessionState(): SessionUiState = LocalSession.current.state.collectAsState().value
 
 @Composable @ReadOnlyComposable fun catalog(): CatalogStore = LocalCatalog.current
 

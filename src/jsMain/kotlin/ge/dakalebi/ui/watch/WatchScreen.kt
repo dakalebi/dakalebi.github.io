@@ -15,7 +15,7 @@ import ge.dakalebi.di.LocalResolveEpisodeVideo
 import ge.dakalebi.di.catalog
 import ge.dakalebi.di.preferences
 import ge.dakalebi.di.router
-import ge.dakalebi.di.session
+import ge.dakalebi.di.sessionState
 import ge.dakalebi.di.settings
 import ge.dakalebi.di.toasts
 import ge.dakalebi.domain.model.Setting
@@ -63,7 +63,7 @@ import kotlin.math.min
 
 @Composable
 fun WatchScreen(episodeId: String) {
-    val session = session()
+    val sessionState = sessionState()
     val catalog = catalog()
     val toasts = toasts()
     val router = router()
@@ -73,7 +73,7 @@ fun WatchScreen(episodeId: String) {
 
     val scope = rememberCoroutineScope()
     // Whose progress this is: the account's, or a guest's on this device.
-    val uid = session.viewerId
+    val uid = sessionState.viewerId
     val refs = remember(episodeId) { WatchRefs() }
 
     var videoUrl by remember(episodeId) { mutableStateOf<String?>(null) }

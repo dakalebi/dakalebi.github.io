@@ -5,7 +5,7 @@ import androidx.compose.runtime.LaunchedEffect
 import ge.dakalebi.di.catalog
 import ge.dakalebi.di.router
 import ge.dakalebi.di.session
-import ge.dakalebi.di.settings
+import ge.dakalebi.di.sessionState
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
 import ge.dakalebi.presentation.Route
@@ -23,21 +23,21 @@ import org.jetbrains.compose.web.dom.Text
 fun App() {
     val router = router()
     val session = session()
+    val sessionState = sessionState()
     val catalog = catalog()
-    val settings = settings()
 
     val route = router.current
-    val loading = session.loading
-    val account = session.account
+    val loading = sessionState.loading
+    val account = sessionState.account
     // A guest gets the app too; only nobody at all gets the sign-in screen.
-    val viewer = session.viewer
+    val viewer = sessionState.viewer
 
+    // Settings sync and dropping the catalog on sign-out follow the session on
+    // their own (`SessionViewModel`). What is left here is this shell's: the
+    // sign-in screen has a route on the web, and the admin controls are only here.
     LaunchedEffect(loading, viewer, route) {
         if (loading) return@LaunchedEffect
         if (viewer == null) {
-            // Drop cached rows on sign-out rather than refetching: a refetch
-            // races the session teardown and comes back as permission errors.
-            catalog.reset()
             if (route !is Route.Login) router.replace(Route.Login)
         } else if (route is Route.Login) {
             router.replace(Route.Dashboard)
@@ -59,17 +59,10 @@ fun App() {
     // English one is worse than no attribute at all.
     LaunchedEffect(S.tag) { document.documentElement?.setAttribute("lang", S.tag) }
 
-    // Keyed on the uid alone so navigating does not re-run it. Tearing the
-    // listener down on sign-out matters: left attached, it keeps querying a
-    // document the signed-out client may no longer read. The account's uid, not
-    // the viewer's: a guest has no settings document and no admin entry, so for
-    // a guest this stops sync and settings stay on the device.
-    LaunchedEffect(account?.uid) {
-        val uid = account?.uid
-        if (uid == null) settings.stop() else settings.start(uid)
-        // Costs one document read, and only on sign-in or sign-out.
-        session.refreshAdminRights()
-    }
+    // Keyed on the uid alone so navigating does not re-run it. The account's uid,
+    // not the viewer's: a guest has no admin entry. Costs one document read, and
+    // only on sign-in or sign-out.
+    LaunchedEffect(account?.uid) { session.refreshAdminRights() }
 
     when {
         loading -> Div({ classes("center-note") }) { Text(S.loading) }

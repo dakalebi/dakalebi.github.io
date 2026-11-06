@@ -65,7 +65,7 @@ internal fun DriveHomeScreen(player: DrivePlayer) {
                     Div({ classes("drive-note") }) { Text(S.catalogUnavailable) }
                     Button({
                         classes("drive-btn")
-                        onClick { session.viewerId?.let { id -> scope.launch { catalog.ensureLoaded(id) } } }
+                        onClick { session.state.value.viewerId?.let { id -> scope.launch { catalog.ensureLoaded(id) } } }
                     }) { Text(S.retry.caps) }
                 }
                 episode == null -> Div({ classes("drive-note") }) { Text(S.emptyBody) }

@@ -14,7 +14,7 @@ import ge.dakalebi.core.Log
 import ge.dakalebi.di.LocalResolveEpisodeVideo
 import ge.dakalebi.di.catalog
 import ge.dakalebi.di.router
-import ge.dakalebi.di.session
+import ge.dakalebi.di.sessionState
 import ge.dakalebi.di.settings
 import ge.dakalebi.di.toasts
 import ge.dakalebi.domain.model.Episode
@@ -72,7 +72,7 @@ private class TvWatchRefs {
 @Composable
 fun TvWatchScreen(episodeId: String) {
     val catalog = catalog()
-    val session = session()
+    val sessionState = sessionState()
     val router = router()
     val settings = settings()
     val toasts = toasts()
@@ -99,7 +99,7 @@ fun TvWatchScreen(episodeId: String) {
     val preferredQuality = remember(episodeId) { settings[Setting.PreferredQuality] }
 
     // Whose progress this is: the account's, or a guest's on this device.
-    val uid = session.viewerId
+    val uid = sessionState.viewerId
     val episode = catalog.byId(episodeId)
     val entry = episode?.let { catalog.progress[it.id] }
     val savedSeconds = entry?.progressSeconds ?: 0

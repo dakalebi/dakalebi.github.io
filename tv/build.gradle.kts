@@ -3,7 +3,7 @@
  *
  * A deliberately tiny app: one Activity wrapping a WebView pointed at the live
  * `https://dakalebi.github.io/tv/`. The web app does all the work, so this module
- * depends on nothing but the Android framework — no AndroidX, no `:shared`, no
+ * depends on nothing but the Android framework — no AndroidX, no app module, no
  * Compose. That keeps the sideloaded APK small and removes every version-alignment
  * question a dependency would add.
  *

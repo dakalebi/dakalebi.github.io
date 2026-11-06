@@ -63,7 +63,7 @@ export JAVA_HOME=$(/usr/libexec/java_home -v 17)
 ./gradlew allTests
 ```
 
-The unit tests live in `:shared` for now, and test `:core`, `:domain` and the
+The unit tests live in `:presentation` for now, and test `:core`, `:domain` and the
 plain-Kotlin half of `:data` too. None of that needs a browser (no Compose HTML,
 no Firebase, no DOM), so the tests run on Node. `allTests` runs every module's
 tests. CI runs it on every pull request (`unit-tests`) and before every publish.
@@ -112,10 +112,10 @@ remote reaches the page, and what was verified:
 
 ## Layout
 
-Five Gradle modules, on the way to one per layer. The root is the web app. `:core`
-and `:domain` depend on no other module, and `:data` implements the domain's
-repositories. `:shared` is the rest of what is not about being a web page, until
-`:presentation` takes it over.
+Five Gradle modules, one per layer. The root is the web app. `:core` and
+`:domain` depend on no other module, `:data` implements the domain's
+repositories, and `:presentation` holds the screen state and strings, with no
+Compose HTML in it, so another front end can reuse it.
 
 ```
 core/src/commonMain/kotlin/ge/dakalebi/core/
@@ -133,10 +133,12 @@ data/src/jsMain/kotlin/ge/dakalebi/data/
   firebase/      the Firestore and Auth SDK, behind the domain interfaces
   local/         localStorage
   formula/       the third platform half: a bare fetch
-shared/src/commonMain/kotlin/ge/dakalebi/
-  presentation/  Compose state holders, error-to-text mapping, routes
+presentation/src/commonMain/kotlin/ge/dakalebi/
+  presentation/  stores and ViewModels, error-to-text mapping, routes
   di/            the composition locals
   i18n/          every user-facing string, one file per language
+presentation/src/jsMain/kotlin/ge/dakalebi/presentation/
+  HashRouter.kt  the browser's router: the location hash
 
 src/jsMain/kotlin/ge/dakalebi/
   ui/            Compose HTML only: dashboard/, watch/, player/

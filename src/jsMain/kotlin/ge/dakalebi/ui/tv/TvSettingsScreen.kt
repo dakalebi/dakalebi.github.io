@@ -13,6 +13,7 @@ import ge.dakalebi.domain.model.Setting
 import ge.dakalebi.di.catalog
 import ge.dakalebi.di.preferences
 import ge.dakalebi.di.session
+import ge.dakalebi.di.sessionState
 import ge.dakalebi.di.settings
 import ge.dakalebi.di.toasts
 import ge.dakalebi.i18n.I18n
@@ -54,6 +55,7 @@ fun TvSettingsScreen() {
     val settings = settings()
     val prefs = preferences()
     val session = session()
+    val sessionState = sessionState()
     val catalog = catalog()
     val toasts = toasts()
     val scope = rememberCoroutineScope()
@@ -174,7 +176,7 @@ fun TvSettingsScreen() {
         // A guest has nothing to sign out of, so the same row is their way to an
         // account. No confirmation: leaving guest mode loses nothing, the progress
         // stays on the device for next time.
-        if (session.isGuest) {
+        if (sessionState.isGuest) {
             Div({ classes("tv-row") }) {
                 Span({ classes("tv-row-label") }) { Text(S.signIn.caps) }
                 Div({
@@ -193,11 +195,11 @@ fun TvSettingsScreen() {
                     focusItem("sign-out")
                     // The visible text is the account, not the action, so the name has to
                     // carry both — "Sign out" alone would hide which account it signs out.
-                    actsAsButton(session.email?.let { "${S.signOut}: $it" } ?: S.signOut)
+                    actsAsButton(sessionState.email?.let { "${S.signOut}: $it" } ?: S.signOut)
                     // Asks first rather than signing out on the press: on a shared television
                     // a stray OK on this row should not drop the household back to a login.
                     onClick { confirmSignOut = true }
-                }) { Text(session.email ?: S.signOut.caps) }
+                }) { Text(sessionState.email ?: S.signOut.caps) }
             }
         }
 

@@ -64,7 +64,7 @@ import android.window.OnBackInvokedDispatcher
  *  - **A dead renderer.** [WebViewClient.onRenderProcessGone] must be handled or the
  *    whole process is killed; the shell rebuilds the WebView instead.
  *
- * A plain [Activity] on purpose: no AndroidX, no `:shared`, no Compose. The smallest
+ * A plain [Activity] on purpose: no AndroidX, no app module, no Compose. The smallest
  * possible sideload, and nothing to keep in version lockstep.
  */
 class MainActivity : Activity() {
