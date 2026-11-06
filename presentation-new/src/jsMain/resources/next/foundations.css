@@ -1,0 +1,272 @@
+/* =============================================================================
+   The foundations screen (`next/foundations/Foundations.kt`): what every /next/ page
+   shows until its shell has real screens. Goes when the last shell gets its screens.
+
+   Semantic tokens only. On TV it must fit a 960x540 panel without scrolling: a remote
+   cannot scroll a page with nothing focusable on it.
+   ========================================================================== */
+
+.fd {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-group);
+  width: 100%;
+  max-width: 90rem;
+  min-height: 100vh;
+  min-height: 100dvh;
+  margin-inline: auto;
+  padding: calc(var(--pad-page-y) + var(--safe-top)) max(var(--pad-page-x), var(--safe-right))
+    calc(var(--pad-page-y) + var(--safe-bottom)) max(var(--pad-page-x), var(--safe-left));
+}
+
+/* ----- header ----------------------------------------------------------------- */
+
+/* One row when it fits (TV, desktop, landscape); on a narrow screen the side group wraps
+   under the title instead of squeezing it. */
+.fd-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2) var(--gap-group);
+  padding-bottom: var(--gap-stack);
+  border-bottom: 1px solid var(--color-line);
+}
+
+.fd-head-side {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--gap-control);
+}
+
+.fd-eyebrow {
+  font: var(--type-meta);
+  font-stretch: var(--type-meta-stretch);
+  color: var(--color-accent-text);
+}
+
+.fd-title {
+  flex: 0 1 auto;
+  min-width: 0;
+  font: var(--type-headline);
+  font-stretch: var(--type-headline-stretch);
+  letter-spacing: var(--type-headline-tracking);
+  color: var(--color-text);
+}
+
+.fd-badge {
+  display: inline-flex;
+  flex: none;
+  align-items: baseline;
+  gap: var(--gap-inline);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--color-accent-soft);
+  color: var(--color-accent-text);
+  font: var(--type-label-s);
+  font-stretch: var(--type-label-s-stretch);
+  line-height: var(--lh-140);
+}
+
+.fd-badge-figure {
+  font: var(--type-figure-s);
+  font-stretch: var(--type-figure-stretch);
+  font-variant-numeric: var(--type-figure-numeric);
+  color: var(--color-text-2);
+}
+
+/* ----- layout ----------------------------------------------------------------- */
+
+.fd-grid {
+  display: grid;
+  gap: var(--gap-section);
+}
+
+.fd-column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-group);
+  min-width: 0;
+}
+
+/* Media queries measure rem at the browser's 16px, not the shell's root size, so this is
+   768 CSS px everywhere: a TV panel (960) and a phone in landscape get two columns. */
+@media (min-width: 48rem) {
+  .fd-grid {
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+.fd-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-stack);
+  min-width: 0;
+}
+
+.fd-section-title {
+  font: var(--type-section);
+  font-stretch: var(--type-section-stretch);
+  letter-spacing: var(--type-section-tracking);
+  color: var(--color-text-3);
+}
+
+/* ----- type ramp -------------------------------------------------------------- */
+
+.fd-ramp {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: baseline;
+  gap: var(--space-2) var(--gap-group);
+}
+
+/* Each row lends its two cells to the ramp's grid, so the role names line up. */
+.fd-row {
+  display: contents;
+}
+
+.fd-role {
+  font: var(--type-figure-s);
+  font-stretch: var(--type-figure-stretch);
+  color: var(--color-text-3);
+}
+
+/* One line per role, so the ramp keeps its height on every shell and TV never scrolls. */
+.fd-sample,
+.fd-figures {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--color-text);
+}
+
+.fd-figures {
+  display: flex;
+  align-items: baseline;
+  gap: var(--gap-group);
+}
+
+/* ----- colour ----------------------------------------------------------------- */
+
+.fd-swatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(4.5rem, 1fr));
+  gap: var(--space-3) var(--gap-control);
+}
+
+.fd-swatch {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.fd-chip {
+  height: var(--space-6);
+  border-radius: var(--radius-8);
+  /* Grounds darker than the page still show their edge. */
+  box-shadow: inset 0 0 0 1px var(--color-line);
+}
+
+.fd-swatch-name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font: var(--type-figure-s);
+  font-stretch: var(--type-figure-stretch);
+  color: var(--color-text-2);
+}
+
+/* ----- surface ---------------------------------------------------------------- */
+
+.fd-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3);
+  border-radius: var(--radius-card);
+  background: var(--color-surface-1);
+  box-shadow: var(--elevation-raised);
+}
+
+.fd-thumb {
+  position: relative;
+  flex: none;
+  width: 7.5rem;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: var(--radius-thumb);
+  background: var(--gradient-fallback);
+}
+
+.fd-thumb-figure {
+  position: absolute;
+  right: var(--space-2);
+  bottom: var(--space-1);
+  font: var(--type-figure-l);
+  font-stretch: var(--type-figure-stretch);
+  font-variant-numeric: var(--type-figure-numeric);
+  color: var(--color-on-media-text);
+  text-shadow: var(--shadow-on-media);
+}
+
+.fd-card-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.fd-card-eyebrow {
+  font: var(--type-label-s);
+  font-stretch: var(--type-label-s-stretch);
+  color: var(--color-accent-text);
+}
+
+.fd-card-title {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font: var(--type-title);
+  font-stretch: var(--type-title-stretch);
+  letter-spacing: var(--type-title-tracking);
+}
+
+.fd-progress {
+  height: 0.25rem;
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: var(--color-track);
+}
+
+.fd-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--color-fill);
+}
+
+.fd-card-meta {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font: var(--type-meta);
+  font-stretch: var(--type-meta-stretch);
+  color: var(--color-text-2);
+}
+
+/* ----- TV: one screen --------------------------------------------------------- */
+
+/* A remote cannot scroll a page with nothing focusable on it, so on TV the whole screen
+   fits 960x540 at the default interface size: tighter gaps, nothing else changes. */
+:root[data-shell="tv"] .fd,
+:root[data-shell="tv"] .fd-column {
+  gap: var(--gap-stack);
+}
+
+:root[data-shell="tv"] .fd-ramp {
+  row-gap: var(--space-1);
+}

@@ -134,6 +134,9 @@ kotlin {
                 // interfaces. docs/ARCHITECTURE.md has the grep.
                 implementation(project(":data"))
                 implementation(project(":presentation"))
+                // The redesign's UI. `Main.kt` draws it on the `/next/` pages only;
+                // its pages and stylesheets are copied in by `jsProcessResources` below.
+                implementation(project(":presentation-new"))
                 // The icon catalogue and the shared components. See the note on
                 // `includeBuild("keel")` in settings.gradle.kts for what this app
                 // still keeps its own CSS for, and the `jsProcessResources` block
@@ -171,4 +174,8 @@ kotlin {
  */
 tasks.named<Copy>("jsProcessResources") {
     from(rootProject.layout.projectDirectory.dir("keel/keel/src/jsMain/resources"))
+    // The same rule holds for `:presentation-new`: its `/next/` pages, tokens and
+    // stylesheets reach the distribution only through this line. Everything there
+    // sits under `next/`, so nothing it ships can replace a file of the old UI.
+    from(rootProject.layout.projectDirectory.dir("presentation-new/src/jsMain/resources"))
 }

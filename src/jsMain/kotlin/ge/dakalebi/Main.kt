@@ -5,12 +5,16 @@ import ge.dakalebi.data.firebase.FirebaseConfig
 import ge.dakalebi.di.AppGraph
 import ge.dakalebi.di.Provide
 import ge.dakalebi.i18n.S
+import ge.dakalebi.next.drive.DriveRoot
+import ge.dakalebi.next.tv.TvRoot
+import ge.dakalebi.next.web.WebRoot
 import ge.dakalebi.ui.App
 import ge.dakalebi.ui.SetupNotice
 import ge.dakalebi.ui.Shell
 import ge.dakalebi.ui.blockPinchZoom
 import ge.dakalebi.di.fixtureGraph
 import ge.dakalebi.ui.drive.DriveApp
+import ge.dakalebi.ui.isNextUi
 import ge.dakalebi.ui.shell
 import ge.dakalebi.ui.tv.TvApp
 import ge.dakalebi.ui.tv.applyInterfaceScale
@@ -67,14 +71,23 @@ fun main() {
     graph.session.start()
 
     // Which front end this page is comes from the document, not from the device.
-    // Both entry points load the same bundle; see `ui/Shell.kt`.
+    // Every page loads the same bundle; see `ui/Shell.kt`. The `/next/` pages draw
+    // the redesign (`:presentation-new`) on the same graph; the rest draw the old UI.
     val render = {
         renderComposable(rootElementId = "root") {
             graph.Provide {
-                when (shell) {
-                    Shell.Tv -> TvApp()
-                    Shell.Drive -> DriveApp()
-                    Shell.Web -> App()
+                if (isNextUi) {
+                    when (shell) {
+                        Shell.Tv -> TvRoot()
+                        Shell.Drive -> DriveRoot()
+                        Shell.Web -> WebRoot()
+                    }
+                } else {
+                    when (shell) {
+                        Shell.Tv -> TvApp()
+                        Shell.Drive -> DriveApp()
+                        Shell.Web -> App()
+                    }
                 }
             }
         }

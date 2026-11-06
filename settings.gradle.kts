@@ -29,6 +29,9 @@ include(":core")
 include(":domain")
 include(":data")
 include(":presentation")
+// The redesign's UI, with its own design system and no keel. It reuses
+// `:presentation` and is drawn on the `/next/` pages until the switch.
+include(":presentation-new")
 // Test doubles for the other modules' tests. Never a dependency of the app.
 include(":testing")
 

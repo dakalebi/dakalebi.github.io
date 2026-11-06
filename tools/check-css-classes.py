@@ -22,7 +22,9 @@ Two checks:
   2. Every class emitted by a composable that two or more shells render is defined in
      the linked stylesheets of each shell that renders it. This is the one above.
      There are three shells now: web at `/`, TV at `/tv/` and driving mode at
-     `/drive/`, all on the same bundle.
+     `/drive/`, all on the same bundle. Until the switch, the redesign
+     (`:presentation-new`) draws the same three on `/next/`, `/next/tv/` and
+     `/next/drive/`, which the check treats as three more pages.
 
 The unit here is the top-level declaration, not the file, and that distinction is
 load-bearing. `Components.kt` holds nine composables; TV renders exactly one of them
@@ -55,18 +57,31 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-KOTLIN = ROOT / "src/jsMain/kotlin"
+# The old UI is in the root module; the redesign is in `:presentation-new`.
+KOTLIN = [ROOT / "src/jsMain/kotlin", ROOT / "presentation-new/src/jsMain/kotlin"]
 DIST = ROOT / "build/dist/js/productionExecutable"
 
 # Each shell is its own page with its own stylesheet set, which is the whole point.
+# The `/next/` pages are the redesign's, drawn side by side with the old ones until the
+# switch. They link only the new sheets, so a class from the old UI is caught there too.
 SHELL_PAGES = {
     "/": DIST / "index.html",
     "/tv/": DIST / "tv/index.html",
     "/drive/": DIST / "drive/index.html",
+    "/next/": DIST / "next/index.html",
+    "/next/tv/": DIST / "next/tv/index.html",
+    "/next/drive/": DIST / "next/drive/index.html",
 }
 
 # Where each page starts drawing.
-SHELL_ROOTS = {"/": "App", "/tv/": "TvApp", "/drive/": "DriveApp"}
+SHELL_ROOTS = {
+    "/": "App",
+    "/tv/": "TvApp",
+    "/drive/": "DriveApp",
+    "/next/": "WebRoot",
+    "/next/tv/": "TvRoot",
+    "/next/drive/": "DriveRoot",
+}
 
 DECLARATION = re.compile(
     r"^(?:public |internal |private )*"
@@ -215,7 +230,7 @@ def main() -> int:
     if not DIST.exists():
         raise SystemExit(f"{DIST.relative_to(ROOT)} is missing. Run ./gradlew jsBrowserDistribution first.")
 
-    files = sorted(KOTLIN.rglob("*.kt"))
+    files = sorted(path for root in KOTLIN for path in root.rglob("*.kt"))
     decls = [decl for path in files for decl in parse(path)]
 
     by_name: dict[str, list[Decl]] = {}
