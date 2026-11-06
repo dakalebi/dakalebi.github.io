@@ -11,6 +11,7 @@ import ge.dakalebi.domain.repository.AccountRepository
 import ge.dakalebi.domain.repository.AdminRepository
 import ge.dakalebi.domain.repository.CatalogRepository
 import ge.dakalebi.domain.repository.GuestModeRepository
+import ge.dakalebi.domain.repository.ProgressRepository
 import ge.dakalebi.domain.repository.SettingsRepository
 import ge.dakalebi.domain.usecase.CheckAdminRights
 import ge.dakalebi.domain.usecase.ClearEpisodeProgress
@@ -64,7 +65,7 @@ fun sessionViewModel(
 
 fun catalogStore(
     catalog: CatalogRepository = StubCatalogRepository(),
-    progress: FakeProgressRepository = FakeProgressRepository(),
+    progress: ProgressRepository = FakeProgressRepository(),
 ): CatalogStore {
     val clock = FakeClock()
     return CatalogStore(

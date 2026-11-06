@@ -1,25 +1,23 @@
 package ge.dakalebi.ui.dashboard
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import ge.dakalebi.core.Log
 import ge.dakalebi.core.formatTime
 import ge.dakalebi.di.catalog
+import ge.dakalebi.di.rememberDashboardViewModel
 import ge.dakalebi.di.session
 import ge.dakalebi.di.sessionState
-import ge.dakalebi.di.toasts
 import ge.dakalebi.domain.model.Episode
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
-import ge.dakalebi.presentation.CatalogStore
+import ge.dakalebi.presentation.DashboardConfirm
 import ge.dakalebi.presentation.ErrorMessages
 import ge.dakalebi.presentation.Route
 import ge.dakalebi.presentation.Router
-import ge.dakalebi.presentation.ToastStore
 import ge.dakalebi.ui.ConfirmDialog
 import ge.dakalebi.ui.EpisodeTile
 import ge.dakalebi.ui.Rail
@@ -44,8 +42,6 @@ import io.github.bchmsl.keel.dom.dropdownAnchorClasses
 import io.github.bchmsl.keel.icons.Icon
 import io.github.bchmsl.keel.icons.LucideIcon
 import kotlin.math.roundToInt
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
 import org.jetbrains.compose.web.dom.A
 import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.H1
@@ -54,43 +50,27 @@ import org.jetbrains.compose.web.dom.Img
 import org.jetbrains.compose.web.dom.Span
 import org.jetbrains.compose.web.dom.Text
 
-private enum class Confirm { None, ResetAll, MarkSeason, ResetSeason }
-
+/**
+ * The home screen of the web shell.
+ *
+ * Its state and the changes it makes are [ge.dakalebi.presentation.DashboardViewModel]'s.
+ * The catalog and the progress it draws come from the catalog store, which every
+ * screen reads. Whether the menu is open is the one thing kept here, because
+ * nothing else cares.
+ */
 @Composable
 fun DashboardScreen() {
     val session = session()
     val sessionState = sessionState()
     val catalog = catalog()
-    val toasts = toasts()
-    val scope = rememberCoroutineScope()
-    // Whose progress this is: the account's, or a guest's on this device.
-    val uid = sessionState.viewerId
+    val dashboard = rememberDashboardViewModel()
+    val ui by dashboard.state.collectAsState()
 
     var menuOpen by remember { mutableStateOf(false) }
-    var confirm by remember { mutableStateOf(Confirm.None) }
-    var seasonOverride by remember { mutableStateOf<Int?>(null) }
-    var busy by remember { mutableStateOf(false) }
 
-    val season = seasonOverride ?: catalog.defaultSeason
+    val season = dashboard.season(ui)
     val episodes = season?.let { catalog.season(it) } ?: emptyList()
     val inProgress = catalog.inProgress(limit = 12)
-
-    fun act(label: String, block: suspend () -> Unit) {
-        if (busy) return
-        busy = true
-        confirm = Confirm.None
-        scope.launch {
-            try {
-                block()
-                toasts.ok(label)
-            } catch (e: Throwable) {
-                Log.e("dashboard", "action failed: $label", e)
-                toasts.error(S.actionFailed)
-            } finally {
-                busy = false
-            }
-        }
-    }
 
     Div {
         DashboardNav(onMenu = { menuOpen = true })
@@ -107,7 +87,7 @@ fun DashboardScreen() {
                 canRefresh = sessionState.isAdmin,
                 refreshing = catalog.refreshing,
                 note = catalog.refreshNote,
-                onRefresh = { scope.refreshCatalog(catalog, toasts) },
+                onRefresh = dashboard::refreshCatalog,
             )
 
             else -> {
@@ -144,7 +124,8 @@ fun DashboardScreen() {
                                 )
                             },
                             selected = season,
-                            onSelect = { seasonOverride = it },
+                            // Typed after `selected`, which is null before the catalog arrives.
+                            onSelect = { picked -> picked?.let(dashboard::pickSeason) },
                             ariaLabel = S.seasons,
                             style = SegmentedStyle.Rail,
                             // Only the page gutter is left: the rail's own scrolling,
@@ -162,9 +143,9 @@ fun DashboardScreen() {
                             }
                             Div({ classes("spacer") })
                             SeasonMenu(
-                                disabled = busy || season == null,
-                                onMark = { confirm = Confirm.MarkSeason },
-                                onReset = { confirm = Confirm.ResetSeason },
+                                disabled = ui.busy || season == null,
+                                onMark = { season?.let { dashboard.ask(DashboardConfirm.MarkSeason(it)) } },
+                                onReset = { season?.let { dashboard.ask(DashboardConfirm.ResetSeason(it)) } },
                             )
                         }
                         Div({ classes("grid") }) {
@@ -181,81 +162,52 @@ fun DashboardScreen() {
     if (menuOpen) {
         MenuSheet(
             onClose = { menuOpen = false },
-            onResetAll = { menuOpen = false; confirm = Confirm.ResetAll },
-            onRefresh = { scope.refreshCatalog(catalog, toasts) },
-            onSignOut = { scope.launch { session.signOut() } },
+            onResetAll = {
+                menuOpen = false
+                dashboard.ask(DashboardConfirm.ResetAll)
+            },
+            onRefresh = dashboard::refreshCatalog,
+            onSignOut = dashboard::signOut,
             onSignIn = {
                 menuOpen = false
                 session.leaveGuestMode()
             },
             onSwitchToGuest = {
                 menuOpen = false
-                scope.launch {
-                    runCatching { session.switchToGuest() }.onFailure {
-                        Log.e("auth", "switch to guest failed", it)
-                        toasts.error(S.actionFailed)
-                    }
-                }
+                dashboard.switchToGuest()
             },
-            busy = busy,
+            busy = ui.busy,
         )
     }
 
-    when (confirm) {
-        Confirm.ResetAll -> ConfirmDialog(
+    when (val confirm = ui.confirm) {
+        DashboardConfirm.ResetAll -> ConfirmDialog(
             title = S.resetAllTitle,
             body = S.resetAllBody,
             confirmLabel = S.resetAllConfirm.caps,
             destructive = true,
-            onConfirm = { uid?.let { id -> act(S.resetAllDone) { catalog.resetAll(id) } } },
-            onDismiss = { confirm = Confirm.None },
+            onConfirm = dashboard::confirm,
+            onDismiss = dashboard::dismiss,
         )
 
-        Confirm.MarkSeason -> ConfirmDialog(
+        is DashboardConfirm.MarkSeason -> ConfirmDialog(
             title = S.markSeasonTitle,
-            body = S.markSeasonBody("${season ?: ""}"),
+            body = S.markSeasonBody("${confirm.season}"),
             confirmLabel = S.markSeasonConfirm.caps,
-            onConfirm = {
-                val s = season
-                if (uid != null && s != null) {
-                    act(S.markSeasonDone) { catalog.markSeasonWatched(uid, s) }
-                }
-            },
-            onDismiss = { confirm = Confirm.None },
+            onConfirm = dashboard::confirm,
+            onDismiss = dashboard::dismiss,
         )
 
-        Confirm.ResetSeason -> ConfirmDialog(
+        is DashboardConfirm.ResetSeason -> ConfirmDialog(
             title = S.resetSeasonTitle,
-            body = S.resetSeasonBody("${season ?: ""}"),
+            body = S.resetSeasonBody("${confirm.season}"),
             confirmLabel = S.delete.caps,
             destructive = true,
-            onConfirm = {
-                val s = season
-                if (uid != null && s != null) {
-                    act(S.resetSeasonDone) { catalog.resetSeason(uid, s) }
-                }
-            },
-            onDismiss = { confirm = Confirm.None },
+            onConfirm = dashboard::confirm,
+            onDismiss = dashboard::dismiss,
         )
 
-        Confirm.None -> Unit
-    }
-}
-
-/**
- * Kicks off a rebuild and reports it.
- *
- * The store runs the work and owns the in-flight state; the words — the
- * progress counter and both outcomes — are chosen here, which is why this sits
- * in the UI rather than in the store.
- */
-private fun CoroutineScope.refreshCatalog(catalog: CatalogStore, toasts: ToastStore) {
-    launch {
-        catalog.refreshCatalog { done, total ->
-            if (total == 0) S.refreshingEpisodes else S.refreshSeasonProgress(done, total)
-        }
-            .onSuccess { toasts.ok(S.refreshed(it.episodes, it.written, it.withoutVideo)) }
-            .onFailure { toasts.error(ErrorMessages.catalogRefresh(it)) }
+        null -> Unit
     }
 }
 
