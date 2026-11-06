@@ -38,7 +38,8 @@ import org.jetbrains.compose.web.dom.Button as HtmlButton
  * - **Web and drive.** The overlay moves focus into itself when it opens, keeps Tab
  *   inside, closes on Escape, stops the page behind it from scrolling, and puts focus
  *   back on whatever opened it when it closes. The keys are read on the overlay's own
- *   element, never on `window`, so two overlays cannot fight over a key.
+ *   element, never on `window`, so two overlays cannot fight over a key. The phone's
+ *   Back gesture and the browser's Back button close it too, through [OverlayHistory].
  * - **TV.** The overlay pushes its own layer on the one [TvInput], which makes it the
  *   only thing the D-pad can reach and makes Back close it. When it closes, the ring goes
  *   back to the control that opened it.
@@ -76,6 +77,7 @@ private fun OverlayFocus(refs: OverlayRefs, layerKey: String, onDismiss: () -> U
         // the item itself is gone.
         val opener = document.activeElement as? HTMLElement
         val layer = input?.push(TvLayer(key = layerKey, root = { refs.panel }, onBack = { dismiss(); true }))
+        val history = if (input == null) OverlayHistory.open { dismiss() } else null
 
         val body = document.body
         val overflow = body?.style?.getPropertyValue("overflow").orEmpty()
@@ -95,6 +97,7 @@ private fun OverlayFocus(refs: OverlayRefs, layerKey: String, onDismiss: () -> U
         onDispose {
             window.clearTimeout(land)
             layer?.dismiss()
+            history?.let(OverlayHistory::close)
             if (input == null) body?.style?.setProperty("overflow", overflow)
             restoreFocus(opener, input)
         }
@@ -385,6 +388,7 @@ private fun Menu(
 
     DisposableEffect(Unit) {
         val layer = input?.push(TvLayer(key = "menu", root = { refs.panel }, onBack = { close(); true }))
+        val history = if (input == null) OverlayHistory.open { close() } else null
         // Every opening starts on the chosen row, else the first, in every shell. Named
         // here rather than left to the D-pad's memory, which would land on whatever row
         // the last opening was left on.
@@ -398,6 +402,7 @@ private fun Menu(
         onDispose {
             window.clearTimeout(land)
             layer?.dismiss()
+            history?.let(OverlayHistory::close)
             restoreFocus(document.getElementById(triggerId) as? HTMLElement, input)
         }
     }
