@@ -1,4 +1,4 @@
-package ge.dakalebi.ui
+package ge.dakalebi.next
 
 import kotlinx.browser.document
 import kotlinx.browser.window

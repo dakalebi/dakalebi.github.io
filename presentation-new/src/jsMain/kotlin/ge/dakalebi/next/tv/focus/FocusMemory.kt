@@ -1,4 +1,4 @@
-package ge.dakalebi.ui.tv.focus
+package ge.dakalebi.next.tv.focus
 
 /**
  * Where focus was, per group and per screen.
@@ -12,7 +12,7 @@ package ge.dakalebi.ui.tv.focus
  * sweeping down past a rail and back up returns to where you left it, not to its
  * first item.
  */
-internal object FocusMemory {
+object FocusMemory {
     private val inGroup = mutableMapOf<String, String>()
     private val inScreen = mutableMapOf<String, Pair<String, String>>()
 

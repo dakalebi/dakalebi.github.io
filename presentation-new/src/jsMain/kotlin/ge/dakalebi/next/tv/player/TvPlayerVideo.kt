@@ -1,18 +1,18 @@
-package ge.dakalebi.ui.tv.player
+package ge.dakalebi.next.tv.player
 
 import androidx.compose.runtime.Composable
-import ge.dakalebi.ui.player.PlayerEvents
+import ge.dakalebi.next.player.PlayerEvents
 import org.jetbrains.compose.web.dom.Video
 
 /**
- * [TvVideoPlayer]'s `<video>`: the element and every media event, each passed on to
+ * `TvVideoPlayer`'s `<video>`: the element and every media event, each passed on to
  * [events] after the player's own chrome has followed it.
  *
  * Carried over from the web player, which has been exercised against real playback,
  * less what a remote cannot produce: no click or double-click handling.
  */
 @Composable
-internal fun TvPlayerVideo(
+fun TvPlayerVideo(
     player: TvPlayerState,
     src: String,
     autoPlay: Boolean,

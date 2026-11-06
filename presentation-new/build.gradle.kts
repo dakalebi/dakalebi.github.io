@@ -5,6 +5,10 @@
 // UI only. The screen state, the routes and the strings are `:presentation`'s, and
 // this module reuses them as they are, so nothing here holds app state or rules.
 //
+// It also holds the engines that have no keel in them: which shell a page is, TV focus
+// and input, the TV and driving-mode players' state, and the media helpers. The old UI
+// imports them from here until the switch, so there is one copy of each.
+//
 // No keel, on purpose: this module has its own tokens, components and icons, and
 // keel stays the old UI's. docs/ARCHITECTURE.md has the grep that checks it.
 //

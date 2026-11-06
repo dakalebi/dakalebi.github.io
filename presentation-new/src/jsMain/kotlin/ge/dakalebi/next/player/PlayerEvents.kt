@@ -1,4 +1,4 @@
-package ge.dakalebi.ui.player
+package ge.dakalebi.next.player
 
 import org.w3c.dom.HTMLVideoElement
 

@@ -10,15 +10,15 @@ import ge.dakalebi.next.tv.TvRoot
 import ge.dakalebi.next.web.WebRoot
 import ge.dakalebi.ui.App
 import ge.dakalebi.ui.SetupNotice
-import ge.dakalebi.ui.Shell
-import ge.dakalebi.ui.blockPinchZoom
+import ge.dakalebi.next.Shell
+import ge.dakalebi.next.blockPinchZoom
 import ge.dakalebi.di.fixtureGraph
 import ge.dakalebi.ui.drive.DriveApp
-import ge.dakalebi.ui.isNextUi
-import ge.dakalebi.ui.shell
+import ge.dakalebi.next.isNextUi
+import ge.dakalebi.next.shell
 import ge.dakalebi.ui.tv.TvApp
-import ge.dakalebi.ui.tv.applyInterfaceScale
-import ge.dakalebi.ui.useFixtures
+import ge.dakalebi.next.tv.applyInterfaceScale
+import ge.dakalebi.next.useFixtures
 import kotlinx.browser.document
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
@@ -71,7 +71,7 @@ fun main() {
     graph.session.start()
 
     // Which front end this page is comes from the document, not from the device.
-    // Every page loads the same bundle; see `ui/Shell.kt`. The `/next/` pages draw
+    // Every page loads the same bundle; see `Shell.kt` in `:presentation-new`. The `/next/` pages draw
     // the redesign (`:presentation-new`) on the same graph; the rest draw the old UI.
     val render = {
         renderComposable(rootElementId = "root") {

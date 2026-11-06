@@ -1,4 +1,4 @@
-package ge.dakalebi.ui.player
+package ge.dakalebi.next.player
 
 import ge.dakalebi.presentation.Playhead
 import org.w3c.dom.HTMLVideoElement
@@ -8,7 +8,7 @@ import org.w3c.dom.HTMLVideoElement
  * screen and driving mode. The web watch screen corrects for AirPlay instead
  * (`ElementPlayhead`).
  */
-internal class VideoPlayhead(private val video: HTMLVideoElement) : Playhead {
+class VideoPlayhead(private val video: HTMLVideoElement) : Playhead {
     override val position: Double get() = video.currentTime
     override val duration: Double? get() = video.duration.takeIf { it.isFinite() && it > 0 }
 }

@@ -1,4 +1,4 @@
-package ge.dakalebi.ui.tv.focus
+package ge.dakalebi.next.tv.focus
 
 import org.jetbrains.compose.web.attributes.AttrsScope
 import org.w3c.dom.Element
@@ -23,7 +23,7 @@ enum class FocusAxis(internal val attr: String) { X("x"), Y("y"), Grid("grid") }
 
 internal const val GROUP_ATTR = "data-tv-group"
 internal const val AXIS_ATTR = "data-tv-axis"
-internal const val ITEM_ATTR = "data-tv-item"
+const val ITEM_ATTR = "data-tv-item"
 
 /**
  * Marks the one item the ring is on, maintained by the engine.

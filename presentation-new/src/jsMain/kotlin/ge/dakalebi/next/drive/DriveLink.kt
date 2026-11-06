@@ -1,8 +1,8 @@
-package ge.dakalebi.ui.drive
+package ge.dakalebi.next.drive
 
+import ge.dakalebi.next.useFixtures
 import ge.dakalebi.presentation.Route
 import ge.dakalebi.presentation.Router
-import ge.dakalebi.ui.useFixtures
 
 /**
  * Driving mode, as a link from the web page: its home, or [route] inside it.

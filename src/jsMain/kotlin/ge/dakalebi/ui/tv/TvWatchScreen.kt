@@ -20,12 +20,13 @@ import ge.dakalebi.domain.model.Episode
 import ge.dakalebi.domain.model.Setting
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
+import ge.dakalebi.next.player.PlayerEvents
+import ge.dakalebi.next.player.VideoPlayhead
+import ge.dakalebi.next.tv.TvConfig
+import ge.dakalebi.next.tv.input.TvInput
 import ge.dakalebi.presentation.ErrorMessages
 import ge.dakalebi.presentation.PlaybackError
 import ge.dakalebi.ui.Thumb
-import ge.dakalebi.ui.player.PlayerEvents
-import ge.dakalebi.ui.player.VideoPlayhead
-import ge.dakalebi.ui.tv.input.TvInput
 import ge.dakalebi.ui.tv.player.TvVideoPlayer
 import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.Text

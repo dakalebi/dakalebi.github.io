@@ -8,14 +8,16 @@ import ge.dakalebi.domain.model.Episode
 import ge.dakalebi.domain.model.WatchProgress
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
+import ge.dakalebi.next.tv.actsAsOption
+import ge.dakalebi.next.tv.actsAsOptionGroup
+import ge.dakalebi.next.tv.focus.Axis
+import ge.dakalebi.next.tv.focus.FocusAxis
+import ge.dakalebi.next.tv.focus.centre
+import ge.dakalebi.next.tv.focus.focusGroup
+import ge.dakalebi.next.tv.focus.focusItem
 import ge.dakalebi.presentation.Route
 import ge.dakalebi.presentation.Router
 import ge.dakalebi.ui.Thumb
-import ge.dakalebi.ui.tv.focus.Axis
-import ge.dakalebi.ui.tv.focus.FocusAxis
-import ge.dakalebi.ui.tv.focus.centre
-import ge.dakalebi.ui.tv.focus.focusGroup
-import ge.dakalebi.ui.tv.focus.focusItem
 import io.github.bchmsl.keel.components.SegmentedStyle
 import io.github.bchmsl.keel.dom.classNames
 import io.github.bchmsl.keel.dom.segmentedClasses
@@ -40,7 +42,7 @@ import org.w3c.dom.HTMLElement
  * is never loaded.
  *
  * An `<a href>` rather than a div with a handler, so `Enter` reaching it through
- * [ge.dakalebi.ui.tv.input.TvInput] is an ordinary click and the URL is real.
+ * [ge.dakalebi.next.tv.input.TvInput] is an ordinary click and the URL is real.
  */
 @Composable
 fun TvTile(episode: Episode, progress: WatchProgress?, entry: Boolean = false) {
@@ -166,7 +168,7 @@ fun TvSeasonRail(seasons: List<Int>, selected: Int?, onPick: (Int) -> Unit) {
                     Div({
                         classNames("tv-chip", segmentedLabelClasses())
                         // The current season is where a fresh Down onto the strip should
-                        // land, not season one. See [ge.dakalebi.ui.tv.focus.SpatialNav].
+                        // land, not season one. See [ge.dakalebi.next.tv.focus.SpatialNav].
                         focusItem("season-$season", entry = isSelected)
                         actsAsOption(selected = isSelected)
                         onClick { onPick(season) }

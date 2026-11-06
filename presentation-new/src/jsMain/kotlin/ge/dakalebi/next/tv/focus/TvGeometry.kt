@@ -1,4 +1,4 @@
-package ge.dakalebi.ui.tv.focus
+package ge.dakalebi.next.tv.focus
 
 import kotlinx.browser.window
 import org.w3c.dom.DOMRect

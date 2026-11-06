@@ -1,9 +1,9 @@
-package ge.dakalebi.ui.drive
+package ge.dakalebi.next.drive
 
 import ge.dakalebi.core.Log
 import ge.dakalebi.domain.model.Episode
 import ge.dakalebi.i18n.S
-import ge.dakalebi.ui.assetBase
+import ge.dakalebi.next.assetBase
 import kotlinx.browser.window
 import org.w3c.dom.HTMLVideoElement
 import org.w3c.dom.url.URL

@@ -19,9 +19,13 @@ import ge.dakalebi.di.toasts
 import ge.dakalebi.i18n.I18n
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
-import ge.dakalebi.ui.tv.focus.FocusAxis
-import ge.dakalebi.ui.tv.focus.focusGroup
-import ge.dakalebi.ui.tv.focus.focusItem
+import ge.dakalebi.next.tv.actsAsButton
+import ge.dakalebi.next.tv.actsAsOption
+import ge.dakalebi.next.tv.actsAsOptionGroup
+import ge.dakalebi.next.tv.applyInterfaceScale
+import ge.dakalebi.next.tv.focus.FocusAxis
+import ge.dakalebi.next.tv.focus.focusGroup
+import ge.dakalebi.next.tv.focus.focusItem
 import io.github.bchmsl.keel.components.ButtonVariant
 import io.github.bchmsl.keel.components.SegmentedStyle
 import io.github.bchmsl.keel.dom.buttonClasses

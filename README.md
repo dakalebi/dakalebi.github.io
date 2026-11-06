@@ -43,7 +43,7 @@ already cost time. Read it before changing behaviour.
 
 Each folder has its own `index.html` and stylesheet, and all three load the same
 `app.js`. The page says which UI it is with `data-shell` on its root element
-(`ui/Shell.kt`), so the choice never depends on sniffing the device.
+(`Shell.kt` in `:presentation-new`), so the choice never depends on sniffing the device.
 
 A fixture URL swaps Firebase for fake data, so every screen can be looked at
 without signing in. Add `&guest` to start as a guest. Fixture video links are fake,
@@ -141,12 +141,19 @@ presentation/src/jsMain/kotlin/ge/dakalebi/presentation/
   HashRouter.kt  the browser's router: the location hash
 testing/src/commonMain/kotlin/ge/dakalebi/testing/
                  test-only: the fakes the modules' tests share
+presentation-new/src/jsMain/kotlin/ge/dakalebi/next/
+                 the redesign's UI on the /next/ pages, and the engines the old UI
+                 shares with it until the switch:
+  Shell.kt       which UI a page is; PageZoom.kt stops pinch zoom
+  tv/focus/      D-pad navigation — geometry within a band, memory across bands
+  tv/input/      one window listener and a layer stack, for the whole TV UI
+  tv/player/     the TV player's state, keys and video element
+  drive/         the driving-mode player, its media session and wake lock
+  player/        media helpers: the AirPlay clock, device checks, player keys
 
 src/jsMain/kotlin/ge/dakalebi/
   ui/            Compose HTML only: dashboard/, watch/, player/
   ui/tv/         the 10-foot UI: a navigation rail, shelves, and a remote's player
-  ui/tv/focus/   D-pad navigation — geometry within a band, memory across bands
-  ui/tv/input/   one window listener and a layer stack, for the whole TV UI
   ui/drive/      driving mode: one native player and big controls
   di/            the composition roots that name the implementations: AppGraph,
                  and the fixture graph behind `?ui=demo`

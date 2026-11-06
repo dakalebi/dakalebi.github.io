@@ -7,9 +7,12 @@ import androidx.compose.runtime.remember
 import ge.dakalebi.di.rememberLoginViewModel
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
-import ge.dakalebi.ui.tv.focus.FocusAxis
-import ge.dakalebi.ui.tv.focus.focusGroup
-import ge.dakalebi.ui.tv.focus.focusItem
+import ge.dakalebi.next.Shell
+import ge.dakalebi.next.assetBase
+import ge.dakalebi.next.shell
+import ge.dakalebi.next.tv.focus.FocusAxis
+import ge.dakalebi.next.tv.focus.focusGroup
+import ge.dakalebi.next.tv.focus.focusItem
 import io.github.bchmsl.keel.components.Surface
 import io.github.bchmsl.keel.components.SurfacePadding
 import io.github.bchmsl.keel.components.ButtonVariant

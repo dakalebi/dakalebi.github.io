@@ -16,7 +16,7 @@ layer, with the web app on top.
 | `:domain` | models, repository interfaces, a use case per operation, pure queries | Depends on no other module, not even `:core`, and on one library: kotlinx-coroutines, for `Flow`. So "the domain names no framework" is the compile classpath and not only a convention |
 | `:data` | `commonMain`: the Formula API and DTOs, the settings sync (`SyncedSettingsRepository`), and the storage that is plain Kotlin over a `KeyValueStore`: the catalog cache, the settings device copy, guest progress, the guest choice, and `ViewerProgressRepository`, which routes progress between the account and the device. `jsMain`: `firebase` (Firestore and Auth through the JS SDK), `local` (the browser's `localStorage`), the system clock, and the bare GET | Every implementation of a domain repository. Depends on `:domain` and `:core` only, so it cannot name presentation, `i18n` or UI. Its caches are its own: no interface for them is in `:domain` |
 | `:presentation` | `commonMain`: the stores and ViewModels, the `Route` type, error wording, `i18n`, the composition locals. `jsMain`: `HashRouter` | The screen state and the strings, so a second front end reuses them instead of reimplementing them. Depends on `:domain`, `:core`, Compose runtime and coroutines, and never on Compose HTML or the component library, so a front end with a different look reuses it as it is. Only its tests depend on `:data` |
-| `:presentation-new` | `jsMain`: the redesign's UI (Compose HTML) for all three shells, and its design system: `next/tokens.css`, `next/base.css`, and the `/next/` pages | The redesign, built next to the old UI until the switch. Depends on `:presentation` and `:core`, and never on keel. Its pages and sheets reach the distribution through the root's `jsProcessResources`, like keel's. Phase 1 draws a foundations screen on each page |
+| `:presentation-new` | `jsMain`: the redesign's UI (Compose HTML) for all three shells, and its design system: `next/tokens.css`, `next/base.css`, and the `/next/` pages. Also the engines both UIs use: `Shell`, `PageZoom`, TV focus and input, the TV and driving-mode players' state, and the media helpers | The redesign, built next to the old UI until the switch. Depends on `:presentation` and `:core`, and never on keel. The old UI in root imports the engines from here, so there is one copy of each. Its pages and sheets reach the distribution through the root's `jsProcessResources`, like keel's. Phase 1 draws a foundations screen on each page |
 | `:testing` | the fakes the modules' tests share: a clock, in-memory storage, the account's settings document, progress storage, and builders for episodes and progress | Test code only. No module's main code depends on it, so none of it reaches the bundle. A module, because Kotlin Multiplatform gives one module's tests no way to use another module's test code |
 | root | `ui` (Compose HTML) for all three shells (`/`, `/tv/`, `/drive/`), the composition root, `Main.kt` | The web app. It also owns the webpack build, so the GitHub Pages artifact path never moves |
 
@@ -250,8 +250,12 @@ later state change is.
   | Player | State and actions | Around it |
   |---|---|---|
   | Web, `ui/player/` | `CustomPlayerState` | `CustomVideoPlayer` (effects, layout), `CustomPlayerVideo` (the element and its events), `CustomPlayerControls` |
-  | TV, `ui/tv/player/` | `TvPlayerState` | `TvVideoPlayer` (input layers, layout), `TvPlayerInput` (what each key does), `TvPlayerVideo`, `TvPlayerChrome` |
-  | Driving mode, `ui/drive/` | `DrivePlayer` (not Compose) | `DriveMediaSession`, `ScreenWakeLock`, `VideoFullscreen.kt` |
+  | TV, `ui/tv/player/` and `next/tv/player/` | `TvPlayerState` | `TvVideoPlayer` (input layers, layout), `TvPlayerInput` (what each key does), `TvPlayerVideo`, `TvPlayerChrome` |
+  | Driving mode, `next/drive/` | `DrivePlayer` (not Compose) | `DriveMediaSession`, `ScreenWakeLock`, `VideoFullscreen.kt` |
+
+  `next/` is `:presentation-new`. The parts with no keel moved there so the
+  redesign can use them: `TvPlayerState`, `TvPlayerInput`, `TvPlayerVideo` and the
+  whole driving-mode player. The screens around them stay in root `ui/`.
 
   The two Compose players hold their state in a plain class kept with `remember`,
   so the same state objects live as long as the old single composable's did and
@@ -274,11 +278,11 @@ later state change is.
 ## The one asymmetry in the TV focus engine
 
 Worth calling out because it looks like a bug and is not. In
-`ui/tv/focus/SpatialNav.kt`, a **rightward** press cannot leave an `X` or `Grid`
-group, and a **leftward** press can:
+`next/tv/focus/SpatialNav.kt` (`:presentation-new`), a **rightward** press cannot
+leave an `X` or `Grid` group, and a **leftward** press can:
 
 ```
-$ grep -A4 'private fun mayLeave' src/jsMain/kotlin/ge/dakalebi/ui/tv/focus/SpatialNav.kt
+$ grep -A4 'private fun mayLeave' presentation-new/src/jsMain/kotlin/ge/dakalebi/next/tv/focus/SpatialNav.kt
 ```
 
 Running out of shelf on the right is a wall because there is genuinely nothing over
@@ -315,7 +319,7 @@ and neither is a navigation. `TvInput`'s focus guardian exists for both.
 
 `tv.css` is written entirely in `rem` off one root font size, so the only way to
 resize the whole television interface is to change what a `rem` is — and the root
-element is outside the composition. `ui/tv/TvScale.kt` writes `--tv-scale` onto
+element is outside the composition. `next/tv/TvScale.kt` (`:presentation-new`) writes `--tv-scale` onto
 `document.documentElement` and the browser relays every length that hangs off it,
 which is cheap enough to apply on each press while the viewer is choosing.
 

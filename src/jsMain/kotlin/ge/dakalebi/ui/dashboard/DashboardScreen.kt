@@ -22,7 +22,7 @@ import ge.dakalebi.ui.ConfirmDialog
 import ge.dakalebi.ui.EpisodeTile
 import ge.dakalebi.ui.Rail
 import ge.dakalebi.ui.Thumb
-import ge.dakalebi.ui.assetBase
+import ge.dakalebi.next.assetBase
 import io.github.bchmsl.keel.components.Badge
 import io.github.bchmsl.keel.components.Button
 import io.github.bchmsl.keel.components.ButtonSize

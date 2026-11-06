@@ -5,11 +5,12 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
-import ge.dakalebi.ui.tv.focus.FocusAxis
-import ge.dakalebi.ui.tv.focus.SpatialNav
-import ge.dakalebi.ui.tv.focus.focusGroup
-import ge.dakalebi.ui.tv.focus.focusItem
-import ge.dakalebi.ui.tv.input.TvLayer
+import ge.dakalebi.next.tv.actsAsButton
+import ge.dakalebi.next.tv.focus.FocusAxis
+import ge.dakalebi.next.tv.focus.SpatialNav
+import ge.dakalebi.next.tv.focus.focusGroup
+import ge.dakalebi.next.tv.focus.focusItem
+import ge.dakalebi.next.tv.input.TvLayer
 import io.github.bchmsl.keel.components.ButtonVariant
 import io.github.bchmsl.keel.components.SurfacePadding
 import io.github.bchmsl.keel.dom.buttonClasses

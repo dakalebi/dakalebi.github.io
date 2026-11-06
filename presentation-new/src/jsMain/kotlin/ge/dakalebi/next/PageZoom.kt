@@ -1,4 +1,4 @@
-package ge.dakalebi.ui
+package ge.dakalebi.next
 
 import kotlinx.browser.document
 import org.w3c.dom.HTMLVideoElement
@@ -17,7 +17,7 @@ import kotlin.js.json
  * Not on a `<video>`: a pinch out on one is how iOS opens its fullscreen player, and
  * that has to keep working.
  */
-internal fun blockPinchZoom() {
+fun blockPinchZoom() {
     val cancel: (Event) -> Unit = { event ->
         if (event.target !is HTMLVideoElement) event.preventDefault()
     }

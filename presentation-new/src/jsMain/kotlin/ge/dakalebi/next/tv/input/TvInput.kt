@@ -1,11 +1,11 @@
-package ge.dakalebi.ui.tv.input
+package ge.dakalebi.next.tv.input
 
 import ge.dakalebi.core.Log
-import ge.dakalebi.ui.tv.TvConfig
-import ge.dakalebi.ui.tv.focus.Direction
-import ge.dakalebi.ui.tv.focus.FOCUS_ATTR
-import ge.dakalebi.ui.tv.focus.ITEM_ATTR
-import ge.dakalebi.ui.tv.focus.SpatialNav
+import ge.dakalebi.next.tv.TvConfig
+import ge.dakalebi.next.tv.focus.Direction
+import ge.dakalebi.next.tv.focus.FOCUS_ATTR
+import ge.dakalebi.next.tv.focus.ITEM_ATTR
+import ge.dakalebi.next.tv.focus.SpatialNav
 import kotlinx.browser.document
 import kotlinx.browser.window
 import org.w3c.dom.Element

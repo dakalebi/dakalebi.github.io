@@ -271,7 +271,7 @@ put the placeholder where their grammar needs it.
    shell: `App()`, `TvApp()` or `DriveApp()`.
 
 Which shell a page is comes from `data-shell` on its root element, read by
-`ui/Shell.kt`. A `?ui=` parameter can override it; names starting with `tv` or
+`Shell.kt` in `:presentation-new`. A `?ui=` parameter can override it; names starting with `tv` or
 `drive` pick those shells.
 
 `Provide` puts every store into a `staticCompositionLocalOf`. The locals have no
@@ -926,7 +926,7 @@ It has since iOS 10. The tag still stops pinch zoom on Android and in desktop
 device emulation, so all three pages carry it. On iOS, `touch-action:
 manipulation` kills double-tap zoom, and 16px form fields stop the focus zoom that
 used to leave you signing in on a sideways-scrolled page. A pinch is stopped by
-cancelling WebKit's own `gesturestart` and `gesturechange` (`ui/PageZoom.kt`,
+cancelling WebKit's own `gesturestart` and `gesturechange` (`PageZoom.kt` in `:presentation-new`,
 installed once in `main` for every shell). Not on a `<video>`: a pinch out there
 is how iOS opens its fullscreen player.
 

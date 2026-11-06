@@ -1,16 +1,16 @@
-package ge.dakalebi.ui.tv.player
+package ge.dakalebi.next.tv.player
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import ge.dakalebi.core.Log
 import ge.dakalebi.core.formatTime
+import ge.dakalebi.next.tv.TvConfig
+import ge.dakalebi.next.tv.focus.ENTRY_ATTR
+import ge.dakalebi.next.tv.focus.GROUP_ATTR
+import ge.dakalebi.next.tv.focus.ITEM_ATTR
+import ge.dakalebi.next.tv.focus.SpatialNav
 import ge.dakalebi.presentation.TvSeek
-import ge.dakalebi.ui.tv.TvConfig
-import ge.dakalebi.ui.tv.focus.ENTRY_ATTR
-import ge.dakalebi.ui.tv.focus.GROUP_ATTR
-import ge.dakalebi.ui.tv.focus.ITEM_ATTR
-import ge.dakalebi.ui.tv.focus.SpatialNav
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlinx.browser.document
@@ -19,11 +19,11 @@ import org.w3c.dom.HTMLElement
 import org.w3c.dom.HTMLVideoElement
 import org.w3c.dom.asList
 
-/** What the D-pad currently means. See [TvVideoPlayer] for the three. */
-internal enum class Mode { Idle, Controls, Scrubbing }
+/** What the D-pad currently means. See `TvVideoPlayer` for the three. */
+enum class Mode { Idle, Controls, Scrubbing }
 
 /** Mutable holders that must not trigger recomposition when they change. */
-internal class TvPlayerRefs {
+class TvPlayerRefs {
     var video: HTMLVideoElement? = null
     var container: HTMLElement? = null
     var fillCur: HTMLElement? = null
@@ -31,7 +31,7 @@ internal class TvPlayerRefs {
     var thumb: HTMLElement? = null
     var ghost: HTMLElement? = null
 
-    /** The sliding column of episode rails; see [TvVideoPlayer]'s note on the shelf. */
+    /** The sliding column of episode rails; see `TvVideoPlayer`'s note on the shelf. */
     var shelfTrack: HTMLElement? = null
 
     /** The quality menu, while it is open. Used as its own input layer's root. */
@@ -57,13 +57,13 @@ internal class TvPlayerRefs {
 }
 
 /**
- * What [TvVideoPlayer] knows and does: the element handles, the mode and the state the
+ * What `TvVideoPlayer` knows and does: the element handles, the mode and the state the
  * chrome draws, and the actions the remote, the buttons and the media events share.
  *
  * One per player, held with `remember`. The input layer ([playerLayer]), the element
- * ([TvPlayerVideo]) and the chrome ([TvPlayerChrome]) all act through it.
+ * ([TvPlayerVideo]) and the chrome (`TvPlayerChrome`) all act through it.
  */
-internal class TvPlayerState {
+class TvPlayerState {
     val refs = TvPlayerRefs()
     var mode by mutableStateOf(Mode.Controls)
     var playing by mutableStateOf(false)
@@ -159,7 +159,7 @@ internal class TvPlayerState {
      * The bands the shelf holds, in the order they are drawn.
      *
      * Read off the DOM rather than passed in, because the bands arrive through
-     * [TvVideoPlayer]'s `chromeExtra` and the player is not told what they are. One
+     * `TvVideoPlayer`'s `chromeExtra` and the player is not told what they are. One
      * focus group is one band: that is the only structural thing the shelf assumes
      * about the slot.
      */

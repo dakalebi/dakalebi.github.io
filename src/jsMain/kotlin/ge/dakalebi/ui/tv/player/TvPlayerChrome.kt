@@ -4,15 +4,17 @@ import androidx.compose.runtime.Composable
 import ge.dakalebi.core.formatTime
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
+import ge.dakalebi.next.tv.actsAsButton
+import ge.dakalebi.next.tv.actsAsOption
+import ge.dakalebi.next.tv.actsAsOptionGroup
+import ge.dakalebi.next.tv.focus.FocusAxis
+import ge.dakalebi.next.tv.focus.focusGroup
+import ge.dakalebi.next.tv.focus.focusItem
+import ge.dakalebi.next.tv.ownsPopup
+import ge.dakalebi.next.tv.player.Mode
+import ge.dakalebi.next.tv.player.TvPlayerState
 import ge.dakalebi.ui.Icon as PlayerIcon
 import ge.dakalebi.ui.Icons as PlayerIcons
-import ge.dakalebi.ui.tv.actsAsButton
-import ge.dakalebi.ui.tv.actsAsOption
-import ge.dakalebi.ui.tv.actsAsOptionGroup
-import ge.dakalebi.ui.tv.focus.FocusAxis
-import ge.dakalebi.ui.tv.focus.focusGroup
-import ge.dakalebi.ui.tv.focus.focusItem
-import ge.dakalebi.ui.tv.ownsPopup
 import io.github.bchmsl.keel.components.ButtonSize
 import io.github.bchmsl.keel.components.ButtonVariant
 import io.github.bchmsl.keel.components.SwitchSize

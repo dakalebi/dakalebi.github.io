@@ -2,6 +2,7 @@ package ge.dakalebi.ui.player
 
 import androidx.compose.runtime.Composable
 import ge.dakalebi.core.Log
+import ge.dakalebi.next.player.PlayerEvents
 import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.Video
 import org.w3c.dom.events.MouseEvent
