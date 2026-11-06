@@ -60,12 +60,13 @@ export JAVA_HOME=$(/usr/libexec/java_home -v 17)
 ```
 
 ```bash
-./gradlew :shared:jsNodeTest
+./gradlew allTests
 ```
 
 The unit tests live in `:shared`, which is plain Kotlin (no Compose HTML, no
-Firebase, no DOM), so they run on Node with no browser. CI does not run them, so
-run them before you open a pull request.
+Firebase, no DOM), so they run on Node with no browser. `allTests` runs every
+module's tests. CI runs it on every pull request (`unit-tests`) and before every
+publish.
 
 ```bash
 ./gradlew jsBrowserDistribution

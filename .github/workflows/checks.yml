@@ -65,6 +65,30 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+  # Every module's unit tests, on Node. `allTests` rather than one module's task, so
+  # a module added or removed by a refactor is covered without editing this file.
+  # Its own job, beside css-classes rather than inside it: the two answer different
+  # questions, a failure names which one broke, and the preview does not wait for it.
+  unit-tests:
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: true
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Unit tests
+        run: ./gradlew allTests
+
   preview:
     needs: css-classes
     if: github.event_name == 'pull_request' && github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository

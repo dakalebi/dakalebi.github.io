@@ -728,16 +728,16 @@ be checked out (`git submodule update --init keel`), or Gradle fails at
 configuration.
 
 ```bash
-./gradlew :shared:jsNodeTest      # the unit tests, on Node, no browser
+./gradlew allTests                # every module's unit tests, on Node, no browser
 ./gradlew jsBrowserDistribution   # production bundle -> build/dist/js/productionExecutable/
 python3 tools/check-css-classes.py   # after the build: every emitted class is styled on its shell
 ```
 
 The CSS check reads the built stylesheets of each shell (`/`, `/tv/`, `/drive/`)
 and fails when a composable emits a class that a page drawing it does not load.
-It runs in CI as `css-classes`, and `master` requires it. That job only builds the
-bundle and runs this check. It does not run the unit tests, so run
-`:shared:jsNodeTest` yourself before opening a pull request.
+It runs in CI as `css-classes`, and `master` requires it. That job builds the
+bundle and runs this check. The unit tests run beside it as `unit-tests`, and
+`deploy.yml` and `redesign.yml` run both before they publish.
 
 Local preview is a static server over the built output — see
 `.claude/launch.json`. Do **not** start dev servers from a shell.
@@ -751,8 +751,9 @@ Local preview is a static server over the built output — see
 | That pull request closed | removes `/pr/<number>/` | `checks.yml`, `remove-preview` job |
 | Push to `redesign/develop` | `/redesign/`, with `/redesign/tv/` and `/redesign/drive/` inside it | `redesign.yml` |
 
-`deploy.yml`, `redesign.yml` and the `preview` job build and run the CSS check,
-then call the reusable `publish.yml`; `remove-preview` calls it with no build:
+`deploy.yml` and `redesign.yml` run the unit tests, build and run the CSS check;
+the `preview` job takes the build `css-classes` made. All three then call the
+reusable `publish.yml`; `remove-preview` calls it with no build:
 
 - **`write`** runs `tools/publish-site.sh <folder> <build>`. The site's state is
   the `gh-pages` branch, kept as **one commit with no history**. The script
@@ -947,8 +948,8 @@ retry.
 
 ## 8. What is verified, and what is not
 
-**Automated.** `./gradlew :shared:jsNodeTest`, on Node, in `:shared` (175 tests
-on 2026-11-05): the watched threshold, the never-rewind guard, "continue watching"
+**Automated.** `./gradlew allTests`, on Node, in `:shared` (175 tests
+on 2026-11-06), run by CI on every pull request and before every publish: the watched threshold, the never-rewind guard, "continue watching"
 and the next episode to play, ordering across season boundaries and the rest of a
 season, hash-route parsing, settings sync (the merge rules, the store, the device
 copy), guest sessions and guest storage, playback-failure classification, the

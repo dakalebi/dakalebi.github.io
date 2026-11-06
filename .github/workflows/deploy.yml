@@ -76,6 +76,12 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      # Blocks the publish, like the CSS check below: a rule that fails its test
+      # (the watched threshold, the never-rewind guard, settings sync) does not
+      # reach the live site.
+      - name: Unit tests
+        run: ./gradlew allTests
+
       - name: Build Kotlin/JS bundle
         run: ./gradlew jsBrowserDistribution
 
