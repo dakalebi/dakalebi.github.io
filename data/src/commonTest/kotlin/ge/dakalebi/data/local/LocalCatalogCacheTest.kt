@@ -2,6 +2,7 @@ package ge.dakalebi.data.local
 
 import ge.dakalebi.domain.model.Episode
 import ge.dakalebi.testing.FakeKeyValueStore
+import ge.dakalebi.testing.caveaOnlyEpisode
 import ge.dakalebi.testing.episode
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -55,7 +56,7 @@ class LocalCatalogCacheTest {
      * The failure this is really guarding against is a field quietly dropped by
      * the stored shape, which would not fail to compile and would not fail to
      * decode — it would just serve episodes with a missing runtime or no video
-     * URL. So every one of the thirteen fields carries a distinct value.
+     * URL. So every one of the fourteen fields carries a distinct value.
      */
     @Test
     fun every_episode_field_survives_the_round_trip() {
@@ -78,6 +79,7 @@ class LocalCatalogCacheTest {
             episodePageUrl = "https://example.invalid/e/531",
             lastResolvedAtMillis = 1_700_000_000_000.0,
             updatedAtMillis = 1_700_000_001_000.0,
+            caveaEpisodeId = "6d5e0a40-3045-11ed-b171-093ad0cab9c3",
         )
 
         cache.write(stamp = 42.0, episodes = listOf(original))
@@ -85,10 +87,23 @@ class LocalCatalogCacheTest {
         assertEquals(listOf(original), cache.read(stamp = 42.0))
     }
 
+    /** Its Formula fields are empty, not zero: zero would make it a Formula episode with id 0. */
+    @Test
+    fun an_episode_only_cavea_has_survives_the_round_trip() {
+        val cache = cache(FakeKeyValueStore())
+        val only = caveaOnlyEpisode(19, 4)
+
+        cache.write(stamp = 42.0, episodes = listOf(episode(1, 1), only))
+
+        val read = cache.read(stamp = 42.0)!!.last()
+        assertEquals(only, read)
+        assertTrue(read.isCaveaOnly)
+    }
+
     @Test
     fun a_corrupt_entry_is_discarded_rather_than_thrown() {
         val store = FakeKeyValueStore()
-        store.entries["catalog_cache_v1"] = "{not json"
+        store.entries["catalog_cache_v2"] = "{not json"
         val cache = cache(store)
 
         assertNull(cache.read(stamp = 100.0))

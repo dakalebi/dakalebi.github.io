@@ -112,6 +112,7 @@ object En : Strings {
     override val watchedLabel = "Watched"
     override val startedLabel = "Started"
     override val noVideo = "No video"
+    override val onCavea = "On Cavea Plus"
     override val copyEpisodeLink = "Copy episode link"
     override val copyMp4Link = "Copy MP4 link"
     override val episodeLinkCopied = "Episode link copied"
@@ -131,11 +132,14 @@ object En : Strings {
     override val markAsWatched = "Mark as watched"
     override val watchedTick = "✓  Watched"
     override val openOnFormula = "Open on Formula"
+    override val openOnCavea = "Open on Cavea Plus"
     override val episodeNotFound = "Episode not found"
     override val videoLinkFailed = "Could not get the video link"
     override val videoLoadFailed = "Could not load the video"
     override val videoUnsupportedOnAppleMobile =
         "This video does not play in the browser on iPhone or iPad. Open it in the free VLC app, or on a computer."
+    override val videoOnlyOnCavea = "This episode is only on Cavea Plus"
+    override val scanToOpenOnCavea = "Scan with your phone to watch it on Cavea Plus"
     override val openInVlc = "Open in VLC"
     override val retryingVideo = "Retrying…"
     override val markedAsWatched = "Marked as watched"
@@ -178,9 +182,15 @@ object En : Strings {
     override val dataLoadFailed = "Could not load the data"
 
     override fun refreshSeasonProgress(done: Int, total: Int) = "Season $done / $total"
-    override fun refreshed(episodes: Int, changed: Int, withoutVideo: Int): String {
+    override fun refreshed(episodes: Int, changed: Int?, withoutVideo: Int, caveaListed: Int?, caveaOnly: Int): String {
+        val formula = if (changed == null) "Formula list not updated" else "$episodes episodes, $changed changed"
         val missing = if (withoutVideo > 0) " · $withoutVideo without video" else ""
-        return "Refreshed: $episodes episodes, $changed changed$missing"
+        val cavea = when {
+            caveaListed == null -> " · Cavea Plus list not updated"
+            caveaOnly > 0 -> " · Cavea Plus: $caveaListed, $caveaOnly only there"
+            else -> " · Cavea Plus: $caveaListed"
+        }
+        return "Refreshed: $formula$missing$cavea"
     }
 
     // ----------------------------------------------------------- player

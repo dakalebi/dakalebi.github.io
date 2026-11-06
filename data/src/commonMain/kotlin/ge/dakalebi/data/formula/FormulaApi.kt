@@ -9,8 +9,10 @@ import kotlinx.serialization.json.Json
  * (verified, including the OPTIONS preflight) — which is what lets the whole app
  * be a static bundle with no backend. The matching rule, that no custom headers
  * may be sent, lives on [httpGetText] where it can be enforced.
+ *
+ * [fetch] is that GET, replaced in tests by canned answers.
  */
-class FormulaApi {
+class FormulaApi(private val fetch: suspend (url: String, timeoutMillis: Int?) -> String = ::httpGetText) {
     private val json = Json {
         ignoreUnknownKeys = true
         coerceInputValues = true
@@ -18,7 +20,7 @@ class FormulaApi {
     }
 
     private suspend fun getText(path: String, timeoutMillis: Int? = null): String =
-        httpGetText("$BASE/$path", timeoutMillis)
+        fetch("$BASE/$path", timeoutMillis)
 
     /** All seasons of a series, oldest first. */
     suspend fun fetchSeasons(seriesId: Int = SERIES_ID): List<FormulaSeason> =

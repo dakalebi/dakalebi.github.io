@@ -1,5 +1,6 @@
 package ge.dakalebi.data.formula
 
+import ge.dakalebi.domain.model.Episode
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -129,3 +130,29 @@ fun FormulaEpisode.thumbnailUrl(): String? =
 /** Public watch page on Formula, used as the "open on Formula" fallback. */
 fun episodePageUrl(formulaEpisodeId: Int): String =
     "https://tv.formula.ge/tvseries/player/$formulaEpisodeId/main"
+
+/**
+ * This episode as the catalog stores it, fetched at [nowMillis].
+ *
+ * The runtime is left empty: Formula never reports it, so it is only ever learned
+ * from the player, and the write that stores this keeps the stored one.
+ */
+internal fun FormulaEpisode.toEpisode(seasonNumber: Int, formulaSeasonId: Int, nowMillis: Double): Episode {
+    val sources = qualitySources()
+    val video = sources.values.firstOrNull()
+    return Episode(
+        id = id.toString(),
+        formulaEpisodeId = id,
+        formulaSeasonId = formulaSeasonId,
+        seasonNumber = seasonNumber,
+        episodeNumber = episodeNumber,
+        title = displayTitle,
+        thumbnailUrl = thumbnailUrl(),
+        videoUrl = video,
+        sources = sources,
+        durationSeconds = null,
+        episodePageUrl = episodePageUrl(id),
+        lastResolvedAtMillis = if (video != null) nowMillis else null,
+        updatedAtMillis = nowMillis,
+    )
+}

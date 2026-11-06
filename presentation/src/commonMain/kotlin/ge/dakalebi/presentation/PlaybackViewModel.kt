@@ -4,6 +4,7 @@ import ge.dakalebi.core.Log
 import ge.dakalebi.domain.model.Episode
 import ge.dakalebi.domain.model.Setting
 import ge.dakalebi.domain.service.PlaybackFailure
+import ge.dakalebi.domain.service.caveaWatchUrl
 import ge.dakalebi.domain.service.defaultQualityLabel
 import ge.dakalebi.domain.service.playbackFailure
 import ge.dakalebi.domain.service.retryUrl
@@ -56,6 +57,12 @@ enum class PlaybackError {
 
     /** See [PlaybackFailure.LoadFailed]. */
     LoadFailed,
+
+    /**
+     * Only Cavea Plus has this episode, so there is nothing to play here. Cavea's
+     * streams are DRM-protected; [PlaybackUiState.caveaUrl] is where it plays.
+     */
+    OnlyOnCavea,
 }
 
 /** What the watch screen draws. */
@@ -77,7 +84,15 @@ data class PlaybackUiState(
      */
     val position: Int? = null,
     val promptDismissed: Boolean = false,
+    /** This episode's page on Cavea Plus, or null when Cavea does not list it. */
+    val caveaUrl: String? = null,
 ) {
+    /**
+     * Whether to offer Cavea Plus: it has the episode, and it is not playing here,
+     * because Formula has no link, the file failed, or Formula lacks the episode.
+     */
+    val offersCavea: Boolean get() = caveaUrl != null && error != null
+
     /**
      * Whether the next-episode card is due. The screen adds what this cannot know:
      * that there is a next episode, and that its player can draw an overlay at all.
@@ -179,8 +194,9 @@ class PlaybackViewModel(
      * [PlaybackUiState.resolving] stays as it was.
      */
     fun startFrom(episode: Episode) {
+        if (episode.isCaveaOnly) return onlyOnCavea(episode)
         val (quality, url) = choose(episode.sources, episode.videoUrl)
-        setState { copy(sources = episode.sources, quality = quality, videoUrl = url) }
+        setState { copy(sources = episode.sources, quality = quality, videoUrl = url, caveaUrl = caveaUrlOf(episode)) }
     }
 
     /**
@@ -191,7 +207,9 @@ class PlaybackViewModel(
      * is always the one the quality menu names.
      */
     suspend fun resolve(episode: Episode) {
-        setState { copy(resolving = true, error = null) }
+        // Formula does not have it, so there is nobody to ask.
+        if (episode.isCaveaOnly) return onlyOnCavea(episode)
+        setState { copy(resolving = true, error = null, caveaUrl = caveaUrlOf(episode)) }
         val resolved = resolveEpisodeVideo(episode)
         if (resolved !== episode) catalog.putEpisode(resolved)
 
@@ -207,6 +225,22 @@ class PlaybackViewModel(
             )
         }
     }
+
+    /** An episode only Cavea Plus has: settled at once, with its Cavea page and no file. */
+    private fun onlyOnCavea(episode: Episode) {
+        setState {
+            copy(
+                resolving = false,
+                sources = emptyMap(),
+                quality = null,
+                videoUrl = null,
+                error = PlaybackError.OnlyOnCavea,
+                caveaUrl = caveaUrlOf(episode),
+            )
+        }
+    }
+
+    private fun caveaUrlOf(episode: Episode): String? = episode.caveaEpisodeId?.let(::caveaWatchUrl)
 
     /** The label and the file it names. [fallbackUrl] only when [sources] has no label to offer. */
     private fun choose(sources: Map<String, String>, fallbackUrl: String?): Pair<String?, String?> {

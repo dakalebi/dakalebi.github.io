@@ -4,6 +4,7 @@ import ge.dakalebi.data.AccountSettingsSource
 import ge.dakalebi.data.SyncedSettingsRepository
 import ge.dakalebi.data.SystemClock
 import ge.dakalebi.data.ViewerProgressRepository
+import ge.dakalebi.data.cavea.CaveaApi
 import ge.dakalebi.data.firebase.FirebaseAccountRepository
 import ge.dakalebi.data.firebase.FirestoreAdminRepository
 import ge.dakalebi.data.firebase.FirestoreCatalogRepository
@@ -24,6 +25,7 @@ import ge.dakalebi.domain.repository.CatalogRepository
 import ge.dakalebi.domain.repository.GuestModeRepository
 import ge.dakalebi.domain.repository.PreferencesRepository
 import ge.dakalebi.domain.repository.ProgressRepository
+import ge.dakalebi.domain.usecase.CarryOverCaveaProgress
 import ge.dakalebi.domain.usecase.ChangeUserSetting
 import ge.dakalebi.domain.usecase.CheckAdminRights
 import ge.dakalebi.domain.usecase.ClearEpisodeProgress
@@ -74,7 +76,8 @@ class AppGraph(
     /** Lives as long as the graph, which is as long as the page. */
     scope: CoroutineScope = MainScope(),
     /** The catalog cache is here, in plain sight, so it can be switched off in one place. */
-    catalogRepository: CatalogRepository = FirestoreCatalogRepository(FormulaApi(), LocalCatalogCache(BrowserKeyValueStore())),
+    catalogRepository: CatalogRepository =
+        FirestoreCatalogRepository(FormulaApi(), CaveaApi(), LocalCatalogCache(BrowserKeyValueStore())),
     progressRepository: ProgressRepository = FirestoreProgressRepository(),
     /** The account's half of the settings sync. */
     accountSettings: AccountSettingsSource = FirestoreSettingsSource(clock),
@@ -112,6 +115,7 @@ class AppGraph(
         resetSeasonProgressUseCase = ResetSeasonProgress(viewerProgress),
         resetAllProgressUseCase = ResetAllProgress(viewerProgress),
         recordEpisodeDuration = RecordEpisodeDuration(catalogRepository),
+        carryOverCaveaProgress = CarryOverCaveaProgress(viewerProgress),
     )
 
     val session = SessionViewModel(

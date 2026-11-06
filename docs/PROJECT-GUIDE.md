@@ -152,6 +152,19 @@ fetch — happens in the browser. Consequences that reach everywhere:
   client set `User-Agent`/`Origin`/`Referer`, all forbidden to scripts, and any
   non-safelisted header forces a preflight the API does not advertise
   `Access-Control-Allow-Headers` for.
+- **Cavea Plus's list is read the same way, by the admin refresh only.** Its
+  series answer is public and CORS-open, so a bare GET reads it with no sign-in.
+  The refresh stores it in `meta/cavea`; viewers read that document and never
+  call Cavea.
+- **Neither source can stop the refresh on its own** (`CatalogRefresh`). When
+  Formula cannot be reached or read, or answers with nothing, the stored
+  episodes stand, none is written, and Cavea's list is still fetched, stored and
+  joined to them. When Cavea fails, its stored list stands. Only both failing
+  fails the refresh, and then nothing is written, the stamp included. Formula's
+  answer is used whole or not at all: a season failing part way keeps the stored
+  catalog whole.
+  Cavea's streams are DRM-protected and are never touched: an episode only Cavea
+  has, or one that does not play here, links to Cavea's own watch page.
 - **Fresh episode URLs have five seconds.** The watch screen asks the Formula
   API for an episode's current URLs before it shows the player, and plays the
   stored URL when that fails. `fetchEpisode` aborts after
@@ -666,6 +679,10 @@ episodes/{formulaEpisodeId}
 meta/catalog
     lastRefreshAtMillis, seasonCount, episodeCount
 
+meta/cavea
+    fetchedAtMillis, episodes[{id, season, episode, thumbnail}]
+    (Cavea Plus's list, written by the admin refresh; joined in on load)
+
 users/{uid}
     language, autoplayNext, useNativePlayer, preferredQuality, updatedAtMillis
     (one field per `Setting`; the rules allowlist each by name and type)
@@ -984,7 +1001,7 @@ sign-in form, guest storage, playback-failure classification,
 the playback rules all three players share (the file, the stored links TV and
 driving mode start from, saves, the one retry, resume and the next-episode card), the quality default, the iOS resume fragment, the VLC links and playlist encoding,
 TV seeking and interface size, timestamp formatting, toast dismissal, the catalog
-cache's stamp rule, its thirteen-field round trip and its duration patch, the bare
+cache's stamp rule, its fourteen-field round trip and its duration patch, the bare
 GET, and the
 Firebase error-code spellings.
 

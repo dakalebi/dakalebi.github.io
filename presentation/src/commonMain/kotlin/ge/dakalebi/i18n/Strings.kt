@@ -175,6 +175,9 @@ interface Strings {
     val watchedLabel: String
     val startedLabel: String
     val noVideo: String
+
+    /** In place of [noVideo] on an episode that plays on Cavea Plus instead. */
+    val onCavea: String
     val copyEpisodeLink: String
     val copyMp4Link: String
     val episodeLinkCopied: String
@@ -198,10 +201,17 @@ interface Strings {
     val markAsWatched: String
     val watchedTick: String
     val openOnFormula: String
+    val openOnCavea: String
     val episodeNotFound: String
     val videoLinkFailed: String
     val videoLoadFailed: String
     val videoUnsupportedOnAppleMobile: String
+
+    /** An episode Formula does not have. */
+    val videoOnlyOnCavea: String
+
+    /** Under the QR code on TV, which opens the episode on Cavea Plus. */
+    val scanToOpenOnCavea: String
     val openInVlc: String
     val retryingVideo: String
     val markedAsWatched: String
@@ -245,7 +255,12 @@ interface Strings {
     val dataLoadFailed: String
 
     fun refreshSeasonProgress(done: Int, total: Int): String
-    fun refreshed(episodes: Int, changed: Int, withoutVideo: Int): String
+    /**
+     * The rebuild's outcome. [changed] is null when Formula's list could not be
+     * updated, [caveaListed] is null when Cavea Plus's could not, and [caveaOnly]
+     * counts the episodes only Cavea has.
+     */
+    fun refreshed(episodes: Int, changed: Int?, withoutVideo: Int, caveaListed: Int?, caveaOnly: Int): String
 
     // ----------------------------------------------------------- player
     val play: String

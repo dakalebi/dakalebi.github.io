@@ -1,6 +1,10 @@
 package ge.dakalebi.data.firebase
 
 import ge.dakalebi.core.Log
+import ge.dakalebi.data.CatalogRefresh
+import ge.dakalebi.data.CatalogStorage
+import ge.dakalebi.data.FormulaCounts
+import ge.dakalebi.data.cavea.CaveaApi
 import ge.dakalebi.data.firebase.externals.DocumentSnapshot
 import ge.dakalebi.data.firebase.externals.QueryDocumentSnapshot
 import ge.dakalebi.data.firebase.externals.collection
@@ -10,30 +14,40 @@ import ge.dakalebi.data.firebase.externals.getDocs
 import ge.dakalebi.data.firebase.externals.setDoc
 import ge.dakalebi.data.firebase.externals.writeBatch
 import ge.dakalebi.data.formula.FormulaApi
-import ge.dakalebi.data.formula.FormulaEpisode
 import ge.dakalebi.data.formula.bestVideoUrl
 import ge.dakalebi.data.formula.episodePageUrl
 import ge.dakalebi.data.formula.qualitySources
 import ge.dakalebi.data.formula.thumbnailUrl
+import ge.dakalebi.data.joinCavea
 import ge.dakalebi.data.local.CatalogCache
+import ge.dakalebi.domain.model.CaveaEpisode
 import ge.dakalebi.domain.model.Catalog
 import ge.dakalebi.domain.model.CatalogMeta
 import ge.dakalebi.domain.model.CatalogUnavailableException
 import ge.dakalebi.domain.model.Episode
 import ge.dakalebi.domain.model.RefreshResult
 import ge.dakalebi.domain.repository.CatalogRepository
+import ge.dakalebi.domain.service.CAVEA_ONLY_ID_PREFIX
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.await
 
 /**
  * The shared episode catalog: Firestore for storage, Formula for the source of
- * truth.
+ * truth, and Cavea Plus for the episodes Formula lacks.
  *
  * Both providers sit behind one repository because they are two halves of the
  * same fact. Splitting them would only push the "fetch from one, diff against
  * the other" logic up a layer, where it would need both anyway.
+ *
+ * Cavea's list is stored apart from the catalog, in the one document
+ * `meta/cavea`, and joined with it on every load ([joinCavea]). Never in
+ * `episodes`: every build of the app, production included, reads each document
+ * there as a Formula episode, so a Cavea-only one would show up broken in a build
+ * that knows nothing about Cavea. `meta/cavea` is read by this build only.
  */
 class FirestoreCatalogRepository(
     private val api: FormulaApi,
+    private val cavea: CaveaApi,
     private val cache: CatalogCache,
 ) : CatalogRepository {
 
@@ -59,12 +73,16 @@ class FirestoreCatalogRepository(
         }
 
         val fresh = listEpisodes()
-        Log.d("catalog", "from Firestore (${fresh.size} reads)")
+        Log.d("catalog", "from Firestore (${fresh.size} episodes)")
         cache.write(stamp, fresh)
         return Catalog(episodes = fresh, meta = meta)
     }
 
-    override suspend fun listEpisodes(): List<Episode> {
+    /** Formula's episodes from `episodes`, with Cavea Plus's stored list joined in. */
+    override suspend fun listEpisodes(): List<Episode> = joinCavea(formulaEpisodes(), storedCavea())
+
+    /** What `episodes` holds: Formula's catalog alone. */
+    private suspend fun formulaEpisodes(): List<Episode> {
         val snapshot = getDocs(collection(Firebase.db, EPISODES)).await()
         // An unreachable backend does not reject — Firestore quietly answers
         // from its (empty) cache. Treated as success that renders the "no
@@ -86,57 +104,92 @@ class FirestoreCatalogRepository(
     }
 
     /**
-     * Pulls the whole catalog from Formula and writes back only what changed.
-     *
-     * Runs entirely in the browser — the Formula API is CORS-open, so no server
-     * or Cloud Function is involved.
+     * Rebuilds the catalog from Formula and Cavea Plus and writes back only what
+     * changed. Either source failing leaves its stored part standing; see
+     * [CatalogRefresh] for the rules.
      */
     override suspend fun refresh(
         nowMillis: Double,
         onProgress: (done: Int, total: Int) -> Unit,
-    ): RefreshResult {
-        Log.d("refresh", "reading existing catalog")
-        val existing = listEpisodes().associateBy { it.id }
-        Log.d("refresh", "existing=${existing.size}, fetching seasons")
-        val seasons = api.fetchSeasons()
-        Log.d("refresh", "seasons=${seasons.size}")
+    ): RefreshResult = CatalogRefresh(api, cavea, storage, cache)(nowMillis, onProgress)
 
-        val fresh = mutableListOf<Episode>()
-        seasons.forEachIndexed { index, season ->
-            val episodes = api.fetchSeasonEpisodes(season.id)
-            episodes.mapTo(fresh) { it.toEpisode(season.seasonNumber, season.id, nowMillis) }
-            onProgress(index + 1, seasons.size)
-        }
+    /** The refresh's view of Firestore. Not the repository itself, so none of it is public. */
+    private val storage = object : CatalogStorage {
+        override suspend fun formulaEpisodes() = this@FirestoreCatalogRepository.formulaEpisodes()
 
-        val changed = fresh.filter { candidate ->
-            existing[candidate.id]?.sameContentAs(candidate) != true
-        }
+        override suspend fun storedCavea() = this@FirestoreCatalogRepository.storedCavea()
 
-        Log.d("refresh", "fetched=${fresh.size}, changed=${changed.size}, writing")
-        for (chunk in changed.chunked(BATCH_LIMIT)) {
-            val batch = writeBatch(Firebase.db)
-            for (episode in chunk) {
-                batch.set(doc(Firebase.db, EPISODES, episode.id), episode.toJs(), mergeOption())
+        override suspend fun writeEpisodes(episodes: List<Episode>) {
+            for (chunk in episodes.chunked(BATCH_LIMIT)) {
+                val batch = writeBatch(Firebase.db)
+                for (episode in chunk) {
+                    batch.set(doc(Firebase.db, EPISODES, episode.id), episode.toJs(), mergeOption())
+                }
+                batch.commit().await()
             }
-            batch.commit().await()
         }
 
-        val meta = jsObject()
-        meta.lastRefreshAtMillis = nowMillis
-        meta.seasonCount = seasons.size
-        meta.episodeCount = fresh.size
-        setDoc(doc(Firebase.db, META, CATALOG), meta).await()
+        override suspend fun storeCavea(episodes: List<CaveaEpisode>, nowMillis: Double) {
+            setDoc(doc(Firebase.db, META, CAVEA), episodes.toCaveaDocument(nowMillis)).await()
+        }
 
-        val sorted = fresh.sortedBy { it.ordinal }
-        cache.write(nowMillis, sorted)
+        /**
+         * Formula's counts, as before: what an old build shows from this document. Kept
+         * as stored when Formula was not read, by writing the stamp alone into it.
+         */
+        override suspend fun markRefreshed(nowMillis: Double, formula: FormulaCounts?) {
+            val meta = jsObject()
+            meta.lastRefreshAtMillis = nowMillis
+            if (formula == null) {
+                setDoc(doc(Firebase.db, META, CATALOG), meta, mergeOption()).await()
+                return
+            }
+            meta.seasonCount = formula.seasons
+            meta.episodeCount = formula.episodes
+            setDoc(doc(Firebase.db, META, CATALOG), meta).await()
+        }
+    }
 
-        return RefreshResult(
-            seasons = seasons.size,
-            episodes = fresh.size,
-            written = changed.size,
-            withoutVideo = fresh.count { !it.hasVideo },
-            catalog = sorted,
-        )
+    // -------------------------------------------------------------- Cavea Plus
+
+    /**
+     * The Cavea Plus list the last refresh stored. Empty when there is none yet, or it
+     * cannot be read: the catalog is then Formula's alone, which is what it was before
+     * Cavea, so this never fails a load.
+     */
+    private suspend fun storedCavea(): List<CaveaEpisode> = try {
+        val snapshot = getDoc(doc(Firebase.db, META, CAVEA)).await()
+        if (snapshot.exists()) readCaveaDocument(snapshot.data()) else emptyList()
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Throwable) {
+        Log.w("catalog", "Cavea Plus's stored list unavailable", e)
+        emptyList()
+    }
+
+    private fun List<CaveaEpisode>.toCaveaDocument(nowMillis: Double): dynamic {
+        val out = jsObject()
+        out.fetchedAtMillis = nowMillis
+        out.episodes = map { episode ->
+            val entry = jsObject()
+            entry.id = episode.id
+            entry.season = episode.seasonNumber
+            entry.episode = episode.episodeNumber
+            entry.thumbnail = episode.thumbnailUrl
+            entry
+        }.toTypedArray()
+        return out
+    }
+
+    private fun readCaveaDocument(data: dynamic): List<CaveaEpisode> {
+        val raw: Any? = data.episodes
+        if (raw !is Array<*>) return emptyList()
+        return raw.unsafeCast<Array<dynamic>>().mapNotNull { entry ->
+            val id = dynString(entry.id) ?: return@mapNotNull null
+            val season = dynInt(entry.season) ?: return@mapNotNull null
+            val number = dynInt(entry.episode) ?: return@mapNotNull null
+            CaveaEpisode(id = id, seasonNumber = season, episodeNumber = number, thumbnailUrl = dynString(entry.thumbnail))
+        }
     }
 
     /**
@@ -146,8 +199,14 @@ class FirestoreCatalogRepository(
      * server round-trips. With the call happening in the browser there is no
      * such cost, so we always resolve fresh and fall back to the stored URL.
      */
-    override suspend fun resolveVideo(episode: Episode): Episode = runCatching<Episode> {
-        val fresh = api.fetchEpisode(episode.formulaEpisodeId)
+    override suspend fun resolveVideo(episode: Episode): Episode {
+        // Only on Cavea Plus: there is nothing to ask Formula about.
+        val formulaId = episode.formulaEpisodeId ?: return episode
+        return resolveFromFormula(episode, formulaId)
+    }
+
+    private suspend fun resolveFromFormula(episode: Episode, formulaId: Int): Episode = runCatching<Episode> {
+        val fresh = api.fetchEpisode(formulaId)
         val sources = fresh.qualitySources()
         val url = fresh.bestVideoUrl() ?: return@runCatching episode
         episode.copy(
@@ -172,6 +231,9 @@ class FirestoreCatalogRepository(
      */
     override suspend fun recordDuration(episodeId: String, durationSeconds: Int) {
         cache.recordDuration(episodeId, durationSeconds)
+        // An `episodes` document for a Cavea-only episode would reach production as a
+        // broken Formula episode. RecordEpisodeDuration does not ask; this holds anyway.
+        if (episodeId.startsWith(CAVEA_ONLY_ID_PREFIX)) return
         val payload = jsObject()
         payload.durationSeconds = durationSeconds
         runCatching {
@@ -185,30 +247,6 @@ class FirestoreCatalogRepository(
     }
 
     // ------------------------------------------------------------- mapping
-
-    private fun FormulaEpisode.toEpisode(
-        seasonNumber: Int,
-        formulaSeasonId: Int,
-        nowMillis: Double,
-    ): Episode {
-        val sources = qualitySources()
-        val video = sources.values.firstOrNull()
-        return Episode(
-            id = id.toString(),
-            formulaEpisodeId = id,
-            formulaSeasonId = formulaSeasonId,
-            seasonNumber = seasonNumber,
-            episodeNumber = episodeNumber,
-            title = displayTitle,
-            thumbnailUrl = thumbnailUrl(),
-            videoUrl = video,
-            sources = sources,
-            durationSeconds = null,
-            episodePageUrl = episodePageUrl(id),
-            lastResolvedAtMillis = if (video != null) nowMillis else null,
-            updatedAtMillis = nowMillis,
-        )
-    }
 
     private fun QueryDocumentSnapshot.toEpisode(): Episode = readEpisode(id, data())
 
@@ -257,6 +295,9 @@ class FirestoreCatalogRepository(
         const val EPISODES = "episodes"
         const val META = "meta"
         const val CATALOG = "catalog"
+
+        /** Cavea Plus's list, in `meta`: public read, admin write, like `meta/catalog`. */
+        const val CAVEA = "cavea"
 
         /** Firestore hard limit; a full refresh is ~932 docs, so we chunk. */
         const val BATCH_LIMIT = 450

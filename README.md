@@ -127,6 +127,7 @@ domain/src/commonMain/kotlin/ge/dakalebi/domain/
 data/src/commonMain/kotlin/ge/dakalebi/data/
                  the settings sync, and progress routed by viewer
   formula/       the Formula API and its DTOs
+  cavea/         Cavea Plus's public episode list, read by the admin refresh
   local/         the catalog cache and device storage over a `KeyValueStore`
                  (settings copy, guest progress, guest choice)
 data/src/jsMain/kotlin/ge/dakalebi/data/
@@ -180,6 +181,7 @@ rest are in
 ```
 episodes/{formulaEpisodeId}   the shared catalog; anyone reads, admins write
 meta/catalog                  lastRefreshAtMillis, seasonCount, episodeCount
+meta/cavea                    fetchedAtMillis, episodes[{id, season, episode, thumbnail}]
 users/{uid}                   language, autoplayNext, useNativePlayer,
                               preferredQuality, updatedAtMillis
 users/{uid}/progress/{id}     progressSeconds, durationSeconds, isWatched, lastWatchedAtMillis
@@ -191,6 +193,12 @@ A guest has no Firestore data. Their progress is in `localStorage`
 
 Document ids are Formula's own episode ids, so `#/watch/531` survives a full
 catalog rebuild.
+
+`episodes` holds Formula's catalog only, as a build that knows nothing of Cavea
+Plus expects. Cavea's list sits beside it in `meta/cavea` and is joined in on
+load by season and episode number. An episode only Cavea has is shown as
+`#/watch/cavea-<Cavea's id>` and links to Cavea's own page: its streams are
+DRM-protected, so the app never plays them.
 
 `meta/catalog.lastRefreshAtMillis` is bumped by exactly the operation that
 changes the catalog, which makes it the cache validator: one small read says

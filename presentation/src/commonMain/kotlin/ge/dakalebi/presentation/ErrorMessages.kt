@@ -40,6 +40,7 @@ object ErrorMessages {
         PlaybackError.NoLink -> S.videoLinkFailed
         PlaybackError.UnsupportedOnAppleMobile -> S.videoUnsupportedOnAppleMobile
         PlaybackError.LoadFailed -> S.videoLoadFailed
+        PlaybackError.OnlyOnCavea -> S.videoOnlyOnCavea
     }
 
     /**

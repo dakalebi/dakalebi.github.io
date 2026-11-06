@@ -18,8 +18,8 @@ internal data class CachedCatalog(val stamp: Double, val episodes: List<CachedEp
 @Serializable
 internal data class CachedEpisode(
     val id: String,
-    val formulaEpisodeId: Int,
-    val formulaSeasonId: Int,
+    val formulaEpisodeId: Int? = null,
+    val formulaSeasonId: Int? = null,
     val seasonNumber: Int,
     val episodeNumber: Int,
     val title: String? = null,
@@ -27,9 +27,10 @@ internal data class CachedEpisode(
     val videoUrl: String? = null,
     val sources: Map<String, String> = emptyMap(),
     val durationSeconds: Int? = null,
-    val episodePageUrl: String,
+    val episodePageUrl: String? = null,
     val lastResolvedAtMillis: Double? = null,
     val updatedAtMillis: Double? = null,
+    val caveaEpisodeId: String? = null,
 ) {
     fun toDomain() = Episode(
         id = id,
@@ -45,6 +46,7 @@ internal data class CachedEpisode(
         episodePageUrl = episodePageUrl,
         lastResolvedAtMillis = lastResolvedAtMillis,
         updatedAtMillis = updatedAtMillis,
+        caveaEpisodeId = caveaEpisodeId,
     )
 
     companion object {
@@ -62,6 +64,7 @@ internal data class CachedEpisode(
             episodePageUrl = episode.episodePageUrl,
             lastResolvedAtMillis = episode.lastResolvedAtMillis,
             updatedAtMillis = episode.updatedAtMillis,
+            caveaEpisodeId = episode.caveaEpisodeId,
         )
     }
 }

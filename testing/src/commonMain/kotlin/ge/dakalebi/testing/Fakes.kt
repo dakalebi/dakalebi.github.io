@@ -9,6 +9,7 @@ import ge.dakalebi.domain.model.SettingsLoad
 import ge.dakalebi.domain.model.UserSettings
 import ge.dakalebi.domain.model.WatchProgress
 import ge.dakalebi.domain.repository.ProgressRepository
+import ge.dakalebi.domain.service.caveaOnlyId
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -137,12 +138,13 @@ class FakeProgressRepository(
     override suspend fun deleteAll(uid: String) = stored.clear()
 }
 
-/** Terse episode builder — the tests care about three fields out of thirteen. */
+/** Terse episode builder — the tests care about three fields out of fourteen. */
 fun episode(
     season: Int,
     number: Int,
     durationSeconds: Int? = 1_500,
     id: String = "s${season}e$number",
+    caveaEpisodeId: String? = null,
 ) = Episode(
     id = id,
     formulaEpisodeId = number,
@@ -157,6 +159,29 @@ fun episode(
     episodePageUrl = "https://example.invalid/$id",
     lastResolvedAtMillis = null,
     updatedAtMillis = null,
+    caveaEpisodeId = caveaEpisodeId,
+)
+
+/** An episode only Cavea Plus has, shaped as the catalog merge builds one. */
+fun caveaOnlyEpisode(
+    season: Int,
+    number: Int,
+    caveaEpisodeId: String = "c${season}e$number",
+) = Episode(
+    id = caveaOnlyId(caveaEpisodeId),
+    formulaEpisodeId = null,
+    formulaSeasonId = null,
+    seasonNumber = season,
+    episodeNumber = number,
+    title = null,
+    thumbnailUrl = "https://example.invalid/$caveaEpisodeId.jpg",
+    videoUrl = null,
+    sources = emptyMap(),
+    durationSeconds = null,
+    episodePageUrl = null,
+    lastResolvedAtMillis = null,
+    updatedAtMillis = null,
+    caveaEpisodeId = caveaEpisodeId,
 )
 
 fun progress(
