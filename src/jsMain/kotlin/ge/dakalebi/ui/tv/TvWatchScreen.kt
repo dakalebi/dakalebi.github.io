@@ -23,11 +23,11 @@ import ge.dakalebi.domain.service.orderedQualityLabels
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
 import ge.dakalebi.presentation.Route
+import ge.dakalebi.presentation.SAVE_EVERY
 import ge.dakalebi.ui.Thumb
 import ge.dakalebi.ui.player.PlayerEvents
 import ge.dakalebi.ui.tv.input.TvInput
 import ge.dakalebi.ui.tv.player.TvVideoPlayer
-import ge.dakalebi.ui.watch.SAVE_EVERY
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.Text

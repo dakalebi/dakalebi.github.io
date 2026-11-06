@@ -1,26 +1,25 @@
 package ge.dakalebi.ui.watch
 
 import ge.dakalebi.core.Log
+import ge.dakalebi.presentation.Playhead
 import ge.dakalebi.ui.player.AirPlayClock
 import org.w3c.dom.HTMLVideoElement
 
 /**
- * The mutable, non-Compose half of the watch screen.
+ * The mutable, non-Compose half of the watch screen: the element, and the
+ * workarounds for this browser's media quirks.
  *
  * Every field here is written from a media event handler, several times a
  * second. Holding them as Compose state would recompose the whole page on each
  * `timeupdate`; holding them in one remembered object keyed on the episode
  * gives the handlers somewhere to write that costs nothing and is reset for
- * free when the episode changes.
+ * free when the episode changes. The rules about what a position means are in
+ * [ge.dakalebi.presentation.PlaybackViewModel].
  */
 internal class WatchRefs {
     var video: HTMLVideoElement? = null
-    var lastSaved: Double = 0.0
-    var retried: Boolean = false
-    var navigated: Boolean = false
 
-    // Resume state machine
-    var resumeApplied: Boolean = false
+    // Resume retry loop, for iOS
     var resumeAttempts: Int = 0
     var resumeSeekIssued: Boolean = false
     var resumeTimer: Int? = null
@@ -29,11 +28,14 @@ internal class WatchRefs {
     var airplayTimer: Int? = null
 }
 
-/** Seconds before the end at which the next-episode card appears. */
-internal const val PROMPT_WINDOW = 180.0
-
-/** Save at most this often during continuous playback. */
-internal const val SAVE_EVERY = 7.0
+/** The element's position, corrected while iOS plays through AirPlay and reports 0:00. */
+internal class ElementPlayhead(
+    private val video: HTMLVideoElement,
+    private val airplay: AirPlayClock,
+) : Playhead {
+    override val position: Double get() = airplay.currentTime(video)
+    override val duration: Double? get() = airplay.duration(video)
+}
 
 /** Longest wait for the spot to save before opening driving mode anyway. */
 internal const val DRIVE_SAVE_WAIT_MS = 2_000L

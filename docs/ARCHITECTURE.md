@@ -99,6 +99,18 @@ composition, so they wait for no frame and do not depend on which shell is on
 screen. Loading the catalog stays with each shell, because `CatalogStore` does not
 join a load already running and a second caller would fetch everything twice.
 
+`PlaybackViewModel` is one per watch screen and episode, made by
+`PlaybackViewModelFactory` and read with `rememberPlaybackViewModel`. It holds the
+playback rules: which file plays, when a position is saved and what it means, the
+one retry after a media error, the resume target, the next-episode card and leaving
+for the next episode. The screen tells it what the media element did and supplies
+the position through a `Playhead`. What only one platform needs stays in that
+platform's screen: on the web, the element, the iOS resume retry loop, the AirPlay
+clock and the `#t=` start fragment. Saves run in the app scope, so a save already
+sent still lands after the screen has gone; the resolve and the retry stop with the
+screen. The web watch screen uses it; the TV and driving-mode players still keep
+their own copy of these rules.
+
 New state goes into a ViewModel. The stores move over screen by screen.
 
 Two things a build file cannot keep out, so they are still greps. Every one of
@@ -174,8 +186,9 @@ the watched-threshold and never-rewind-a-finished-episode rules, the "continue
 watching" and next-to-play choices, episode ordering across season boundaries,
 hash-route parsing, settings sync (the merge rules, `SyncedSettingsRepository`,
 `SettingsStore`, the device copy), the session (guests, and what follows the
-account: settings sync and dropping the catalog), guest storage, playback-failure classification, the
-quality default, the iOS resume fragment, the VLC links and playlist, TV seeking
+account: settings sync and dropping the catalog), guest storage, playback-failure classification,
+the playback rules (`PlaybackViewModel`: the file, saves, the one retry, resume and
+the next-episode card), the quality default, the iOS resume fragment, the VLC links and playlist, TV seeking
 and interface size, timestamp formatting, toast dismissal, and the catalog cache.
 
 Two of those earn their place beyond the coverage they add:

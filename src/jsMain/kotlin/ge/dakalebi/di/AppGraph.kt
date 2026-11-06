@@ -46,6 +46,8 @@ import ge.dakalebi.domain.usecase.SyncUserSettings
 import ge.dakalebi.presentation.CatalogStore
 import ge.dakalebi.presentation.PreferencesStore
 import ge.dakalebi.presentation.HashRouter
+import ge.dakalebi.presentation.PlaybackViewModel
+import ge.dakalebi.presentation.PlaybackViewModelFactory
 import ge.dakalebi.presentation.SessionViewModel
 import ge.dakalebi.presentation.SettingsStore
 import ge.dakalebi.presentation.ToastStore
@@ -127,6 +129,22 @@ class AppGraph(
         scope = scope,
     )
 
-    /** Used by the watch screen, which resolves a URL without going via a store. */
+    /** Used by the TV and Drive players, which resolve a URL without going via a store. */
     val resolveEpisodeVideo = ResolveEpisodeVideo(catalogRepository)
+
+    /** One per watch screen. Its saves run in [scope], so one in flight lands after the screen goes. */
+    val playback = PlaybackViewModelFactory { episodeId, maxQuality, appleMobile ->
+        PlaybackViewModel(
+            episodeId = episodeId,
+            viewerId = { session.state.value.viewerId },
+            catalog = catalog,
+            settings = settings,
+            preferences = preferences,
+            resolveEpisodeVideo = resolveEpisodeVideo,
+            router = router,
+            maxQuality = maxQuality,
+            appleMobile = appleMobile,
+            scope = scope,
+        )
+    }
 }

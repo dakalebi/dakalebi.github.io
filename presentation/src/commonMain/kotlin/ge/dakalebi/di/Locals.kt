@@ -1,11 +1,15 @@
 package ge.dakalebi.di
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import ge.dakalebi.domain.usecase.ResolveEpisodeVideo
 import ge.dakalebi.presentation.CatalogStore
+import ge.dakalebi.presentation.PlaybackViewModel
+import ge.dakalebi.presentation.PlaybackViewModelFactory
 import ge.dakalebi.presentation.PreferencesStore
 import ge.dakalebi.presentation.Router
 import ge.dakalebi.presentation.SessionUiState
@@ -39,6 +43,7 @@ val LocalCatalog = local<CatalogStore>("LocalCatalog")
 val LocalSettings = local<SettingsStore>("LocalSettings")
 val LocalPreferences = local<PreferencesStore>("LocalPreferences")
 val LocalResolveEpisodeVideo = local<ResolveEpisodeVideo>("LocalResolveEpisodeVideo")
+val LocalPlayback = local<PlaybackViewModelFactory>("LocalPlayback")
 
 /**
  * Shorthands, so a screen reads `catalog()` rather than `LocalCatalog.current`.
@@ -61,3 +66,15 @@ val LocalResolveEpisodeVideo = local<ResolveEpisodeVideo>("LocalResolveEpisodeVi
 @Composable @ReadOnlyComposable fun settings(): SettingsStore = LocalSettings.current
 
 @Composable @ReadOnlyComposable fun preferences(): PreferencesStore = LocalPreferences.current
+
+/**
+ * This episode's [PlaybackViewModel], made once per episode and closed when the
+ * screen leaves it or moves to another episode.
+ */
+@Composable
+fun rememberPlaybackViewModel(episodeId: String, maxQuality: Int?, appleMobile: Boolean): PlaybackViewModel {
+    val factory = LocalPlayback.current
+    val viewModel = remember(episodeId) { factory.create(episodeId, maxQuality, appleMobile) }
+    DisposableEffect(viewModel) { onDispose { viewModel.close() } }
+    return viewModel
+}

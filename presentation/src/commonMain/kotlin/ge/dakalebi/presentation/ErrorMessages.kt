@@ -35,6 +35,13 @@ object ErrorMessages {
      */
     fun signIn(error: Throwable): String = signInFor(Log.codeOf(error).orEmpty())
 
+    /** Why a video is not playing. */
+    fun playback(error: PlaybackError): String = when (error) {
+        PlaybackError.NoLink -> S.videoLinkFailed
+        PlaybackError.UnsupportedOnAppleMobile -> S.videoUnsupportedOnAppleMobile
+        PlaybackError.LoadFailed -> S.videoLoadFailed
+    }
+
     /**
      * The rebuild mapping, over the two values it actually reads.
      *

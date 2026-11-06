@@ -3,31 +3,26 @@ package ge.dakalebi.ui.watch
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import ge.dakalebi.core.Log
 import ge.dakalebi.core.formatTime
-import ge.dakalebi.di.LocalResolveEpisodeVideo
 import ge.dakalebi.di.catalog
-import ge.dakalebi.di.preferences
-import ge.dakalebi.di.router
+import ge.dakalebi.di.rememberPlaybackViewModel
 import ge.dakalebi.di.sessionState
 import ge.dakalebi.di.settings
 import ge.dakalebi.di.toasts
 import ge.dakalebi.domain.model.Setting
 import ge.dakalebi.domain.service.COMPACT_SCREEN_MAX_QUALITY
-import ge.dakalebi.domain.service.PlaybackFailure
-import ge.dakalebi.domain.service.defaultQualityLabel
-import ge.dakalebi.domain.service.playbackFailure
-import ge.dakalebi.domain.service.retryUrl
 import ge.dakalebi.domain.service.vlcOpenUrl
 import ge.dakalebi.domain.service.withStartFragment
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
+import ge.dakalebi.presentation.ErrorMessages
 import ge.dakalebi.presentation.Route
 import ge.dakalebi.ui.ConfirmDialog
 import ge.dakalebi.ui.EpisodeRow
@@ -48,7 +43,6 @@ import io.github.bchmsl.keel.components.ButtonVariant
 import io.github.bchmsl.keel.dom.classNames
 import kotlinx.browser.document
 import kotlinx.browser.window
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import org.jetbrains.compose.web.dom.Button
@@ -57,41 +51,36 @@ import org.jetbrains.compose.web.dom.H1
 import org.jetbrains.compose.web.dom.Text
 import org.w3c.dom.HTMLVideoElement
 import org.w3c.dom.events.Event
-import kotlin.math.floor
-import kotlin.math.max
-import kotlin.math.min
+import kotlin.math.abs
 
+/**
+ * One episode, on a phone or a computer.
+ *
+ * What a position means, which file plays and when to save are the
+ * [ge.dakalebi.presentation.PlaybackViewModel]'s. What is left here is this
+ * browser's: the element, the resume retry loop iOS needs, the AirPlay clock,
+ * the page-hide saves and the toasts.
+ */
 @Composable
 fun WatchScreen(episodeId: String) {
     val sessionState = sessionState()
     val catalog = catalog()
     val toasts = toasts()
-    val router = router()
-    val prefs = preferences()
     val settings = settings()
-    val resolveVideo = LocalResolveEpisodeVideo.current
 
     val scope = rememberCoroutineScope()
+    val playback = rememberPlaybackViewModel(
+        episodeId = episodeId,
+        // A phone starts at 720p, because the 1080p file is the slowest to start
+        // and the screen hides the difference.
+        maxQuality = COMPACT_SCREEN_MAX_QUALITY.takeIf { isCompactScreen },
+        appleMobile = isAppleMobile,
+    )
+    val ui by playback.state.collectAsState()
     // Whose progress this is: the account's, or a guest's on this device.
     val uid = sessionState.viewerId
     val refs = remember(episodeId) { WatchRefs() }
-
-    var videoUrl by remember(episodeId) { mutableStateOf<String?>(null) }
-    var quality by remember(episodeId) { mutableStateOf<String?>(null) }
-    // The renditions the menu offers. Held here so the label and the menu are
-    // always reading the same map — see the resolution effect below.
-    var available by remember(episodeId) { mutableStateOf<Map<String, String>>(emptyMap()) }
-    var error by remember(episodeId) { mutableStateOf<String?>(null) }
-    var ended by remember(episodeId) { mutableStateOf(false) }
-    var remaining by remember(episodeId) { mutableStateOf<Double?>(null) }
-    var duration by remember(episodeId) { mutableStateOf<Double?>(null) }
-    var promptDismissed by remember(episodeId) { mutableStateOf(false) }
-    var resolving by remember(episodeId) { mutableStateOf(true) }
     var confirmReset by remember(episodeId) { mutableStateOf(false) }
-    // Where this page's player is, in whole seconds, for the VLC button: VLC's link
-    // cannot carry a start time, so the label shows it for seeking by hand. Whole
-    // seconds so a `timeupdate` four times a second recomposes at most once.
-    var position by remember(episodeId) { mutableStateOf<Int?>(null) }
 
     LaunchedEffect(uid) { if (uid != null) catalog.ensureLoaded(uid) }
 
@@ -102,75 +91,17 @@ fun WatchScreen(episodeId: String) {
     val progressReady = !catalog.loading
     val nextEpisode = episode?.let { catalog.next(it) }
 
-    val shouldAutoplay = remember(episodeId) {
-        prefs.playIntent(episodeId) != "paused"
-    }
-
-    // --------------------------------------------------------- resolution
-
     LaunchedEffect(episode?.id) {
         val current = episode ?: return@LaunchedEffect
-        resolving = true
-        error = null
-        val resolved = resolveVideo(current)
-        if (resolved !== current) catalog.putEpisode(resolved)
-
-        // One map for everything downstream. Previously the label was derived
-        // from the freshly resolved sources while the menu was handed
-        // `episode.sources` — the stored copy, in a different order — so the
-        // two disagreed about which rendition was best.
-        val sources = resolved.sources.ifEmpty { current.sources }
-        available = sources
-        val preferred = settings[Setting.PreferredQuality].takeIf { sources.containsKey(it) }
-        // A quality picked on any device of this account wins. Otherwise a phone
-        // starts at 720p, because the 1080p file is the slowest to start and the
-        // screen hides the difference. The URL follows the label, so the file that
-        // plays is always the one the quality menu names.
-        quality = preferred
-            ?: defaultQualityLabel(sources, COMPACT_SCREEN_MAX_QUALITY.takeIf { isCompactScreen })
-        videoUrl = quality?.let { sources[it] } ?: resolved.videoUrl
-
-        if (videoUrl == null) error = S.videoLinkFailed
-        resolving = false
+        playback.resolve(current)
     }
 
-    // -------------------------------------------------------- persistence
-
-    fun effectiveTime(video: HTMLVideoElement): Double = refs.airplay.currentTime(video)
-    fun effectiveDuration(video: HTMLVideoElement): Double? = refs.airplay.duration(video)
-
-    fun persist(isWatched: Boolean? = null, allowReset: Boolean = false): Job? {
-        val video = refs.video ?: return null
-        val current = episode ?: return null
-        val id = uid ?: return null
-        val seconds = floor(effectiveTime(video)).toInt()
-        if (seconds < 1 && isWatched == null && !allowReset) return null
-        val dur = effectiveDuration(video)?.let { floor(it).toInt() }
-
-        return scope.launch {
-            runCatching {
-                catalog.saveProgress(
-                    uid = id,
-                    episodeId = current.id,
-                    progressSeconds = if (allowReset) 0 else seconds,
-                    durationSeconds = dur,
-                    isWatched = isWatched,
-                    allowReset = allowReset,
-                )
-            }.onFailure {
-                // Silent until now, which meant a rules or network problem
-                // looked exactly like "the app forgot where I was".
-                Log.e("progress", "save failed for ${current.id} at ${seconds}s", it)
-            }
-        }
-    }
-
-    DisposableEffect(episode?.id, uid) {
+    DisposableEffect(playback) {
         val onHidden: (Event) -> Unit = {
             // Backgrounding a tab on mobile often never fires beforeunload.
-            if (document.asDynamic().visibilityState == "hidden") persist()
+            if (document.asDynamic().visibilityState == "hidden") playback.save()
         }
-        val onUnload: (Event) -> Unit = { persist() }
+        val onUnload: (Event) -> Unit = { playback.save() }
         document.addEventListener("visibilitychange", onHidden)
         window.addEventListener("beforeunload", onUnload)
         onDispose {
@@ -178,7 +109,7 @@ fun WatchScreen(episodeId: String) {
             window.removeEventListener("beforeunload", onUnload)
             refs.resumeTimer?.let { window.clearTimeout(it) }
             refs.airplayTimer?.let { window.clearInterval(it) }
-            persist()
+            playback.save()
         }
     }
 
@@ -194,25 +125,12 @@ fun WatchScreen(episodeId: String) {
      * handshake and leaves the receiver playing while the phone reports 0:00.
      */
     fun applyResume(video: HTMLVideoElement, stage: String) {
-        if (!progressReady || refs.resumeApplied) return
-        val dur = effectiveDuration(video) ?: return
-        if (dur <= 0) return
-
-        val target = min(savedSeconds.toDouble(), max(0.0, dur - 5.0))
-        duration = dur
-
-        if (target <= 1.0) {
-            refs.resumeApplied = true
-            return
-        }
-
-        refs.lastSaved = target
-        remaining = max(0.0, dur - target)
+        val target = playback.resumeTarget() ?: return
 
         if (isAppleMobile && stage == "metadata") return
 
         fun settle() {
-            refs.resumeApplied = true
+            playback.resumeLanded()
             refs.resumeAttempts = 0
             refs.resumeSeekIssued = false
             refs.resumeTimer?.let { window.clearTimeout(it) }
@@ -223,7 +141,7 @@ fun WatchScreen(episodeId: String) {
         // and seeking again would only stall the element on a position it has. Once
         // we have seeked, iOS can report the target while having ignored the seek, so
         // from then on only the retry loop below decides.
-        if (!refs.resumeSeekIssued && kotlin.math.abs(video.currentTime - target) < 0.75) {
+        if (!refs.resumeSeekIssued && abs(video.currentTime - target) < 0.75) {
             settle()
             return
         }
@@ -245,26 +163,17 @@ fun WatchScreen(episodeId: String) {
             return
         }
 
-        val close = kotlin.math.abs(video.currentTime - target) < 0.75
+        val close = abs(video.currentTime - target) < 0.75
         if (!close || (isAppleMobile && !refs.resumeSeekIssued)) {
             seekTo(video, target, stage)
         }
 
-        if (kotlin.math.abs(video.currentTime - target) < 0.75) {
+        if (abs(video.currentTime - target) < 0.75) {
             settle()
             return
         }
 
         scheduleRetry("data", 250)
-    }
-
-    /**
-     * Feeds [position]. Ignored until the resume seek has landed, or the player has
-     * passed the saved spot on its own: before that the element reports the 0:00 it
-     * loaded at, and the label would flash it over the saved time.
-     */
-    fun trackPosition(time: Double) {
-        if (refs.resumeApplied || time >= savedSeconds) position = floor(time).toInt()
     }
 
     // ----------------------------------------------------- airplay ticker
@@ -278,29 +187,8 @@ fun WatchScreen(episodeId: String) {
         if (!isAppleMobile || !refs.airplay.active || refs.airplayTimer != null) return
         refs.airplayTimer = window.setInterval({
             val video = refs.video ?: return@setInterval
-            if (!video.paused && !video.ended) {
-                trackPosition(effectiveTime(video))
-                val dur = effectiveDuration(video)
-                if (dur != null && dur > 0) {
-                    duration = dur
-                    remaining = max(0.0, dur - effectiveTime(video))
-                }
-            }
+            if (!video.paused && !video.ended) playback.onTick()
         }, 500)
-    }
-
-    // -------------------------------------------------------- navigation
-
-    fun goToNext() {
-        val next = nextEpisode ?: return
-        if (refs.navigated) return
-        refs.navigated = true
-        val video = refs.video
-        val nearEnd = video != null &&
-            video.duration.isFinite() && video.duration > 0 &&
-            video.currentTime / video.duration >= 0.9
-        persist(isWatched = if (nearEnd || ended) true else null)
-        router.go(Route.Watch(next.id))
     }
 
     // ---------------------------------------------------------------- ui
@@ -316,10 +204,13 @@ fun WatchScreen(episodeId: String) {
     }
 
     val events = PlayerEvents(
-        onElement = { refs.video = it },
+        onElement = { video ->
+            refs.video = video
+            playback.attach(video?.let { ElementPlayhead(it, refs.airplay) })
+        },
         onLoadedMetadata = { video ->
             refs.airplay.sync(video)
-            effectiveDuration(video)?.let { duration = it }
+            playback.onDurationKnown()
             applyResume(video, "metadata")
         },
         onLoadedData = { video ->
@@ -328,47 +219,31 @@ fun WatchScreen(episodeId: String) {
         },
         onCanPlay = { video ->
             refs.airplay.sync(video)
-            effectiveDuration(video)?.let { duration = it }
+            playback.onDurationKnown()
             applyResume(video, "canplay")
         },
         onDurationChange = { video ->
             refs.airplay.sync(video)
-            effectiveDuration(video)?.let { duration = it }
+            playback.onDurationKnown()
         },
         onTimeUpdate = { video ->
             refs.airplay.sync(video)
-            val time = effectiveTime(video)
-            trackPosition(time)
-            if (time - refs.lastSaved >= SAVE_EVERY) {
-                refs.lastSaved = time
-                persist()
-            }
-            val dur = effectiveDuration(video)
-            if (dur != null && dur > 0) {
-                duration = dur
-                val left = max(0.0, dur - time)
-                remaining = left
-                // Re-arm the prompt if the viewer seeks back out of the window.
-                if (left > PROMPT_WINDOW && promptDismissed) promptDismissed = false
-            }
+            playback.onTimeUpdate()
         },
         onSeeked = { video ->
             refs.airplay.sync(video)
             applyResume(video, "seeked")
         },
         onPlay = {
-            prefs.setPlayIntent(episodeId, "playing")
+            playback.onPlay()
             if (refs.airplay.active) startAirplayTicker()
         },
         onPause = {
             stopAirplayTicker()
-            prefs.setPlayIntent(episodeId, "paused")
-            persist()
+            playback.onPause()
         },
         onEnded = {
-            prefs.setPlayIntent(episodeId, "paused")
-            persist(isWatched = true)
-            ended = true
+            playback.onEnded()
             toasts.ok(S.markedAsWatched)
             // No autoplay into the next episode for now: the new page swaps the video
             // element, which closes fullscreen and on an iPhone often cannot start
@@ -376,27 +251,7 @@ fun WatchScreen(episodeId: String) {
         },
         onError = {
             val code = refs.video?.asDynamic()?.error?.code as? Int
-            Log.e("player", "media error for ${episode.id} (code=$code, src=$videoUrl)")
-            val failure = when (playbackFailure(code, isAppleMobile)) {
-                PlaybackFailure.UnsupportedOnAppleMobile -> S.videoUnsupportedOnAppleMobile
-                PlaybackFailure.LoadFailed -> S.videoLoadFailed
-            }
-            if (!refs.retried) {
-                refs.retried = true
-                toasts.show(S.retryingVideo)
-                scope.launch {
-                    val resolved = resolveVideo(episode)
-                    catalog.putEpisode(resolved)
-                    // Retry the quality that was playing. The fresh best URL would
-                    // undo the viewer's pick and a phone's lower start.
-                    val fresh = resolved.sources.ifEmpty { episode.sources }
-                    val next = retryUrl(failedUrl = videoUrl, freshUrl = quality?.let { fresh[it] } ?: resolved.videoUrl)
-                    // No new link means no new load, so say so now instead of waiting.
-                    if (next != null) videoUrl = next else error = failure
-                }
-            } else {
-                error = failure
-            }
+            if (playback.onMediaError(code)) toasts.show(S.retryingVideo)
         },
         onAirPlayChange = { active, video ->
             refs.airplay.active = active
@@ -405,7 +260,7 @@ fun WatchScreen(episodeId: String) {
                 startAirplayTicker()
             } else {
                 stopAirplayTicker()
-                effectiveDuration(video)?.let { duration = it }
+                playback.onDurationKnown()
             }
         },
     )
@@ -418,13 +273,9 @@ fun WatchScreen(episodeId: String) {
 
     // No overlay over a native player: it draws its own fullscreen surface and
     // nothing of ours survives on top of it.
-    val showPrompt = nextEpisode != null &&
-        duration != null &&
-        remaining != null &&
-        remaining!! <= PROMPT_WINDOW &&
-        !ended &&
-        !promptDismissed &&
-        !nativePlayer
+    val showPrompt = nextEpisode != null && ui.promptDue && !nativePlayer
+
+    val error = ui.error?.let { ErrorMessages.playback(it) }
 
     Div {
         WatchNav(episode)
@@ -436,7 +287,7 @@ fun WatchScreen(episodeId: String) {
         Div({ classes("watch-grid") }) {
         Div({ classes("watch-main") }) {
         Div({ classes("player-frame") }) {
-        val url = videoUrl
+        val url = ui.videoUrl
         if (url != null && progressReady) {
             key(episode.id) {
                 // iOS resumes through the source itself (see [withStartFragment]).
@@ -446,31 +297,23 @@ fun WatchScreen(episodeId: String) {
                 val start = remember(episode.id) { url to savedSeconds }
                 val src = if (isAppleMobile && url == start.first) withStartFragment(url, start.second) else url
                 if (nativePlayer) {
-                    NativeVideoPlayer(src = src, autoPlay = shouldAutoplay, events = events)
+                    NativeVideoPlayer(src = src, autoPlay = playback.autoplay, events = events)
                 } else {
                     CustomVideoPlayer(
                         src = src,
-                        autoPlay = shouldAutoplay,
-                        sources = available.ifEmpty { episode.sources },
-                        quality = quality,
+                        autoPlay = playback.autoplay,
+                        sources = ui.sources.ifEmpty { episode.sources },
+                        quality = ui.quality,
                         onQualitySelected = { label ->
-                            quality = label
-                            settings.set(Setting.PreferredQuality, label) {
-                                toasts.error(S.settingNotSynced)
-                            }
-                            available[label]?.let {
-                                videoUrl = it
-                                // A new source, so an error about the old one no longer applies.
-                                error = null
-                            }
+                            playback.selectQuality(label) { toasts.error(S.settingNotSynced) }
                         },
                         events = events,
                         overlay = {
                             if (showPrompt && nextEpisode != null) {
                                 NextEpisodeCard(
                                     episode = nextEpisode,
-                                    onPlayNext = { goToNext() },
-                                    onDismiss = { promptDismissed = true },
+                                    onPlayNext = { playback.goToNext() },
+                                    onDismiss = { playback.dismissPrompt() },
                                 )
                             }
                         },
@@ -480,7 +323,7 @@ fun WatchScreen(episodeId: String) {
         } else {
             Div({ classes("player") }) {
                 Div({ classes("center-note"); style { property("min-height", "100%") } }) {
-                    Text(if (error != null) error!! else S.loading)
+                    Text(error ?: S.loading)
                 }
             }
         }
@@ -497,10 +340,10 @@ fun WatchScreen(episodeId: String) {
                 // `announce`, because this arrives in response to something the viewer
                 // did - a stream that would not start - rather than sitting on the page
                 // from the beginning. A screen reader says it when it appears.
-                Callout(tone = CalloutTone.Destructive, announce = true) { Text(error!!) }
+                Callout(tone = CalloutTone.Destructive, announce = true) { Text(error) }
             }
 
-            if (ended && nextEpisode != null) {
+            if (ui.ended && nextEpisode != null) {
                 // Not `announce`: this one is reached by playing to the end, and the
                 // viewer is looking at the screen when it happens.
                 Callout(tone = CalloutTone.Primary) {
@@ -510,7 +353,7 @@ fun WatchScreen(episodeId: String) {
                             Text(S.nextUp(nextEpisode.seasonNumber, nextEpisode.episodeNumber).caps)
                         }
                     }
-                    Button({ classNames(buttonClasses()); onClick { goToNext() } }) {
+                    Button({ classNames(buttonClasses()); onClick { playback.goToNext() } }) {
                         Text(S.nextEpisodeAction.caps)
                     }
                 }
@@ -523,9 +366,7 @@ fun WatchScreen(episodeId: String) {
                         val video = refs.video
                         if (video != null) {
                             video.currentTime = 0.0
-                            refs.lastSaved = 0.0
-                            ended = false
-                            persist(allowReset = true)
+                            playback.watchFromStart()
                             video.play()
                         }
                     }
@@ -540,12 +381,12 @@ fun WatchScreen(episodeId: String) {
                 } else {
                     Button({
                         classNames(buttonClasses(ButtonVariant.Outline))
-                        onClick { persist(isWatched = true); toasts.ok(S.episodeMarkedWatched) }
+                        onClick { playback.markWatched(); toasts.ok(S.episodeMarkedWatched) }
                     }) { Text(S.markAsWatched.caps) }
                 }
 
                 if (nextEpisode != null) {
-                    Button({ classNames(buttonClasses()); onClick { goToNext() } }) {
+                    Button({ classNames(buttonClasses()); onClick { playback.goToNext() } }) {
                         Text(S.nextEpisodeAction.caps)
                     }
                 }
@@ -558,9 +399,9 @@ fun WatchScreen(episodeId: String) {
                 // until this page's player moves, then wherever it is. The playlist
                 // link starts there by itself; the plain fallback starts at 0:00, and
                 // the label is the time to seek to by hand.
-                val url = videoUrl
+                val url = ui.videoUrl
                 if (isAppleMobile && url != null) {
-                    val seekTo = position ?: savedSeconds
+                    val seekTo = ui.position ?: savedSeconds
                     LinkButton(
                         href = vlcOpenUrl(
                             current = episode,
@@ -568,7 +409,7 @@ fun WatchScreen(episodeId: String) {
                             // VLC plays its queue through, which is autoplay, and the web
                             // has none for now: this episode alone.
                             upcoming = emptyList(),
-                            quality = quality,
+                            quality = ui.quality,
                             startSeconds = seekTo,
                             title = { S.seasonAndEpisode(it.seasonNumber, it.episodeNumber) },
                         ),
@@ -595,7 +436,7 @@ fun WatchScreen(episodeId: String) {
                             if (event.metaKey || event.ctrlKey || event.shiftKey) return@onClick
                             event.preventDefault()
                             refs.video?.pause()
-                            val save = persist()
+                            val save = playback.save()
                             scope.launch {
                                 withTimeoutOrNull(DRIVE_SAVE_WAIT_MS) { save?.join() }
                                 window.location.href = driveLink
@@ -634,20 +475,12 @@ fun WatchScreen(episodeId: String) {
             destructive = true,
             onConfirm = {
                 confirmReset = false
-                val id = uid
-                if (id != null) {
-                    scope.launch {
-                        runCatching { catalog.clearProgress(id, episode.id) }
-                            .onSuccess {
-                                refs.video?.currentTime = 0.0
-                                refs.lastSaved = 0.0
-                                ended = false
-                                toasts.ok(S.progressCleared)
-                            }
-                            .onFailure {
-                                Log.e("progress", "clear failed for ${episode.id}", it)
-                                toasts.error(S.clearFailed)
-                            }
+                scope.launch {
+                    if (playback.clearProgress()) {
+                        refs.video?.currentTime = 0.0
+                        toasts.ok(S.progressCleared)
+                    } else {
+                        toasts.error(S.clearFailed)
                     }
                 }
             },
