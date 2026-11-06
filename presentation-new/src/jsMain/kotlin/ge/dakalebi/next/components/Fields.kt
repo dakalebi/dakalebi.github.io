@@ -26,8 +26,8 @@ import org.jetbrains.compose.web.dom.Button as HtmlButton
 /** What a [TextField] holds. Picks the input type, the keyboard and what autofill offers. */
 enum class TextFieldKind { Text, Email, Password }
 
-/** A [TextField]'s input element, set by `ref`. */
-private class InputRef {
+/** A [TextField]'s or a [Scrubber]'s input element, set by `ref`. */
+internal class InputRef {
     var element: HTMLInputElement? = null
 }
 

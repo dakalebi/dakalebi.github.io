@@ -924,6 +924,20 @@
   animation: overlay-fade var(--dur-fade) var(--ease-enter);
 }
 
+/* The sheet holds the page still under it, as a dialog does: a swipe on the scrim does
+   not scroll the page. Not the desktop's popover, which leaves the page as it is. */
+@media (max-width: 63.99rem) {
+  :root:not([data-shell="tv"]):has(.menu-scrim),
+  :root:not([data-shell="tv"]):has(.menu-scrim) body {
+    overflow: hidden;
+  }
+}
+
+:root[data-shell="drive"]:has(.menu-scrim),
+:root[data-shell="drive"]:has(.menu-scrim) body {
+  overflow: hidden;
+}
+
 .menu {
   position: fixed;
   right: 0;
@@ -1193,6 +1207,13 @@
   font-variant-numeric: var(--type-figure-numeric);
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+
+/* A row has the height to spare: a narrow phone's time left takes a second line rather
+   than an ellipsis. A tile's stays one line, under a still of fixed width. */
+.ep-row-meta {
+  white-space: normal;
+  text-wrap: balance;
 }
 
 /* The watched check, in a target-wide column so the rows line up. */

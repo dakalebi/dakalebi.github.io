@@ -501,3 +501,16 @@
     transform: translateY(-0.75rem);
   }
 }
+
+/* On its side, the watch page's right column only, the same width as the grid's: over
+   the title as upright, not across the middle of the picture. */
+@media (orientation: landscape) and (max-height: 35rem) {
+  :root:has(.drive-watch) .toast-region {
+    left: auto;
+    width: calc(
+      (100vw - max(var(--space-4), var(--safe-left)) - max(var(--space-4), var(--safe-right)) - var(--space-6)) / 2.2 +
+        max(var(--space-4), var(--safe-right))
+    );
+    padding: 0 max(var(--space-4), var(--safe-right)) 0 0;
+  }
+}
