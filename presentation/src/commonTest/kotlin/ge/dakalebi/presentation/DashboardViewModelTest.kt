@@ -182,9 +182,20 @@ class DashboardViewModelTest {
 
         setup.dashboard.refreshCatalog()
 
-        assertEquals(S.refreshed(episodes.size, 0, 0), setup.lastToast?.message)
+        assertEquals(S.refreshed(episodes.size, 0, 0, null, 0), setup.lastToast?.message)
         assertEquals(ToastKind.Ok, setup.lastToast?.kind)
         assertFalse(setup.catalog.refreshing)
+    }
+
+    @Test
+    fun a_rebuild_says_what_cavea_plus_listed() = runTest {
+        val setup = setup()
+        setup.catalogRepository.caveaListed = 990
+        setup.catalogRepository.caveaOnly = 58
+
+        setup.dashboard.refreshCatalog()
+
+        assertEquals(S.refreshed(episodes.size, 0, 0, 990, 58), setup.lastToast?.message)
     }
 
     @Test

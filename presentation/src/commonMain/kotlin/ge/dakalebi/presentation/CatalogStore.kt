@@ -10,6 +10,7 @@ import ge.dakalebi.domain.model.RefreshResult
 import ge.dakalebi.domain.model.WatchProgress
 import ge.dakalebi.domain.service.CatalogQueries
 import ge.dakalebi.domain.service.WatchStats
+import ge.dakalebi.domain.usecase.CarryOverCaveaProgress
 import ge.dakalebi.domain.usecase.ClearEpisodeProgress
 import ge.dakalebi.domain.usecase.LoadCatalog
 import ge.dakalebi.domain.usecase.LoadProgress
@@ -45,6 +46,7 @@ class CatalogStore(
     private val resetSeasonProgressUseCase: ResetSeasonProgress,
     private val resetAllProgressUseCase: ResetAllProgress,
     private val recordEpisodeDuration: RecordEpisodeDuration,
+    private val carryOverCaveaProgress: CarryOverCaveaProgress,
 ) {
     var episodes: List<Episode> by mutableStateOf(emptyList())
         private set
@@ -102,7 +104,7 @@ class CatalogStore(
             val catalog = loadCatalog()
             episodes = catalog.episodes
             meta = catalog.meta
-            progress = loadProgress(uid)
+            progress = carriedOver(uid, loadProgress(uid))
             loading = false
         } catch (e: CancellationException) {
             throw e
@@ -141,6 +143,10 @@ class CatalogStore(
             // to tell us what we just wrote costs another 932 reads.
             episodes = result.catalog
             meta = loadCatalog().meta
+            // The rebuild may have joined a Cavea-only episode to Formula's; the
+            // admin who ran it should not wait for the next load to see their
+            // progress follow it.
+            loadedFor?.let { uid -> progress = carriedOver(uid, progress) }
             Result.success(result)
         } catch (e: Throwable) {
             // Surface the raw failure: a mapped message hides which stage broke.
@@ -197,6 +203,23 @@ class CatalogStore(
     fun putEpisode(episode: Episode) {
         episodes = episodes.map { if (it.id == episode.id) episode else it }
     }
+
+    /**
+     * [loaded] with progress left on a Cavea-only id moved to the Formula episode
+     * that id became (see [CarryOverCaveaProgress]).
+     *
+     * A failure here does not fail the load: the entries stay where they were,
+     * nothing is lost, and the next load tries again.
+     */
+    private suspend fun carriedOver(uid: String, loaded: Map<String, WatchProgress>): Map<String, WatchProgress> =
+        try {
+            carryOverCaveaProgress(uid, episodes, loaded)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            Log.w("catalog", "moving Cavea-only progress failed for uid=$uid", e)
+            loaded
+        }
 
     /**
      * Shows a duration the player measured. Keeping it, on this device and on

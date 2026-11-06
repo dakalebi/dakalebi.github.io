@@ -14,7 +14,7 @@ layer, with the web app on top.
 |---|---|---|
 | `:core` | `commonMain`: logging and formatting policy. `jsMain`: the console and the clock, two `.js.kt` files | Depends on nothing. Every other module may use it |
 | `:domain` | models, repository interfaces, a use case per operation, pure queries | Depends on no other module, not even `:core`, and on one library: kotlinx-coroutines, for `Flow`. So "the domain names no framework" is the compile classpath and not only a convention |
-| `:data` | `commonMain`: the Formula API and DTOs, the settings sync (`SyncedSettingsRepository`), and the storage that is plain Kotlin over a `KeyValueStore`: the catalog cache, the settings device copy, guest progress, the guest choice, and `ViewerProgressRepository`, which routes progress between the account and the device. `jsMain`: `firebase` (Firestore and Auth through the JS SDK), `local` (the browser's `localStorage`), the system clock, and the bare GET | Every implementation of a domain repository. Depends on `:domain` and `:core` only, so it cannot name presentation, `i18n` or UI. Its caches are its own: no interface for them is in `:domain` |
+| `:data` | `commonMain`: the Formula API and DTOs, Cavea Plus's public episode list (`cavea/`), the settings sync (`SyncedSettingsRepository`), and the storage that is plain Kotlin over a `KeyValueStore`: the catalog cache, the settings device copy, guest progress, the guest choice, and `ViewerProgressRepository`, which routes progress between the account and the device. `jsMain`: `firebase` (Firestore and Auth through the JS SDK), `local` (the browser's `localStorage`), the system clock, and the bare GET | Every implementation of a domain repository. Depends on `:domain` and `:core` only, so it cannot name presentation, `i18n` or UI. Its caches are its own: no interface for them is in `:domain` |
 | `:presentation` | `commonMain`: the stores and ViewModels, the `Route` type, error wording, `i18n`, the composition locals. `jsMain`: `HashRouter` | The screen state and the strings, so a second front end reuses them instead of reimplementing them. Depends on `:domain`, `:core`, Compose runtime and coroutines, and never on Compose HTML or the component library, so a front end with a different look reuses it as it is. Only its tests depend on `:data` |
 | `:presentation-new` | `jsMain`: the UI (Compose HTML) for all three shells, and its design system: `tokens.css`, `base.css`, `components.css`, a sheet per shell (`web.css`, `tv/tv.css`, `drive/drive.css`) and the sign-in's (`signin.css`, web and drive), the components and icons, the screens (`next/web/`, `next/tv/`, `next/drive/`), and the three pages. Also the engines: `Shell`, `PageZoom`, TV focus and input, the TV and driving-mode players' state, and the media helpers | "Presentation-New", the redesign, which replaced the first UI. Depends on `:presentation` and `:core`, and on no shared UI library. Its pages and sheets reach the distribution through the root's `jsProcessResources`. `/` draws the web screens, `/tv/` the TV screens and `/drive/` the driving-mode screens. `?gallery` draws a gallery of every component on any of them |
 | `:testing` | the fakes the modules' tests share: a clock, in-memory storage, the account's settings document, progress storage, and builders for episodes and progress | Test code only. No module's main code depends on it, so none of it reaches the bundle. A module, because Kotlin Multiplatform gives one module's tests no way to use another module's test code |
@@ -54,7 +54,7 @@ Arrows point inwards. Nothing on an inner ring knows a name from an outer one.
 | Package | May import | Contains |
 |---|---|---|
 | `domain` | Kotlin and kotlinx-coroutines | models, repository **interfaces**, a use case per operation, pure queries |
-| `data` | `domain`, `core` | Firestore, the Formula API, `localStorage` |
+| `data` | `domain`, `core` | Firestore, the Formula API, Cavea Plus's public list, `localStorage` |
 | `presentation` | `domain`, `core`, `i18n` | stores and ViewModels, error→text mapping, the `Route` type |
 | `next` (`:presentation-new`) | `presentation`, `domain`, `core`, `i18n`, `di` | Compose HTML, and nothing else |
 | `di` | everything | the composition locals, and in the root the composition root |
@@ -263,7 +263,8 @@ Two of those earn their place beyond the coverage they add:
   `PERMISSION_DENIED` would compile and then answer every failure with the same
   generic sentence. Deleting the mapping fails exactly two of its assertions,
   which is the property that makes it worth having.
-- **`LocalCatalogCacheTest`** round-trips all thirteen `Episode` fields. A field
+- **`LocalCatalogCacheTest`** round-trips all fourteen `Episode` fields, and an
+  episode only Cavea Plus has, whose Formula fields are empty. A field
   the stored shape forgets would not fail to compile and would not fail to
   decode; it would just serve episodes with no runtime.
 

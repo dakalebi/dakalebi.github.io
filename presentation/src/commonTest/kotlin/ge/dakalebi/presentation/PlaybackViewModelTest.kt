@@ -11,6 +11,8 @@ import ge.dakalebi.domain.model.UserSettings
 import ge.dakalebi.domain.model.WatchProgress
 import ge.dakalebi.domain.repository.CatalogRepository
 import ge.dakalebi.domain.service.MEDIA_ERR_SRC_NOT_SUPPORTED
+import ge.dakalebi.domain.service.caveaWatchUrl
+import ge.dakalebi.domain.usecase.CarryOverCaveaProgress
 import ge.dakalebi.domain.usecase.ChangeUserSetting
 import ge.dakalebi.domain.usecase.ClearEpisodeProgress
 import ge.dakalebi.domain.usecase.LoadCatalog
@@ -28,6 +30,7 @@ import ge.dakalebi.testing.FakeAccountSettings
 import ge.dakalebi.testing.FakeClock
 import ge.dakalebi.testing.FakeKeyValueStore
 import ge.dakalebi.testing.FakeProgressRepository
+import ge.dakalebi.testing.caveaOnlyEpisode
 import ge.dakalebi.testing.episode
 import ge.dakalebi.testing.progress
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -237,6 +240,66 @@ class PlaybackViewModelTest {
         runCurrent()
 
         assertEquals(PlaybackError.UnsupportedOnAppleMobile, rig.vm.state.value.error)
+    }
+
+    // ---------------------------------------------------------- Cavea Plus
+
+    @Test
+    fun an_episode_only_cavea_has_settles_at_once_without_asking_formula() = runTest {
+        var asked = 0
+        val only = caveaOnlyEpisode(1, 3)
+        val rig = rig(episodes = listOf(e1, e2, only), resolve = { asked++; it })
+
+        rig.vm.resolve(only)
+
+        val ui = rig.vm.state.value
+        assertEquals(PlaybackError.OnlyOnCavea, ui.error)
+        assertEquals(caveaWatchUrl("c1e3"), ui.caveaUrl)
+        assertTrue(ui.offersCavea)
+        assertFalse(ui.resolving)
+        assertNull(ui.videoUrl)
+        assertEquals(0, asked)
+    }
+
+    @Test
+    fun the_stored_links_of_an_episode_only_cavea_has_are_none() = runTest {
+        val only = caveaOnlyEpisode(1, 3)
+        val rig = rig(episodes = listOf(e1, e2, only))
+
+        rig.vm.startFrom(only)
+
+        assertEquals(PlaybackError.OnlyOnCavea, rig.vm.state.value.error)
+        assertNull(rig.vm.state.value.videoUrl)
+        assertTrue(rig.vm.state.value.offersCavea)
+    }
+
+    @Test
+    fun an_episode_cavea_also_has_is_offered_there_only_once_it_fails_here() = runTest {
+        val both = e1.copy(caveaEpisodeId = "c1e1")
+        val rig = rig(episodes = listOf(both, e2))
+
+        rig.vm.resolve(both)
+
+        assertEquals(caveaWatchUrl("c1e1"), rig.vm.state.value.caveaUrl)
+        assertFalse(rig.vm.state.value.offersCavea, "it plays here")
+
+        rig.vm.onMediaError(code = 2)
+        runCurrent()
+
+        assertEquals(PlaybackError.LoadFailed, rig.vm.state.value.error)
+        assertTrue(rig.vm.state.value.offersCavea)
+    }
+
+    @Test
+    fun an_episode_cavea_lacks_offers_nothing_when_it_fails() = runTest {
+        val bare = e1.copy(videoUrl = null, sources = emptyMap())
+        val rig = rig(episodes = listOf(bare, e2))
+
+        rig.vm.resolve(bare)
+
+        assertEquals(PlaybackError.NoLink, rig.vm.state.value.error)
+        assertNull(rig.vm.state.value.caveaUrl)
+        assertFalse(rig.vm.state.value.offersCavea)
     }
 
     // -------------------------------------------------------------- saving
@@ -559,6 +622,7 @@ class PlaybackViewModelTest {
             resetSeasonProgressUseCase = ResetSeasonProgress(progress),
             resetAllProgressUseCase = ResetAllProgress(progress),
             recordEpisodeDuration = RecordEpisodeDuration(catalogSource),
+            carryOverCaveaProgress = CarryOverCaveaProgress(progress),
         )
         if (loaded) catalog.ensureLoaded("u")
 

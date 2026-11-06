@@ -1,5 +1,10 @@
 package ge.dakalebi.presentation
 
+import ge.dakalebi.domain.model.WatchProgress
+import ge.dakalebi.domain.repository.ProgressRepository
+import ge.dakalebi.testing.FakeProgressRepository
+import ge.dakalebi.testing.episode
+import ge.dakalebi.testing.progress
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.joinAll
@@ -75,5 +80,39 @@ class CatalogStoreTest {
 
         assertTrue(store.loadError != null)
         assertFalse(store.loading)
+    }
+
+    // ---------------------------------------------------------- Cavea Plus
+
+    /** Formula has since published Cavea's c1e2 as episode e2. */
+    private val joined = listOf(episode(1, 1, id = "e1"), episode(1, 2, id = "e2", caveaEpisodeId = "c1e2"))
+
+    @Test
+    fun a_load_moves_progress_left_on_a_cavea_only_id_to_the_episode_it_became() = runTest {
+        val progress = FakeProgressRepository(mapOf("cavea-c1e2" to progress("cavea-c1e2", 700, at = 5.0)))
+        val store = catalogStore(StubCatalogRepository(joined), progress)
+
+        store.ensureLoaded("uid-1")
+
+        assertEquals(setOf("e2"), store.progress.keys)
+        assertEquals(700, store.progress.getValue("e2").progressSeconds)
+        assertEquals(setOf("e2"), progress.stored.keys)
+    }
+
+    /** Nothing is lost by failing: the entry stays where it was for the next load. */
+    @Test
+    fun a_failed_move_does_not_fail_the_load() = runTest {
+        val stored = FakeProgressRepository(mapOf("cavea-c1e2" to progress("cavea-c1e2", 700)))
+        val refusing = object : ProgressRepository by stored {
+            override suspend fun save(uid: String, progress: WatchProgress): Boolean = error("offline")
+        }
+        val store = catalogStore(StubCatalogRepository(joined), refusing)
+
+        store.ensureLoaded("uid-1")
+
+        assertNull(store.loadError)
+        assertFalse(store.loading)
+        assertEquals(setOf("cavea-c1e2"), store.progress.keys)
+        assertEquals(setOf("cavea-c1e2"), stored.stored.keys)
     }
 }

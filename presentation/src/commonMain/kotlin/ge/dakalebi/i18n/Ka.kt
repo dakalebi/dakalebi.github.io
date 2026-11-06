@@ -112,6 +112,7 @@ object Ka : Strings {
     override val watchedLabel = "ნანახია"
     override val startedLabel = "დაწყებულია"
     override val noVideo = "ვიდეო არაა"
+    override val onCavea = "Cavea Plus-ზეა"
     override val copyEpisodeLink = "სერიის ლინკის კოპირება"
     override val copyMp4Link = "MP4 ლინკის კოპირება"
     override val episodeLinkCopied = "სერიის ლინკი დაკოპირდა"
@@ -131,11 +132,14 @@ object Ka : Strings {
     override val markAsWatched = "ნანახად მონიშვნა"
     override val watchedTick = "✓  ნანახია"
     override val openOnFormula = "ფორმულაზე გახსნა"
+    override val openOnCavea = "Cavea Plus-ზე გახსნა"
     override val episodeNotFound = "სერია ვერ მოიძებნა"
     override val videoLinkFailed = "ვიდეოს ლინკის მიღება ვერ მოხერხდა"
     override val videoLoadFailed = "ვიდეოს ჩატვირთვა ვერ მოხერხდა"
     override val videoUnsupportedOnAppleMobile =
         "ეს ვიდეო iPhone-სა და iPad-ზე ბრაუზერში ვერ ჩაირთვება. გახსენი უფასო VLC აპლიკაციაში ან კომპიუტერზე."
+    override val videoOnlyOnCavea = "ეს სერია მხოლოდ Cavea Plus-ზეა"
+    override val scanToOpenOnCavea = "დაასკანერე ტელეფონით და უყურე Cavea Plus-ზე"
     override val openInVlc = "VLC-ში გახსნა"
     override val retryingVideo = "ვცდი თავიდან..."
     override val markedAsWatched = "მონიშნულია, როგორც ნანახი"
@@ -178,9 +182,14 @@ object Ka : Strings {
     override val dataLoadFailed = "მონაცემები ვერ ჩაიტვირთა"
 
     override fun refreshSeasonProgress(done: Int, total: Int) = "სეზონი $done / $total"
-    override fun refreshed(episodes: Int, changed: Int, withoutVideo: Int): String {
+    override fun refreshed(episodes: Int, changed: Int, withoutVideo: Int, caveaListed: Int?, caveaOnly: Int): String {
         val missing = if (withoutVideo > 0) " · $withoutVideo ვიდეოს გარეშე" else ""
-        return "განახლდა: $episodes სერია, $changed შეიცვალა$missing"
+        val cavea = when {
+            caveaListed == null -> " · Cavea Plus-ის სია ვერ განახლდა"
+            caveaOnly > 0 -> " · Cavea Plus: $caveaListed სერია, $caveaOnly მხოლოდ იქ"
+            else -> " · Cavea Plus: $caveaListed სერია"
+        }
+        return "განახლდა: $episodes სერია, $changed შეიცვალა$missing$cavea"
     }
 
     // ----------------------------------------------------------- player

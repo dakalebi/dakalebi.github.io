@@ -104,7 +104,7 @@ class DashboardViewModel(
             catalog.refreshCatalog { done, total ->
                 if (total == 0) S.refreshingEpisodes else S.refreshSeasonProgress(done, total)
             }
-                .onSuccess { toasts.ok(S.refreshed(it.episodes, it.written, it.withoutVideo)) }
+                .onSuccess { toasts.ok(S.refreshed(it.episodes, it.written, it.withoutVideo, it.caveaEpisodes, it.caveaOnly)) }
                 .onFailure { toasts.error(ErrorMessages.catalogRefresh(it)) }
         }
     }

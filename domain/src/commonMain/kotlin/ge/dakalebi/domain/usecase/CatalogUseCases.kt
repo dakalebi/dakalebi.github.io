@@ -36,9 +36,14 @@ class ResolveEpisodeVideo(private val catalog: CatalogRepository) {
  * Formula never reports durations, so the player is the only source of them,
  * and writing one back is best-effort: only admins may touch the episodes
  * collection, so for everyone else this is expected to do nothing.
+ *
+ * Never for an episode only Cavea Plus has. It does not play here, so nothing was
+ * measured, and the write would create an `episodes` document for it, which every
+ * other build of the app reads as a Formula episode.
  */
 class RecordEpisodeDuration(private val catalog: CatalogRepository) {
     suspend operator fun invoke(episode: Episode, durationSeconds: Int): Boolean {
+        if (episode.isCaveaOnly) return false
         if (durationSeconds <= 0 || episode.durationSeconds == durationSeconds) return false
         catalog.recordDuration(episode.id, durationSeconds)
         return true

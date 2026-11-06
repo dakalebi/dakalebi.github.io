@@ -126,7 +126,7 @@ private const val UNRESERVED = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuv
 private const val HEX = "0123456789ABCDEF"
 
 /** RFC 3986 percent-encoding of everything outside the unreserved set, as UTF-8. */
-private fun percentEncode(text: String): String = buildString {
+internal fun percentEncode(text: String): String = buildString {
     for (byte in text.encodeToByteArray()) {
         val value = byte.toInt() and 0xFF
         val char = value.toChar()

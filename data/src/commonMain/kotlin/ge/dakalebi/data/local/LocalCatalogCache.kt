@@ -106,8 +106,16 @@ class LocalCatalogCache(private val store: KeyValueStore) : CatalogCache {
     }
 
     private companion object {
-        /** Bump when [CachedEpisode]'s shape changes, so old entries are ignored. */
-        const val KEY = "catalog_cache_v1"
+        /**
+         * Bump when [CachedEpisode]'s shape changes, so old entries are ignored. v2:
+         * Cavea Plus's id, and the Formula fields that an episode only Cavea has
+         * leaves empty.
+         *
+         * The bump also keeps builds apart: `/` and `/redesign/` share this origin's
+         * storage, and a build that still reads v1 expects every Formula field.
+         * Both entries fit: about 650KB each against roughly 5MB.
+         */
+        const val KEY = "catalog_cache_v2"
 
         /**
          * Sized for the tightest store this runs on: browser `localStorage` dies

@@ -4,6 +4,7 @@ import ge.dakalebi.domain.Clock
 import ge.dakalebi.domain.model.Episode
 import ge.dakalebi.domain.model.WatchProgress
 import ge.dakalebi.domain.repository.ProgressRepository
+import ge.dakalebi.domain.service.CAVEA_ONLY_ID_PREFIX
 
 class LoadProgress(private val progress: ProgressRepository) {
     suspend operator fun invoke(uid: String): Map<String, WatchProgress> =
@@ -120,5 +121,48 @@ class ResetSeasonProgress(private val progress: ProgressRepository) {
 class ResetAllProgress(private val progress: ProgressRepository) {
     suspend operator fun invoke(uid: String) {
         progress.deleteAll(uid)
+    }
+}
+
+/**
+ * Moves progress saved on a Cavea-only episode to the Formula episode it became.
+ *
+ * An episode only Cavea Plus has is filed under `cavea-<Cavea's id>`. When Formula
+ * publishes it later (season 19 may well arrive that way), the next refresh joins
+ * the two and the episode is filed under Formula's id instead, so the viewer's
+ * "watched" would be left behind on an id nothing shows any more.
+ *
+ * So, for every such entry whose Cavea id is now a Formula episode's: the entry is
+ * saved under the Formula id, unless that id already has one at least as recent,
+ * and the old entry is deleted either way. Returns [current] as it is after the
+ * move, for the caller to show. Does nothing, and costs nothing, when no entry is
+ * left behind, which is every load but the first after such a refresh.
+ */
+class CarryOverCaveaProgress(private val progress: ProgressRepository) {
+    suspend operator fun invoke(
+        uid: String,
+        episodes: List<Episode>,
+        current: Map<String, WatchProgress>,
+    ): Map<String, WatchProgress> {
+        val stranded = current.values.filter { it.episodeId.startsWith(CAVEA_ONLY_ID_PREFIX) }
+        if (stranded.isEmpty()) return current
+
+        val formulaByCaveaId = episodes
+            .filter { !it.isCaveaOnly && it.caveaEpisodeId != null }
+            .associateBy { it.caveaEpisodeId!! }
+
+        var result = current
+        for (entry in stranded) {
+            val target = formulaByCaveaId[entry.episodeId.removePrefix(CAVEA_ONLY_ID_PREFIX)] ?: continue
+            val existing = result[target.id]
+            if (existing == null || existing.lastWatchedAtMillis < entry.lastWatchedAtMillis) {
+                val moved = entry.copy(episodeId = target.id)
+                progress.save(uid, moved)
+                result = result + (target.id to moved)
+            }
+            progress.delete(uid, entry.episodeId)
+            result = result - entry.episodeId
+        }
+        return result
     }
 }
