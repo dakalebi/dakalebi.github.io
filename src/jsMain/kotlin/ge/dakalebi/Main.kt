@@ -75,21 +75,20 @@ fun main() {
     // Which front end this page is comes from the document, not from the device.
     // Every page loads the same bundle; see `Shell.kt` in `:presentation-new`. The `/next/` pages draw
     // the redesign (`:presentation-new`) on the same graph; the rest draw the old UI.
+    val build = AppBuild(
+        number = BuildInfo.BUILD_NUMBER,
+        commit = BuildInfo.COMMIT,
+        publishedAtMillis = BuildInfo.PUBLISHED_AT_MILLIS,
+        commitUrl = BuildInfo.commitUrl,
+    )
     val render = {
         renderComposable(rootElementId = "root") {
             graph.Provide {
                 if (isNextUi) {
                     when (shell) {
-                        Shell.Tv -> TvRoot()
+                        Shell.Tv -> TvRoot(build)
                         Shell.Drive -> DriveRoot()
-                        Shell.Web -> WebRoot(
-                            AppBuild(
-                                number = BuildInfo.BUILD_NUMBER,
-                                commit = BuildInfo.COMMIT,
-                                publishedAtMillis = BuildInfo.PUBLISHED_AT_MILLIS,
-                                commitUrl = BuildInfo.commitUrl,
-                            ),
-                        )
+                        Shell.Web -> WebRoot(build)
                     }
                 } else {
                     when (shell) {

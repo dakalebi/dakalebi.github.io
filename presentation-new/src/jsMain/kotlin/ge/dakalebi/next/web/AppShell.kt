@@ -282,9 +282,9 @@ private fun SideNav(current: Tab) {
     }
 }
 
-/** The question the dashboard is asking, if any. */
+/** The question the dashboard is asking, if any. The TV shell asks the same ones. */
 @Composable
-private fun DashboardDialogs(dashboard: DashboardViewModel) {
+internal fun DashboardDialogs(dashboard: DashboardViewModel) {
     val ui by dashboard.state.collectAsState()
     when (val confirm = ui.confirm) {
         DashboardConfirm.ResetAll -> ConfirmDialog(
