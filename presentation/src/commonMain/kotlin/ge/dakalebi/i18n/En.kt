@@ -182,14 +182,15 @@ object En : Strings {
     override val dataLoadFailed = "Could not load the data"
 
     override fun refreshSeasonProgress(done: Int, total: Int) = "Season $done / $total"
-    override fun refreshed(episodes: Int, changed: Int, withoutVideo: Int, caveaListed: Int?, caveaOnly: Int): String {
+    override fun refreshed(episodes: Int, changed: Int?, withoutVideo: Int, caveaListed: Int?, caveaOnly: Int): String {
+        val formula = if (changed == null) "Formula list not updated" else "$episodes episodes, $changed changed"
         val missing = if (withoutVideo > 0) " · $withoutVideo without video" else ""
         val cavea = when {
             caveaListed == null -> " · Cavea Plus list not updated"
             caveaOnly > 0 -> " · Cavea Plus: $caveaListed, $caveaOnly only there"
             else -> " · Cavea Plus: $caveaListed"
         }
-        return "Refreshed: $episodes episodes, $changed changed$missing$cavea"
+        return "Refreshed: $formula$missing$cavea"
     }
 
     // ----------------------------------------------------------- player

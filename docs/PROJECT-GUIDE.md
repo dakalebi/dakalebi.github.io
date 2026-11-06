@@ -155,7 +155,14 @@ fetch — happens in the browser. Consequences that reach everywhere:
 - **Cavea Plus's list is read the same way, by the admin refresh only.** Its
   series answer is public and CORS-open, so a bare GET reads it with no sign-in.
   The refresh stores it in `meta/cavea`; viewers read that document and never
-  call Cavea. A failed fetch keeps the stored list and never fails the refresh.
+  call Cavea.
+- **Neither source can stop the refresh on its own** (`CatalogRefresh`). When
+  Formula cannot be reached or read, or answers with nothing, the stored
+  episodes stand, none is written, and Cavea's list is still fetched, stored and
+  joined to them. When Cavea fails, its stored list stands. Only both failing
+  fails the refresh, and then nothing is written, the stamp included. Formula's
+  answer is used whole or not at all: a season failing part way keeps the stored
+  catalog whole.
   Cavea's streams are DRM-protected and are never touched: an episode only Cavea
   has, or one that does not play here, links to Cavea's own watch page.
 - **Fresh episode URLs have five seconds.** The watch screen asks the Formula

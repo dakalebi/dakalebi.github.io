@@ -171,6 +171,9 @@ class StubCatalogRepository(
     /** What the rebuild reports of Cavea Plus's list. */
     var caveaListed: Int? = null
     var caveaOnly = 0
+
+    /** Formula's changed count; null is Formula failing while Cavea Plus answered. */
+    var formulaWritten: Int? = 0
     var loads = 0
         private set
 
@@ -188,7 +191,7 @@ class StubCatalogRepository(
     override suspend fun getMeta() = CatalogMeta(1.0, 1, episodes.size)
     override suspend fun refresh(nowMillis: Double, onProgress: (Int, Int) -> Unit): RefreshResult {
         if (refreshFails) throw IllegalStateException("formula down")
-        return RefreshResult(1, episodes.size, 0, 0, episodes, caveaListed, caveaOnly)
+        return RefreshResult(1, episodes.size, formulaWritten, 0, episodes, caveaListed, caveaOnly)
     }
 
     override suspend fun resolveVideo(episode: Episode) = episode

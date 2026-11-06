@@ -96,6 +96,7 @@ rather than the absence of it.
 | D7 | After refresh | `meta/catalog` timestamp updates and shows in the sheet |
 | D8 | Refresh with the network offline | Error toast **and** a logged error naming the stage |
 | D9 | Refresh after durations were learned | `durationSeconds` is not clobbered |
+| D10 | Refresh with `mw-api.formula.ge` blocked in DevTools, Cavea Plus reachable | Toast `განახლდა: Formula-ს სია ვერ განახლდა · Cavea Plus: N სერია`; every episode still listed, nothing written to `episodes` |
 
 ## E — Watch screen chrome
 

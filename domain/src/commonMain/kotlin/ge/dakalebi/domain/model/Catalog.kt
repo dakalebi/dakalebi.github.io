@@ -17,12 +17,18 @@ data class Catalog(
  * Outcome of a rebuild, detailed enough to report in a toast.
  *
  * [seasons], [episodes], [written] and [withoutVideo] are Formula's: what the rebuild
- * fetched from it and wrote back. Cavea Plus's part is the last two.
+ * fetched from it and wrote back. Cavea Plus's part is the last two. Either source can
+ * fail on its own, and its stored part then stands.
  */
 data class RefreshResult(
     val seasons: Int,
     val episodes: Int,
-    val written: Int,
+    /**
+     * How many of Formula's episodes changed and were written, or null when Formula
+     * could not be read this time. The stored episodes stand then, and [seasons],
+     * [episodes] and [withoutVideo] count those.
+     */
+    val written: Int?,
     val withoutVideo: Int,
     /**
      * The catalog the rebuild just produced, Cavea Plus's list merged in.
