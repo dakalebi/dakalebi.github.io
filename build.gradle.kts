@@ -2,7 +2,9 @@ import org.jetbrains.kotlin.gradle.dsl.JsModuleKind
 
 plugins {
     kotlin("multiplatform") version "2.3.20"
-    kotlin("plugin.serialization") version "2.3.20"
+    // Resolved here for the whole build, applied only where something serialises
+    // (`:data`).
+    kotlin("plugin.serialization") version "2.3.20" apply false
     kotlin("plugin.compose") version "2.3.20"
     id("org.jetbrains.compose") version "1.11.1"
     // For the Android TV shell in `:tv`. Declared here (the repo keeps plugin
@@ -96,9 +98,10 @@ val generateBuildInfo = tasks.register("generateBuildInfo") {
 
 kotlin {
     js(IR) {
-        // CommonJS rather than the UMD default: the Firebase SDK is only
-        // reachable as a module, so `@JsModule` externals would otherwise need a
-        // `@JsNonModule` global fallback that does not exist.
+        // CommonJS rather than the UMD default, to match `:data`: the Firebase
+        // SDK is only reachable as a module, so its `@JsModule` externals would
+        // otherwise need a `@JsNonModule` global fallback that does not exist.
+        // This module links the bundle, so its setting is the one that shapes it.
         compilerOptions {
             moduleKind.set(JsModuleKind.MODULE_COMMONJS)
         }
@@ -126,6 +129,10 @@ kotlin {
                 // the composition root use both, and `:shared` is going away.
                 implementation(project(":core"))
                 implementation(project(":domain"))
+                // Only the composition root (`di/`, `Main.kt`) and the fixture graph
+                // (`ui/dev/`) may name it. The rest of `ui/` reaches data through
+                // the domain interfaces. docs/ARCHITECTURE.md has the grep.
+                implementation(project(":data"))
                 implementation(project(":shared"))
                 // The icon catalogue and the shared components. See the note on
                 // `includeBuild("keel")` in settings.gradle.kts for what this app
@@ -134,14 +141,9 @@ kotlin {
                 implementation("io.github.bchmsl:keel")
                 implementation("org.jetbrains.compose.runtime:runtime:1.11.1")
                 // Compose HTML is Kotlin/JS only and has no multiplatform
-                // variant, so it cannot move into `:shared`. Neither can the
-                // Firebase npm package: npm dependencies are only legal in a
-                // Kotlin/JS source set, and the `@JsModule` externals that use
-                // it are browser-only anyway.
+                // variant, so it cannot move into `:shared`.
                 implementation("org.jetbrains.compose.html:html-core:1.11.1")
                 implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
-                implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
-                implementation(npm("firebase", "12.17.0"))
             }
         }
 

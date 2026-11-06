@@ -20,11 +20,13 @@ dependencyResolutionManagement {
 // path change.
 //
 // `:core` (logging, formatting, the clock) and `:domain` (models, repository
-// interfaces, use cases) depend on nothing. `:shared` holds the rest of the
-// plain-Kotlin code above them: the data sources, the string catalogue, and the
-// state holders. It shrinks as `:data` and `:presentation` take it over.
+// interfaces, use cases) depend on nothing. `:data` implements the domain's
+// repositories: the Formula API, Firebase, device storage. `:shared` holds the
+// rest of the plain-Kotlin code: the string catalogue and the state holders,
+// until `:presentation` takes it over.
 include(":core")
 include(":domain")
+include(":data")
 include(":shared")
 
 // The icon catalogue, the shared components (`Button`, `Switch`, `Dialog`, ...)

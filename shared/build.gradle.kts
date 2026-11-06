@@ -1,15 +1,14 @@
-// Everything the web app and a future Android TV app both need.
+// The string catalogue, the composition locals, and the state holders: what is
+// left of the old shared module, until `:presentation` takes it over.
 //
 // Deliberately not an application: no `binaries.executable()`, no webpack, and no
 // `moduleKind`. This produces klibs, and the module that links them into a bundle
-// is the one that gets to decide the output shape. `moduleKind = COMMONJS` stays
-// in the root build file with the `@JsModule` externals that force it.
+// is the one that gets to decide the output shape.
 //
 // Plugin versions come from the root build file, which resolves them for the
 // whole build. Adding a version here would let the two drift.
 plugins {
     kotlin("multiplatform")
-    kotlin("plugin.serialization")
     kotlin("plugin.compose")
 }
 
@@ -35,11 +34,12 @@ kotlin {
             // reads, so consumers need them on their own compile classpath.
             api("org.jetbrains.compose.runtime:runtime:1.11.1")
             api("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
-            // Private: only the Formula DTOs and the catalog cache serialise.
-            implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
         }
 
         commonTest.dependencies {
+            // The tests still live here, including the ones for `:data`. They move
+            // to their modules before this one is deleted.
+            implementation(project(":data"))
             implementation(kotlin("test"))
             implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")
         }
