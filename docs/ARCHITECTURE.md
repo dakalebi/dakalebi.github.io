@@ -96,11 +96,14 @@ Two kinds, while the refactor moves from one to the other.
 
 `SessionViewModel` is the first ViewModel, and the root one all three shells
 share: who is using the app, plus the work every shell root used to repeat for
-itself. Settings sync follows the account, and the catalog is dropped when nobody
-is using the app. Both run in the app scope as the state changes, not in a
-composition, so they wait for no frame and do not depend on which shell is on
-screen. Loading the catalog stays with each shell, because `CatalogStore` does not
-join a load already running and a second caller would fetch everything twice.
+itself. Settings sync follows the account, the catalog is loaded for whoever
+arrives and dropped when nobody is using the app. All of it runs in the app scope
+as the state changes, not in a composition, so it waits for no frame and does not
+depend on which shell is on screen. A new viewer stops the last one's load before
+starting their own, and the retry buttons call `retryCatalogLoad`.
+`CatalogStore.ensureLoaded` joins a load already running, so a second caller waits
+for it instead of fetching everything twice, and a stopped load is not recorded as
+a failed one.
 
 `PlaybackViewModel` is one per episode played, made by `PlaybackViewModelFactory`.
 A watch screen gets it with `rememberPlaybackViewModel`; driving mode's player makes
@@ -115,7 +118,19 @@ session. Saves run in the app scope, so a save already sent still lands after th
 player has moved on; the resolve and the retry stop with it. All three players use
 it: the web, TV and driving mode.
 
-New state goes into a ViewModel. The stores move over screen by screen.
+`DashboardViewModel` and `LoginViewModel` are one per visit to their screen, made
+by a factory the same way. The dashboard's holds the picked season, the question
+on screen and the busy flag, and makes the progress changes and the catalog
+rebuild. The sign-in form's holds what was typed, the mode and the busy flag, and
+sends the requests; the web, TV and driving mode share it through `LoginScreen`.
+Both run their work in the app scope, so leaving the screen does not stop a change
+halfway, and both say how it went through `ToastStore`, in the words of `S`.
+Playback is the exception: each player words its own failures.
+
+New state goes into a ViewModel. The stores stay for state the whole app shares
+(the catalog, settings, preferences, toasts and the route), which is no one
+screen's. What only the markup needs, such as a menu being open or where the
+remote's focus was, stays in the screen.
 
 Two things a build file cannot keep out, so they are still greps. Every one of
 these returns nothing.
@@ -173,9 +188,8 @@ paths are in `:presentation` unless they say root.
   root composable in `SHELL_PAGES` / `SHELL_ROOTS` in `tools/check-css-classes.py`.
   It is a folder in the one distribution, so the deploy needs no new step. Gate
   it on `sessionState().viewer` and file progress under its `viewerId`, so
-  guests work there too. Settings sync and dropping the catalog on sign-out
-  already follow the session; the shell loads the catalog when its screens need
-  it.
+  guests work there too. Settings sync, loading the catalog and dropping it on
+  sign-out already follow the session.
 - **Something a second platform would do differently** → an `expect` beside the
   three that already exist, and resist it. Everything else in `commonMain` is
   plain Kotlin, and that is why the tests can run in a second.

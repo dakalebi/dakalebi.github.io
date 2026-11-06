@@ -288,9 +288,11 @@ restored session. `App` waits for it before deciding anything — without that, 
 page load would flash the login screen at an already-signed-in user.
 
 The same ViewModel does what every shell root used to repeat: settings sync
-follows the account's uid, and the catalog is dropped when nobody is using the
-app. Both run in the app scope as the session changes, not in a composition.
-Each shell still loads the catalog itself, when its screens need it.
+follows the account's uid, the catalog is loaded for whoever arrives, and it is
+dropped when nobody is using the app. All of it runs in the app scope as the
+session changes, not in a composition. A new viewer stops the last one's load,
+and the retry buttons on the dashboard and in driving mode call
+`retryCatalogLoad`.
 
 **Email and password only.** Google sign-in was offered once and is gone: it was
 never used after the account moved to the console (see the admin-rights note
@@ -971,12 +973,14 @@ retry.
 
 ## 8. What is verified, and what is not
 
-**Automated.** `./gradlew allTests`, on Node, in `:presentation` for now (225 tests
+**Automated.** `./gradlew allTests`, on Node, in `:presentation` for now (258 tests
 on 2026-11-06, covering `:core`, `:domain` and `:data` too), run by CI on every pull request and before every publish: the watched threshold, the never-rewind guard, "continue watching"
 and the next episode to play, ordering across season boundaries and the rest of a
 season, hash-route parsing, settings sync (the merge rules, the repository, the
 store, the device copy), the session (guest choice, admin rights, and the
-settings sync and catalog reset that follow it), guest storage, playback-failure classification,
+settings sync, catalog load and catalog reset that follow it), a catalog load
+joined or stopped halfway, the dashboard's progress changes and rebuild, the
+sign-in form, guest storage, playback-failure classification,
 the playback rules all three players share (the file, the stored links TV and
 driving mode start from, saves, the one retry, resume and the next-episode card), the quality default, the iOS resume fragment, the VLC links and playlist encoding,
 TV seeking and interface size, timestamp formatting, toast dismissal, the catalog
