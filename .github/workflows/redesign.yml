@@ -4,7 +4,7 @@ name: Deploy redesign
 #
 #   redesign/develop  https://dakalebi.github.io/redesign/  /redesign/tv/  /redesign/drive/
 #
-# Same build and guard as deploy.yml, then the same publish.yml, into the
+# Same tests, build and guard as deploy.yml, then the same publish.yml, into the
 # `redesign` folder. That folder is the branch's own: a production publish keeps
 # it (tools/publish-site.sh, `owned_elsewhere`).
 #
@@ -61,6 +61,10 @@ jobs:
           java-version: "21"
 
       - uses: gradle/actions/setup-gradle@v4
+
+      # Blocks the publish, as in deploy.yml.
+      - name: Unit tests
+        run: ./gradlew allTests
 
       - name: Build Kotlin/JS bundle
         run: ./gradlew jsBrowserDistribution
