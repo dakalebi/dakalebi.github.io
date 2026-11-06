@@ -5,15 +5,16 @@ import androidx.compose.runtime.DisposableEffect
 import org.jetbrains.compose.web.dom.Span
 
 /**
- * The redesign's icon set: 25 glyphs on a 24-unit grid, drawn with a round 2-unit stroke
+ * The redesign's icon set: 27 glyphs on a 24-unit grid, drawn with a round 2-unit stroke
  * in `currentColor`, so an icon takes the colour of the text around it.
  *
  * Each entry is the inner markup of one `<svg>`. [Icon] adds the wrapper once.
  *
  * 23 glyphs are Lucide's: 22 copied from lucide 1.34.0 (the version keel generates from),
  * and [PictureInPicture], which is `picture-in-picture-2` from lucide-static 0.469.0.
- * [Back10] and [Forward10] are this app's: Lucide has the arcs but not the "10", and an
- * arc alone does not say how far it seeks.
+ * The four seek glyphs are this app's: Lucide has the arcs but not the number, and an
+ * arc alone does not say how far it seeks. [Back30] and [Forward30] are driving mode's,
+ * whose skip is 30 seconds (`SKIP_SECONDS` in `DrivePlayer.kt`).
  *
  * Lucide is under the ISC licence, which asks that this notice stays with the copies:
  *
@@ -35,8 +36,10 @@ enum class Glyph(internal val body: String) {
     Pause("""<rect x="14" y="3" width="5" height="18" rx="1" /><rect x="5" y="3" width="5" height="18" rx="1" />"""),
     SkipBack("""<path d="M17.971 4.285A2 2 0 0 1 21 6v12a2 2 0 0 1-3.029 1.715l-9.997-5.998a2 2 0 0 1-.003-3.432z" /><path d="M3 20V4" />"""),
     SkipForward("""<path d="M21 4v16" /><path d="M6.029 4.285A2 2 0 0 0 3 6v12a2 2 0 0 0 3.029 1.715l9.997-5.998a2 2 0 0 0 .003-3.432z" />"""),
-    Back10("""<path d="M3.5 8.5A9 9 0 1 1 3 12" /><path d="M3.5 3.5v5h5" />$TEN"""),
-    Forward10("""<path d="M20.5 8.5A9 9 0 1 0 21 12" /><path d="M20.5 3.5v5h-5" />$TEN"""),
+    Back10("""$BACK_ARC${seekFigure(10)}"""),
+    Forward10("""$FORWARD_ARC${seekFigure(10)}"""),
+    Back30("""$BACK_ARC${seekFigure(30)}"""),
+    Forward30("""$FORWARD_ARC${seekFigure(30)}"""),
     Maximize("""<path d="M8 3H5a2 2 0 0 0-2 2v3" /><path d="M21 8V5a2 2 0 0 0-2-2h-3" /><path d="M3 16v3a2 2 0 0 0 2 2h3" /><path d="M16 21h3a2 2 0 0 0 2-2v-3" />"""),
     Minimize("""<path d="M8 3v3a2 2 0 0 1-2 2H3" /><path d="M21 8h-3a2 2 0 0 1-2-2V3" /><path d="M3 16h3a2 2 0 0 1 2 2v3" /><path d="M16 21v-3a2 2 0 0 1 2-2h3" />"""),
     Volume2("""$SPEAKER<path d="M16 9a5 5 0 0 1 0 6" /><path d="M19.364 18.364a9 9 0 0 0 0-12.728" />"""),
@@ -66,12 +69,16 @@ enum class Glyph(internal val body: String) {
 private const val SPEAKER =
     """<path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z" />"""
 
+/** The seek arcs, without their number. */
+private const val BACK_ARC = """<path d="M3.5 8.5A9 9 0 1 1 3 12" /><path d="M3.5 3.5v5h5" />"""
+private const val FORWARD_ARC = """<path d="M20.5 8.5A9 9 0 1 0 21 12" /><path d="M20.5 3.5v5h-5" />"""
+
 /**
- * The "10" inside the seek arcs. A filled `<text>`, not a stroke; `components.css` sets its
+ * The number inside a seek arc. A filled `<text>`, not a stroke; `components.css` sets its
  * face to the figures font, which an SVG attribute cannot read from a token.
  */
-private const val TEN =
-    """<text x="12" y="15.6" font-size="8" fill="currentColor" stroke="none" text-anchor="middle">10</text>"""
+private fun seekFigure(seconds: Int): String =
+    """<text x="12" y="15.6" font-size="8" fill="currentColor" stroke="none" text-anchor="middle">$seconds</text>"""
 
 /**
  * One glyph, sized by `--icon-size` (or `--icon-size-s` when [small]) and stroked with

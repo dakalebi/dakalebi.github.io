@@ -1,0 +1,103 @@
+/* =============================================================================
+   The sign-in screen (`next/web/SignInScreen.kt`), which the web and driving-mode
+   pages share: an account's email and password, or a guest visit. Linked after
+   components.css on `/next/` and `/next/drive/`. TV draws its own (`tv/tv.css`).
+
+   Semantic (layer 2) and component (layer 3) tokens only, like the components, so
+   the drive shell's larger roles and 64px targets apply without restating them here.
+
+   Not drawn by the design pass: built from the same tokens and components, and needs
+   a design review.
+   ========================================================================== */
+
+/* One column no wider than the page. An auto column grows to the card's longest
+   unbreakable line, and the drive shell's larger labels made that wider than a phone. */
+.signin {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  place-items: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: calc(var(--pad-page-y) + var(--safe-top)) calc(var(--pad-page-x) + var(--safe-right))
+    calc(var(--pad-page-y) + var(--safe-bottom)) calc(var(--pad-page-x) + var(--safe-left));
+}
+
+.signin-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-group);
+  width: min(100%, 24rem);
+}
+
+.signin-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  text-align: center;
+}
+
+.signin-mark {
+  width: 4.5rem;
+  height: auto;
+  margin-bottom: var(--space-2);
+}
+
+.signin-eyebrow {
+  color: var(--color-accent-text);
+  font: var(--type-section);
+  font-stretch: var(--type-section-stretch);
+  letter-spacing: var(--type-section-tracking);
+}
+
+.signin-title {
+  font: var(--type-display);
+  font-stretch: var(--type-display-stretch);
+  letter-spacing: var(--type-display-tracking);
+}
+
+.signin-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-stack);
+}
+
+.signin-submit,
+.signin-guest-button {
+  width: 100%;
+  margin-top: var(--space-2);
+}
+
+.signin-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-1);
+  margin-top: calc(-1 * var(--space-3));
+}
+
+/* "No account? Register" wraps on a narrow phone rather than losing its last word. */
+.signin-links .button {
+  padding-block: var(--space-2);
+  white-space: normal;
+}
+
+.signin-links .button-label {
+  line-height: var(--lh-125);
+  text-wrap: balance;
+}
+
+.signin-guest {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-top: var(--gap-group);
+  border-top: 1px solid var(--color-line);
+}
+
+.signin-note {
+  color: var(--color-text-3);
+  font: var(--type-body-s);
+  font-stretch: var(--type-body-s-stretch);
+  text-align: center;
+}

@@ -1,0 +1,503 @@
+/* =============================================================================
+   The redesign's driving mode (`next/drive/`): the one-button home (CarContinue) and
+   the player with big controls round the native one. Linked after components.css and
+   signin.css on `/next/drive/` only.
+
+   The drive shell's tokens already make every target 64px with 12px between, the
+   smallest text 16px, the motion shorter and the large amber darker. This sheet only
+   places things. Sizes are fixed, never `vh`: iOS measures `vh` without Safari's bars,
+   which is exactly the room a phone on its side does not have.
+   ========================================================================== */
+
+/* ----- frame ------------------------------------------------------------------- */
+
+/* The viewport, not a percentage: `#root` has no height of its own. */
+.drive-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-stack);
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding:
+    calc(var(--space-3) + var(--safe-top)) max(var(--space-4), var(--safe-right))
+    calc(var(--space-5) + var(--safe-bottom)) max(var(--space-4), var(--safe-left));
+}
+
+.drive-starting {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.drive-top {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-control);
+}
+
+/* The way out to the full site. Quiet, so the eye goes to Continue, but at the full
+   64px. Pulled left so the arrow lines up with the card's edge, not the label. The
+   Georgian label takes two lines on a narrow phone, so it wraps rather than ending in
+   an ellipsis: a way out has to say where it goes. */
+.drive-exit {
+  margin-inline-start: calc(-1 * var(--space-3));
+  padding-block: var(--space-2);
+  white-space: normal;
+  text-align: start;
+}
+
+.drive-exit .button-label {
+  line-height: var(--lh-125);
+  text-wrap: balance;
+}
+
+/* A short note where an episode was expected. */
+.drive-missing {
+  display: grid;
+  flex: 1;
+  place-items: center;
+}
+
+.drive-note {
+  max-width: 24rem;
+  color: var(--color-text-2);
+  font: var(--type-title);
+  font-stretch: var(--type-title-stretch);
+  text-align: center;
+}
+
+/* ----- home: CarContinue ------------------------------------------------------- */
+
+.drive-home-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* The whole home screen is this one button, in the darker car amber: the brightest
+   thing in the car, so the eye lands on it first, without the night glare of amber 400. */
+.car-continue {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  width: 100%;
+  min-height: 17.5rem;
+  padding: var(--space-8) var(--space-6);
+  overflow: hidden;
+  border-radius: var(--car-continue-radius);
+  background: var(--car-continue-bg);
+  color: var(--car-continue-fg);
+  text-align: start;
+  -webkit-user-select: none;
+  user-select: none;
+  transition: transform var(--dur-press) var(--ease-out);
+}
+
+/* No hover to say "this is a button": a small give under the thumb instead. */
+.car-continue:active {
+  transform: scale(0.98);
+}
+
+/* The play disc: the card's colours swapped, so the shape reads in a side glance. */
+.car-continue-disc {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 5.5rem;
+  height: 5.5rem;
+  border-radius: 50%;
+  background: var(--car-continue-fg);
+  color: var(--car-continue-bg);
+}
+
+.car-continue-disc .icon {
+  width: var(--fs-40);
+  height: var(--fs-40);
+  /* Optically centred: a triangle's weight sits left of its box's middle. */
+  margin-inline-start: var(--space-1);
+}
+
+/* Filled: a shape seen at the edge of the eye, not a line that has to be looked at. */
+.car-continue-disc svg,
+.drive-play svg {
+  fill: currentColor;
+}
+
+.car-continue-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.car-continue-label {
+  font: var(--type-section);
+  font-stretch: var(--type-section-stretch);
+  letter-spacing: var(--type-section-tracking);
+}
+
+.car-continue-season {
+  font: var(--type-title);
+  font-stretch: var(--type-title-stretch);
+}
+
+.car-continue-title {
+  font: var(--type-display);
+  font-stretch: var(--type-display-stretch);
+  letter-spacing: var(--type-display-tracking);
+}
+
+.car-continue-meta {
+  margin-top: var(--space-1);
+  font: var(--type-item);
+  font-stretch: var(--type-item-stretch);
+}
+
+/* How far in, as a line along the foot. The words above say it too. */
+.car-continue-progress {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 0.375rem;
+  background: color-mix(in srgb, var(--car-continue-fg) 22%, transparent);
+}
+
+.car-continue-fill {
+  display: block;
+  height: 100%;
+  background: var(--car-continue-fg);
+}
+
+/* ----- player ------------------------------------------------------------------ */
+
+.drive-now {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.drive-eyebrow {
+  color: var(--color-accent-text);
+  font: var(--type-section);
+  font-stretch: var(--type-section-stretch);
+  letter-spacing: var(--type-section-tracking);
+}
+
+.drive-title {
+  font: var(--type-headline);
+  font-stretch: var(--type-headline-stretch);
+  letter-spacing: var(--type-headline-tracking);
+}
+
+/* Where it is on the left, what is left on the right. */
+.drive-time {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-4);
+  color: var(--color-text-2);
+  font: var(--type-item);
+  font-stretch: var(--type-item-stretch);
+}
+
+.drive-clock {
+  color: var(--color-text);
+  font: var(--type-figure-m);
+  font-stretch: var(--type-figure-stretch);
+  font-variant-numeric: var(--type-figure-numeric);
+}
+
+/* The picture and the buttons that belong to the episode rather than to playback. */
+.drive-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-control);
+}
+
+/* The native player's box, and what shows over it. */
+.drive-stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: var(--radius-player);
+  background: var(--color-stage);
+}
+
+/* The `<video>` inside is not drawn by Compose (see DrivePlayer.kt), so it is reached
+   through its frame rather than a class of its own. */
+.drive-video {
+  position: absolute;
+  inset: 0;
+}
+
+.drive-video > video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: var(--color-stage);
+}
+
+/* Over the middle of the picture, which is blank whenever this shows, so it takes no
+   room from the buttons. Taps pass through to the native player under it. */
+.drive-stage-over {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: var(--space-3);
+  pointer-events: none;
+}
+
+/* Full screen, Mark as watched and Open in VLC, side by side under the picture. They
+   are pressed once a visit, while parked, so they are the smaller buttons here. */
+.drive-extras {
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  gap: var(--gap-control);
+}
+
+/* Three abreast on an upright phone leaves no room beside a label, so the icon sits
+   over it and the label may take two lines. A card's corners rather than a pill's,
+   which turns into a lozenge when it grows taller. */
+.drive-extra {
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  border-radius: var(--radius-card);
+  font: var(--type-label-s);
+  font-stretch: var(--type-label-s-stretch);
+  white-space: normal;
+}
+
+.drive-extra .button-label {
+  line-height: var(--lh-125);
+  text-wrap: balance;
+}
+
+/* Already watched: the success green, as on the web page. A tap offers to undo it. */
+.drive-extra--done {
+  color: var(--color-success);
+}
+
+/* Pushed to the bottom: the thumb finds the controls at the same place on every
+   visit, whatever the title above them takes. */
+.drive-controls {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: var(--gap-control);
+}
+
+/* Back 30, play, forward 30. The skips stretch to fill their thirds: a wider target is
+   an easier one to hit on a bumpy road. Play is the one amber disc. */
+.drive-transport {
+  --icon-size: var(--transport-icon);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--transport-primary) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--gap-control);
+}
+
+.drive-transport > .icon-button {
+  width: 100%;
+  height: var(--transport);
+}
+
+.drive-transport > .drive-play {
+  height: var(--transport-primary);
+  background: var(--transport-primary-bg);
+  color: var(--transport-primary-fg);
+}
+
+/* Previous and next episode, two equal halves of one row. */
+.drive-steps {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--gap-control);
+}
+
+/* Two abreast leaves no room beside a label, so the icon sits over it, as in the row of
+   extras, and each label has the whole width. Taller than the extras: these are pressed
+   while driving. */
+.drive-step {
+  --button-icon: var(--fs-24);
+  flex-direction: column;
+  gap: var(--space-1);
+  width: 100%;
+  min-height: 5rem;
+  padding: var(--space-2);
+  border-radius: var(--radius-card);
+  white-space: normal;
+}
+
+.drive-step .button-label {
+  line-height: var(--lh-125);
+  text-wrap: balance;
+}
+
+/* ----- an upright phone with Safari's bars showing ----------------------------- */
+
+/* A 390x844 iPhone keeps about 664px under Safari's bars, which is less than the
+   player above needs. Tighter gaps, an 88px play, 64px skips and steps (still the
+   brief's floor), and a picture no taller than 11rem: every control stays on screen
+   without scrolling. Below about 600px (the small iPhones) the page scrolls. */
+@media (orientation: portrait) and (max-height: 46rem) {
+  .drive-page {
+    gap: var(--gap-control);
+    padding-top: calc(var(--space-2) + var(--safe-top));
+    padding-bottom: calc(var(--space-3) + var(--safe-bottom));
+  }
+
+  .drive-stage {
+    width: min(100%, calc(11rem * 16 / 9));
+    margin-inline: auto;
+  }
+
+  .drive-extra {
+    padding-block: var(--space-1);
+  }
+
+  .drive-transport {
+    grid-template-columns: minmax(0, 1fr) 5.5rem minmax(0, 1fr);
+  }
+
+  .drive-transport > .icon-button {
+    height: var(--target-min);
+  }
+
+  .drive-transport > .drive-play {
+    height: 5.5rem;
+  }
+
+  .drive-step {
+    min-height: var(--target-min);
+    padding-block: var(--space-1);
+  }
+}
+
+/* ----- a phone on its side ------------------------------------------------------ */
+
+/* About 390px tall, and Safari's bars can take a quarter of that. Nothing may run the
+   full width: the picture takes the left at full height, and the way home, what is
+   playing and the controls stack on the right. */
+@media (orientation: landscape) and (max-height: 35rem) {
+  .drive-page {
+    padding-top: calc(var(--space-2) + var(--safe-top));
+    padding-bottom: calc(var(--space-3) + var(--safe-bottom));
+  }
+
+  /* Sized by its words, not the screen: the room under Safari's bars is too little and
+     too changeable to fill. */
+  .car-continue {
+    min-height: 0;
+    padding: var(--space-5) var(--space-8);
+  }
+
+  .car-continue-disc {
+    width: 4.5rem;
+    height: 4.5rem;
+  }
+
+  .car-continue-disc .icon {
+    width: var(--fs-32);
+    height: var(--fs-32);
+  }
+
+  .drive-watch {
+    display: grid;
+    grid-template-areas:
+      "video top"
+      "video now"
+      "video controls";
+    grid-template-rows: auto auto 1fr;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    gap: var(--space-2) var(--space-6);
+  }
+
+  .drive-watch > .drive-top {
+    grid-area: top;
+  }
+
+  /* An episode that is not found has only its note. */
+  .drive-missing {
+    grid-column: 1 / -1;
+  }
+
+  /* Season and episode on one line, the time under them. */
+  .drive-now {
+    flex-flow: row wrap;
+    grid-area: now;
+    align-items: baseline;
+    gap: 0 var(--space-3);
+  }
+
+  .drive-title {
+    font: var(--type-title);
+    font-stretch: var(--type-title-stretch);
+  }
+
+  .drive-time {
+    flex-basis: 100%;
+  }
+
+  /* The picture fills what the episode buttons under it leave of the left column. */
+  .drive-side {
+    grid-area: video;
+    min-height: 0;
+  }
+
+  .drive-stage {
+    flex: 1;
+    min-height: 0;
+    aspect-ratio: auto;
+  }
+
+  .drive-controls {
+    grid-area: controls;
+  }
+
+  /* 112px of play leaves too little for the rest in 390px; 88px still dwarfs the
+     others, and every target stays at 64px or more. */
+  .drive-transport {
+    grid-template-columns: minmax(0, 1fr) 5.5rem minmax(0, 1fr);
+  }
+
+  .drive-transport > .icon-button {
+    height: var(--target-min);
+  }
+
+  .drive-transport > .drive-play {
+    height: 5.5rem;
+  }
+}
+
+/* ----- toasts ------------------------------------------------------------------ */
+
+/* Near the top here: the controls own the bottom, and a message over them would hide
+   the button a thumb is reaching for. Below the top row, so it never covers the way
+   back either; it lies over the title for its few seconds. */
+.toast-region {
+  top: calc(var(--safe-top) + var(--space-3) + var(--target-min) + var(--space-3));
+  bottom: auto;
+}
+
+.toast {
+  animation:
+    overlay-fade var(--dur-fade) var(--ease-enter),
+    toast-drop var(--dur-enter) var(--ease-enter);
+}
+
+@keyframes toast-drop {
+  from {
+    transform: translateY(-0.75rem);
+  }
+}
