@@ -49,11 +49,8 @@ jobs:
           echo "::error::${GITHUB_REF_NAME} does not publish to /redesign/. Only redesign/develop does."
           exit 1
 
-      # keel is a submodule that settings.gradle.kts includes as a build.
       - name: Check out the branch being published
         uses: actions/checkout@v5
-        with:
-          submodules: true
 
       - uses: actions/setup-java@v5
         with:

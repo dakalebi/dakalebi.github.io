@@ -1,45 +1,12 @@
 <!doctype html>
-<!--
-  The redesign's TV page. Same bundle as every other page; `data-shell="tv"` picks the
-  TV root and the tokens' TV sizes (1rem = 1/60 of the panel), `data-ui="next"` the new UI.
-  The Android TV app still loads /tv/ until the switch.
--->
-<html lang="ka" data-shell="tv" data-ui="next">
+<!-- A saved `/next/tv/` link lands on `/tv/`. See `next/index.html`. -->
+<html lang="ka">
   <head>
     <meta charset="utf-8" />
-    <!--
-      No zoom, the same as the other pages. A 1080p Android TV WebView reports a device
-      pixel ratio of 2, so this page gets about 960x540 CSS pixels: the size the TV
-      tokens are designed at.
-    -->
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
-    />
-    <title>ჩემი ცოლის დაქალები</title>
-    <meta name="theme-color" content="#1d1512" />
     <meta name="robots" content="noindex" />
-
-    <link rel="icon" href="../../favicon.ico" sizes="any" />
-    <link rel="apple-touch-icon" sizes="180x180" href="../../icon-180.png" />
-
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..100,400..900&family=Noto+Sans+Georgian:wdth,wght@62.5..100,400..900&display=swap"
-    />
-    <!-- The same sheets as /next/, where the shell differences live in tokens.css, then
-         the TV shell's own layout. -->
-    <link rel="stylesheet" href="../tokens.css" />
-    <link rel="stylesheet" href="../base.css" />
-    <link rel="stylesheet" href="../components.css" />
-    <link rel="stylesheet" href="../foundations.css" />
-    <link rel="stylesheet" href="../gallery.css" />
-    <link rel="stylesheet" href="tv.css" />
+    <title>ჩემი ცოლის დაქალები</title>
+    <script>location.replace("../../tv/" + location.search + location.hash);</script>
+    <meta http-equiv="refresh" content="0; url=../../tv/" />
   </head>
-  <body>
-    <div id="root"></div>
-    <script src="../../app.js"></script>
-  </body>
+  <body></body>
 </html>

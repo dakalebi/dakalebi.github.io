@@ -88,7 +88,7 @@ fun rememberPlaybackViewModel(episodeId: String, maxQuality: Int?, appleMobile: 
 }
 
 /**
- * The redesigned app's [NowPlayingViewModel], one per viewer. A new viewer gets a
+ * The web app's [NowPlayingViewModel], one per viewer. A new viewer gets a
  * new one, because a playback saves under whoever is watching. The last one is
  * closed without a save when it goes: by then the session names the new viewer.
  */

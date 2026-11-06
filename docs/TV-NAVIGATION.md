@@ -10,6 +10,12 @@ worst first. §7 is the fixing plan, one entry per defect, and §7.1 is the same
 re-run afterwards. The cases in §5 are meant to be folded into section N of
 `TEST-PLAN.md`.
 
+The runs were made on the first TV UI, which the redesign (`next/tv/` in
+`:presentation-new`) has since replaced. The focus and input engines it measured are
+the ones the new TV UI runs on. Links into `src/jsMain/kotlin/ge/dakalebi/ui/` and
+`src/jsMain/resources/tv/` point at files the switch deleted: read them in the git
+history (`git log -- src/jsMain/kotlin/ge/dakalebi/ui/tv`).
+
 Sources were fetched on 2026-09-10. Every statement below is tagged:
 
 - **documented** — stated on a vendor or standards page, linked in §1;

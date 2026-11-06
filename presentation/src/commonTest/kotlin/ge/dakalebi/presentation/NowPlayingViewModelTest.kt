@@ -25,7 +25,7 @@ import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 /**
- * The redesign's one player across screens: which episode is loaded, moving
+ * The web app's one player across screens: which episode is loaded, moving
  * between episodes without losing the spot in the last one, the queue, and the
  * address following the episode while the full player is open.
  *

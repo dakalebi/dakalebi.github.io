@@ -5,12 +5,12 @@ import androidx.compose.runtime.DisposableEffect
 import org.jetbrains.compose.web.dom.Span
 
 /**
- * The redesign's icon set: 27 glyphs on a 24-unit grid, drawn with a round 2-unit stroke
- * in `currentColor`, so an icon takes the colour of the text around it.
+ * The icon set: 27 glyphs on a 24-unit grid, drawn with a round 2-unit stroke in
+ * `currentColor`, so an icon takes the colour of the text around it.
  *
  * Each entry is the inner markup of one `<svg>`. [Icon] adds the wrapper once.
  *
- * 23 glyphs are Lucide's: 22 copied from lucide 1.34.0 (the version keel generates from),
+ * 23 glyphs are Lucide's: 22 copied from lucide 1.34.0,
  * and [PictureInPicture], which is `picture-in-picture-2` from lucide-static 0.469.0.
  * The four seek glyphs are this app's: Lucide has the arcs but not the number, and an
  * arc alone does not say how far it seeks. [Back30] and [Forward30] are driving mode's,

@@ -48,7 +48,7 @@ private const val MAX_RESUME_ATTEMPTS = 8
  * and system buttons that reach it.
  *
  * **The native player.** The element has `controls` and `playsinline`, the same as
- * [ge.dakalebi.ui.player.NativeVideoPlayer]: on an iPhone that is Apple's own player,
+ * the web page's player (`next/web/WebPlayer.kt`): on an iPhone that is Apple's own player,
  * with its fullscreen, AirPlay and picture-in-picture. The big buttons on the player
  * screen drive this same element, so the two never disagree.
  *

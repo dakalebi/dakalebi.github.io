@@ -1,18 +1,19 @@
 #!/usr/bin/env python3
 """Fail the build when a composable emits a CSS class the page it renders on cannot style.
 
-This exists because of a bug that shipped. `LoginScreen` is rendered by both shells. A
-commit changed it to emit keel's class names - `input`, `btn--default`, `btn--link` -
-and updated `web.css` to match. `tv/index.html` linked no keel stylesheet at the time,
-so on `/tv/` those three classes were defined nowhere: the sign-in fields rendered as
-unstyled browser boxes and the submit button had no fill. Nothing failed. Both halves
-were individually correct and only the pair was wrong.
+This exists because of a bug that shipped. The old UI's `LoginScreen` was rendered by
+both the web and TV shells. A commit changed it to emit a shared library's class names
+- `input`, `btn--default`, `btn--link` - and updated `web.css` to match. `tv/index.html`
+did not link that library's stylesheet at the time, so on `/tv/` those three classes
+were defined nowhere: the sign-in fields rendered as unstyled browser boxes and the
+submit button had no fill. Nothing failed. Both halves were individually correct and
+only the pair was wrong.
 
 The check that catches that has to be per shell, not per repository. Asking "is this
 class defined in any of our stylesheets" answers yes for that bug, because `input` was
-in keel's `components.css` all along - the sheet TV was not loading. So this reads the
-`<link>` tags in each shell's own `index.html` and holds each shell to exactly what
-that page loads.
+in the library's `components.css` all along - the sheet TV was not loading. So this
+reads the `<link>` tags in each shell's own `index.html` and holds each shell to
+exactly what that page loads.
 
 Two checks:
 
@@ -21,30 +22,25 @@ Two checks:
 
   2. Every class emitted by a composable that two or more shells render is defined in
      the linked stylesheets of each shell that renders it. This is the one above.
-     There are three shells now: web at `/`, TV at `/tv/` and driving mode at
-     `/drive/`, all on the same bundle. Until the switch, the redesign
-     (`:presentation-new`) draws the same three on `/next/`, `/next/tv/` and
-     `/next/drive/`, which the check treats as three more pages.
+     There are three shells: web at `/`, TV at `/tv/` and driving mode at `/drive/`,
+     all on the same bundle. The web sign-in, for one, is drawn on `/` and `/drive/`.
 
 The unit here is the top-level declaration, not the file, and that distinction is
-load-bearing. `Components.kt` holds nine composables; TV renders exactly one of them
-(`Thumb`) and none of the rest. At file granularity this check would demand tv.css
-define `.tile-img`, `.uprow` and twenty more classes for markup TV never emits, and
-would be turned off within a week. At declaration granularity it asks only about
-`Thumb`, and finds that TV really is missing two of the three classes `Thumb` emits.
+load-bearing. A file of components can hold many composables of which a shell renders
+only one. At file granularity this check would demand that shell's sheets define
+classes for markup it never emits, and would be turned off within a week. At
+declaration granularity it asks only about what the shell really draws.
 
 Reachability follows explicit `ge.dakalebi` imports plus same-package siblings -
-Kotlin needs no import for those, so an import graph alone would have `App` unable to
-see `LoginScreen` beside it. A declaration counts as used by another when its name
+Kotlin needs no import for those, so an import graph alone would have `WebRoot` unable
+to see `SignInScreen` beside it. A declaration counts as used by another when its name
 appears as a whole word in that declaration's body and is visible from it.
 
 Class names are read from `classes("a", "b")` and `classNames("a", null)`, which is how
-every class in this codebase is written. keel's own components need no exemption: their
-classes are never literals here, they come back from `buttonClasses()` and friends, and
-keel's stylesheet ships with keel.
+every class in this codebase is written.
 
-It reads the *built* stylesheets, because keel's four sheets arrive from the submodule
-and only sit beside this app's own in the output. So build first:
+It reads the *built* stylesheets, because `:presentation-new`'s sheets only reach the
+output through the root module's `jsProcessResources`. So build first:
 
     ./gradlew jsBrowserDistribution && python3 tools/check-css-classes.py
 """
@@ -57,30 +53,22 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-# The old UI is in the root module; the redesign is in `:presentation-new`.
+# The composition root (`Main.kt`) is in the root module; the UI is in `:presentation-new`.
 KOTLIN = [ROOT / "src/jsMain/kotlin", ROOT / "presentation-new/src/jsMain/kotlin"]
 DIST = ROOT / "build/dist/js/productionExecutable"
 
 # Each shell is its own page with its own stylesheet set, which is the whole point.
-# The `/next/` pages are the redesign's, drawn side by side with the old ones until the
-# switch. They link only the new sheets, so a class from the old UI is caught there too.
 SHELL_PAGES = {
     "/": DIST / "index.html",
     "/tv/": DIST / "tv/index.html",
     "/drive/": DIST / "drive/index.html",
-    "/next/": DIST / "next/index.html",
-    "/next/tv/": DIST / "next/tv/index.html",
-    "/next/drive/": DIST / "next/drive/index.html",
 }
 
 # Where each page starts drawing.
 SHELL_ROOTS = {
-    "/": "App",
-    "/tv/": "TvApp",
-    "/drive/": "DriveApp",
-    "/next/": "WebRoot",
-    "/next/tv/": "TvRoot",
-    "/next/drive/": "DriveRoot",
+    "/": "WebRoot",
+    "/tv/": "TvRoot",
+    "/drive/": "DriveRoot",
 }
 
 DECLARATION = re.compile(
@@ -214,7 +202,7 @@ def reachable(root: Decl, by_name: dict[str, list[Decl]]) -> set[Decl]:
                 visible = (
                     # Same package: Kotlin resolves it with no import.
                     target.package == current.package
-                    # `import ge.dakalebi.ui.LoginScreen`
+                    # `import ge.dakalebi.next.web.SignInScreen`
                     or f"{target.package}.{name}" in current.imports
                     # A star import, or the package imported for another symbol in it.
                     or target.package in current.imports

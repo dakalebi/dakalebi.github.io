@@ -39,28 +39,11 @@ val shell: Shell by lazy {
 /**
  * What the document itself says it is, ignoring any `?ui=` override.
  *
- * The old pages say it on `#root`; the redesign's pages say it on `<html>`, where the
- * new tokens' shell overrides read it.
+ * Said on `<html>`, where the tokens' shell overrides read it too.
  */
 private val declaredShell: String? by lazy {
-    document.getElementById("root")?.getAttribute("data-shell")
-        ?: document.documentElement?.getAttribute("data-shell")
+    document.documentElement?.getAttribute("data-shell")
 }
-
-/**
- * True on the redesign's pages, `/next/`, `/next/tv/` and `/next/drive/`, which say so
- * with `data-ui="next"` on `<html>`.
- *
- * It changes which UI draws, nothing else: the bundle, the graph, the sign-in and the
- * progress are the same as on the old pages, so the two can be compared side by side
- * until the switch. [shell] and `?ui=` work the same on both: `/next/tv/?ui=tv-demo`
- * is the new TV UI on fixtures.
- */
-val isNextUi: Boolean by lazy {
-    document.documentElement?.getAttribute("data-ui") == NEXT_UI
-}
-
-private const val NEXT_UI = "next"
 
 /**
  * True when the graph should be built from fixtures instead of Firebase.
@@ -82,10 +65,9 @@ val useFixtures: Boolean by lazy {
 private val FIXTURE_UI = setOf("demo", "tv-demo", "drive-demo")
 
 /**
- * True when the address has `?gallery`: the redesign's web page draws the component
- * gallery instead of the app, so the components can still be looked at on their own
- * now that the screens have taken the page. It combines with fixtures:
- * `/next/?ui=demo&gallery`.
+ * True when the address has `?gallery`: the page draws the component gallery instead of
+ * the app, so the components can still be looked at on their own. It combines with
+ * fixtures: `/?ui=demo&gallery`.
  */
 val showGallery: Boolean by lazy {
     runCatching { URLSearchParams(window.location.search).has("gallery") }.getOrDefault(false)
@@ -96,15 +78,14 @@ val showGallery: Boolean by lazy {
  *
  * `logo.png` is referenced relatively, so from `/tv/` it would resolve to
  * `/tv/logo.png` and 404. A shell page one folder down (`/tv/`, `/drive/`) is one
- * level up from the root, and the redesign's pages sit one more folder down
- * (`/next/`, `/next/tv/`), so they add a level.
+ * level up from the root.
  *
  * Keyed on the *document*, not on [shell]. `?ui=tv` renders the TV UI from the
- * root path, where a `../` would point outside the site — so the override must
+ * root path, where a `../` would point outside the site, so the override must
  * change which UI draws without changing where the images are.
  */
 val assetBase: String get() =
-    (if (isNextUi) "../" else "") + (if (declaredShell in SUBFOLDER_SHELLS) "../" else "")
+    if (declaredShell in SUBFOLDER_SHELLS) "../" else ""
 
 /** The shells whose page lives one folder below the site root: `/tv/` and `/drive/`. */
 private val SUBFOLDER_SHELLS = setOf("tv", "drive")

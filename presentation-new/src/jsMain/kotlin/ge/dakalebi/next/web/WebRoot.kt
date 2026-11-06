@@ -33,19 +33,18 @@ class AppBuild(
 }
 
 /**
- * The redesign's web root, drawn on `/next/`.
+ * The web root, drawn on `/`.
  *
  * The session decides the screen: a spinner until it has reported, the sign-in form
- * for nobody, and the app (tabs, screens) for an account or a guest. The rest is
- * what the old `App` does for the whole page, kept the same: the sign-in route
- * follows the session, the tab names the open episode, `lang` follows the language,
- * and the admin check runs once per account.
+ * for nobody, and the app (tabs, screens) for an account or a guest. The rest is for
+ * the whole page: the sign-in route follows the session, the tab names the open
+ * episode, `lang` follows the language, and the admin check runs once per account.
  *
- * `?gallery` draws the component gallery instead, as this page did before the screens.
+ * `?gallery` draws the component gallery instead.
  */
 @Composable
 fun WebRoot(build: AppBuild) {
-    // The components on their own, for review: `/next/?gallery`.
+    // The components on their own, for review: `/?gallery`.
     if (showGallery) {
         Gallery(shell = "web")
         return

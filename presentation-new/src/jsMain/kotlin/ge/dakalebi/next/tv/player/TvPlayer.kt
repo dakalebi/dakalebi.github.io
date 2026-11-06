@@ -35,7 +35,7 @@ import org.jetbrains.compose.web.dom.Span
 import org.jetbrains.compose.web.dom.Text
 
 /**
- * The redesign's player for a remote: the picture, the chrome over it, and the episode
+ * The player for a remote: the picture, the chrome over it, and the episode
  * shelf under the chrome.
  *
  * The behaviour is the old TV player's, kept whole: [TvPlayerState] holds the mode and the
@@ -48,8 +48,8 @@ import org.jetbrains.compose.web.dom.Text
  * - **Scrubbing**: a held press previews a position without moving the picture. OK
  *   commits, Back cancels.
  *
- * What is new is the drawing: the design system's on-media buttons, switch and progress
- * bar in place of keel's, and a "from the start" button beside autoplay.
+ * The drawing is the design system's on-media buttons, switch and progress bar, with a
+ * "from the start" button beside autoplay.
  *
  * [shelf] is the bands under the chrome, one focus group each; the shelf counts them and
  * knows nothing else about them. [upNext] is the card shown in the last

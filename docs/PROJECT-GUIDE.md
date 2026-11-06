@@ -268,9 +268,9 @@ put the placeholder where their grammar needs it.
    composition; from then on the shell's root owns both.
 6. `session.start()` — attaches the auth observer.
 7. `renderComposable { graph.Provide { … } }` with the root for this page's
-   shell: `App()`, `TvApp()` or `DriveApp()`.
+   shell: `WebRoot`, `TvRoot` or `DriveRoot`, all in `:presentation-new`.
 
-Which shell a page is comes from `data-shell` on its root element, read by
+Which shell a page is comes from `data-shell` on its `<html>` element, read by
 `Shell.kt` in `:presentation-new`. A `?ui=` parameter can override it; names starting with `tv` or
 `drive` pick those shells.
 
@@ -339,9 +339,9 @@ sign-in screen) and files progress under its `viewerId`.
 - **`CatalogStore` clears progress when the viewer changes**, so an account's
   progress never shows for the guest, or the other way round.
 
-Where to find it: the sign-in screen's "Continue as guest" (web, TV and driving
-mode share `LoginScreen`), the web header's Guest badge and Sign in, the web
-menu, and a Sign in row in TV settings.
+Where to find it: the sign-in screen's "Continue as guest" (`SignInScreen` on the
+web and in driving mode, `TvSignIn` on TV), a guest's Sign in button in the web
+app's frame and in its Settings, and a Sign in row in TV settings.
 
 ### The catalog
 
@@ -349,7 +349,7 @@ menu, and a Sign in row in TV settings.
 `lastRefreshAtMillis` is what says whether a cached catalog is still good. One
 small document then stands in for 932.
 
-Losing the metadata does not fail the load — it is also the drawer's "last
+Losing the metadata does not fail the load — it is also Settings' "last
 refreshed" line — but it does cost the cache, since without a stamp nothing can
 be validated.
 
@@ -393,8 +393,8 @@ On all three players (web, TV and driving mode) these decisions are made by
 `PlaybackViewModel` (`presentation/`), which has tests and no browser: which file
 plays, when to save and with what flag, the one retry after a media error, where to
 resume, when the next-episode card is due, and leaving for the next episode. Each
-player keeps its element and its own workarounds: `WatchScreen` has the ones below
-(the resume retry loop, the `#t=` fragment, the AirPlay clock), `TvWatchScreen`
+player keeps its element and its own workarounds: `WebPlayer` has the ones below
+(the resume retry loop, the `#t=` fragment, the AirPlay clock), `TvWatch`
 resumes with one seek, and `DrivePlayer` keeps its own resume and the media
 session. A save already sent still lands after the player has moved on, because
 saves run in the app scope.
@@ -410,7 +410,7 @@ reports itself as `MacIntel` with a desktop UA, so without
 `maxTouchPoints > 1` every iPad falls through to the custom player. Desktop
 Safari has 0 touch points and correctly keeps the custom UI.
 
-Other `isAppleMobile` checks in `WatchScreen` — resume, seeking, the AirPlay
+Other `isAppleMobile` checks in `WebPlayer` — resume, seeking, the AirPlay
 ticker — are about **device quirks** and hold whichever player is drawing the
 controls. Do not fold them into `nativePlayer`.
 
@@ -461,7 +461,7 @@ exists, a phone starts there too, not at its 720p default. Otherwise a phone-siz
 side under 600 CSS px) starts at 720p and everything else at the best rendition
 (`defaultQualityLabel`). iPads are not compact. The native iOS player has no
 quality menu, so with it on, this default is an iPhone's only way off 1080p. TV
-asks for no cap (`TvWatchScreen`), so it starts at the best rendition on any screen.
+asks for no cap (`TvWatch`), so it starts at the best rendition on any screen.
 
 ### The AirPlay clock
 
@@ -514,14 +514,14 @@ Where the worker lives and how it ships: §6.
 
 ### Driving mode
 
-`/drive/` is a third shell on the same bundle (`ui/drive/`). It is for a phone in
+`/drive/` is a third shell on the same bundle (`next/drive/`). It is for a phone in
 a car mount, so it has no browsing: the home screen offers one episode, and the
 player screen is the native player with big controls around it.
 
 - **Home**: one large Continue or Play button. Whatever the player already holds
   wins; otherwise the episode comes from `CatalogStore.nextToPlay`.
 - **Player**: the browser's native `<video controls playsinline>`, the same
-  attributes as `NativeVideoPlayer`. Around it, all large: back, season and
+  attributes as the web player's native mode. Around it, all large: back, season and
   episode, time and minutes left, Full screen, Mark as watched, Open in VLC
   (iPhone and iPad), −30 s, play/pause, +30 s, then Previous and Next episode side
   by side. A playback error sits over the picture, so it takes no room from the
@@ -749,9 +749,7 @@ cache).
 
 Use **JDK 17** locally (`export JAVA_HOME=$(/usr/libexec/java_home -v 17)`). In
 iCloud Drive, JDK 21's `Files.copy` uses `clonefile()`, which iCloud refuses, and
-the TV build fails. CI runs Temurin 21, outside iCloud. The `keel` submodule must
-be checked out (`git submodule update --init keel`), or Gradle fails at
-configuration.
+the TV build fails. CI runs Temurin 21, outside iCloud.
 
 ```bash
 ./gradlew allTests                # every module's unit tests, on Node, no browser
@@ -884,7 +882,8 @@ emitted tag.
 
 `classes("a", if (flag) "b" else "")` raises `SyntaxError: The token provided
 must not be empty` from `DOMTokenList.add`, which aborts the whole composition.
-Route optional classes through `classNames()` in `ui/Css.kt`.
+Add an optional class on its own line in the attrs block instead:
+`if (flag) classes("b")`.
 
 ### `ref {}` runs once; `DomSideEffect(key)` re-runs
 
@@ -1025,7 +1024,7 @@ time and autoplay.
 - **Guest mode with a real TV remote**, reaching "Continue as guest".
 - **Settings sync on two real devices** after the final #28 fix and the
   combined rules: no such check is recorded.
-- **The players' internals**, beyond rendering. `CustomPlayerState`,
+- **The players' internals**, beyond rendering. `WebPlayer`,
   `TvPlayerState` and `DrivePlayer` are media state machines that need a playing
   video to exercise.
 

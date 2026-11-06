@@ -59,7 +59,7 @@ private class TvShellState {
 }
 
 /**
- * The redesign's TV root, drawn on `/next/tv/`.
+ * The TV root, drawn on `/tv/`.
  *
  * Owns the one [TvInput]: it installs the window listener, pushes the screen's base
  * layer (not dismissible, so Back at the top asks the input layer what to do), and
@@ -115,9 +115,6 @@ fun TvRoot(build: AppBuild) {
 /**
  * The app: a spinner until the session has reported, the sign-in for nobody, the
  * player on a watch route, and otherwise the rail with Home, Seasons or Settings.
- *
- * Not `TvApp`: that is the old TV root's name, and the CSS class check starts `/tv/`
- * from every top-level declaration called that.
  *
  * **Back**, after the layers above have had their say (a dialog, a menu, the player's
  * own chrome):

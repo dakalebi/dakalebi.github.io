@@ -16,9 +16,9 @@ layer, with the web app on top.
 | `:domain` | models, repository interfaces, a use case per operation, pure queries | Depends on no other module, not even `:core`, and on one library: kotlinx-coroutines, for `Flow`. So "the domain names no framework" is the compile classpath and not only a convention |
 | `:data` | `commonMain`: the Formula API and DTOs, the settings sync (`SyncedSettingsRepository`), and the storage that is plain Kotlin over a `KeyValueStore`: the catalog cache, the settings device copy, guest progress, the guest choice, and `ViewerProgressRepository`, which routes progress between the account and the device. `jsMain`: `firebase` (Firestore and Auth through the JS SDK), `local` (the browser's `localStorage`), the system clock, and the bare GET | Every implementation of a domain repository. Depends on `:domain` and `:core` only, so it cannot name presentation, `i18n` or UI. Its caches are its own: no interface for them is in `:domain` |
 | `:presentation` | `commonMain`: the stores and ViewModels, the `Route` type, error wording, `i18n`, the composition locals. `jsMain`: `HashRouter` | The screen state and the strings, so a second front end reuses them instead of reimplementing them. Depends on `:domain`, `:core`, Compose runtime and coroutines, and never on Compose HTML or the component library, so a front end with a different look reuses it as it is. Only its tests depend on `:data` |
-| `:presentation-new` | `jsMain`: the redesign's UI (Compose HTML) for all three shells, and its design system: `next/tokens.css`, `next/base.css`, `next/components.css`, a sheet per shell (`next/web.css`, `next/tv/tv.css`, `next/drive/drive.css`) and the sign-in's (`next/signin.css`, web and drive), the components and icons, the screens (`next/web/`, `next/tv/`, `next/drive/`), and the `/next/` pages. Also the engines both UIs use: `Shell`, `PageZoom`, TV focus and input, the TV and driving-mode players' state, and the media helpers | The redesign, built next to the old UI until the switch. Depends on `:presentation` and `:core`, and never on keel. The old UI in root imports the engines from here, so there is one copy of each. Its pages and sheets reach the distribution through the root's `jsProcessResources`, like keel's. `/next/` draws the web screens, `/next/tv/` the TV screens and `/next/drive/` the driving-mode screens. `?gallery` draws a gallery of every component on any of them |
+| `:presentation-new` | `jsMain`: the UI (Compose HTML) for all three shells, and its design system: `tokens.css`, `base.css`, `components.css`, a sheet per shell (`web.css`, `tv/tv.css`, `drive/drive.css`) and the sign-in's (`signin.css`, web and drive), the components and icons, the screens (`next/web/`, `next/tv/`, `next/drive/`), and the three pages. Also the engines: `Shell`, `PageZoom`, TV focus and input, the TV and driving-mode players' state, and the media helpers | "Presentation-New", the redesign, which replaced the first UI. Depends on `:presentation` and `:core`, and on no shared UI library. Its pages and sheets reach the distribution through the root's `jsProcessResources`. `/` draws the web screens, `/tv/` the TV screens and `/drive/` the driving-mode screens. `?gallery` draws a gallery of every component on any of them |
 | `:testing` | the fakes the modules' tests share: a clock, in-memory storage, the account's settings document, progress storage, and builders for episodes and progress | Test code only. No module's main code depends on it, so none of it reaches the bundle. A module, because Kotlin Multiplatform gives one module's tests no way to use another module's test code |
-| root | `ui` (Compose HTML) for all three shells (`/`, `/tv/`, `/drive/`), the composition root, `Main.kt` | The web app. It also owns the webpack build, so the GitHub Pages artifact path never moves |
+| root | the composition root (`di/`), `Main.kt`, and the icons and logo at the site root | The web app. It also owns the webpack build, so the GitHub Pages artifact path never moves |
 
 The root project stays the application deliberately: renaming it to `:web` would
 move the Pages artifact out of `build/dist/js/productionExecutable`, and
@@ -37,7 +37,7 @@ Arrows point inwards. Nothing on an inner ring knows a name from an outer one.
 
 ```
               ┌───────────────────────────────────┐
-              │  ui/          Compose HTML only   │
+              │  next/        Compose HTML only   │
               │  ┌─────────────────────────────┐  │
               │  │ presentation/  screen state │  │
               │  │  ┌───────────────────────┐  │  │
@@ -56,7 +56,7 @@ Arrows point inwards. Nothing on an inner ring knows a name from an outer one.
 | `domain` | Kotlin and kotlinx-coroutines | models, repository **interfaces**, a use case per operation, pure queries |
 | `data` | `domain`, `core` | Firestore, the Formula API, `localStorage` |
 | `presentation` | `domain`, `core`, `i18n` | stores and ViewModels, error→text mapping, the `Route` type |
-| `ui` | `presentation`, `domain`, `core`, `i18n`, `di` | Compose HTML, and nothing else |
+| `next` (`:presentation-new`) | `presentation`, `domain`, `core`, `i18n`, `di` | Compose HTML, and nothing else |
 | `di` | everything | the composition locals, and in the root the composition root |
 | `core` | nothing but Kotlin | logging and formatting policy, generated build info |
 
@@ -120,10 +120,10 @@ session. Saves run in the app scope, so a save already sent still lands after th
 player has moved on; the resolve and the retry stop with it. All three players use
 it: the web, TV and driving mode.
 
-`NowPlayingViewModel` is the redesign's player across screens, one per viewer, from
-`rememberNowPlaying`. The old players are pages, so leaving `#/watch/…` closes them;
-the redesign keeps playing under a mini-player while the viewer browses, so the
-episode and its `PlaybackViewModel` live in this holder instead of in a screen.
+`NowPlayingViewModel` is the web page's player across screens, one per viewer, from
+`rememberNowPlaying`. The web page keeps playing under a mini-player while the viewer
+browses, so the episode and its `PlaybackViewModel` live in this holder instead of in
+a screen.
 Whether the full player is open is the route's business: a watch route is open,
 anything else shows the mini-player. The screen passes the episode a watch route
 names to `play`, which keeps the playback when the episode is the same and saves
@@ -134,7 +134,7 @@ plays and Back still closes the player. `queue` lists the next `QUEUE_LENGTH`
 episodes across seasons. `stop` saves and lets go; `close`, used when the viewer
 changes, lets go without saving, because a playback reads the viewer at each save.
 
-On the redesign's web page, `AppShell` holds that holder and one `WebPlayer`: a
+On the web page, `AppShell` holds that holder and one `WebPlayer`: a
 single `<video>` made once for the shell's life, which `attachTo` moves between
 places without a reload. `NowPlaying` draws the episode in one of three places: the
 mini-player on a phone's tab bar, the phone's full-screen sheet on a watch route,
@@ -144,14 +144,14 @@ that route is in the page's history, and replaces the address when the link was
 opened cold. On an iPhone or iPad with the native player chosen, the video gets
 Apple's controls and nothing is drawn over it.
 
-The redesign's TV page (`TvRoot`) has no mini-player, so it does not use that holder.
-Like the old TV UI, its watch route is a page: `TvWatch` makes a `PlaybackViewModel`
-for the episode and draws `TvPlayer` full screen, which runs on the same
-`TvPlayerState`, keys and video element as the old TV player. Back leaves the
-player for the last route that was not an episode or the sign-in. Around the other routes, `TvRail` is the
-navigation rail, and Home, Seasons, Settings and sign-in are its screens.
+The TV page (`TvRoot`) has no mini-player, so it does not use that holder. Its
+watch route is a page: `TvWatch` makes a `PlaybackViewModel` for the episode and
+draws `TvPlayer` full screen, on `TvPlayerState`, `TvPlayerInput` (what each key
+does) and `TvPlayerVideo`. Back leaves the player for the last route that was not an
+episode or the sign-in. Around the other routes, `TvRail` is the navigation rail, and
+Home, Seasons, Settings and sign-in are its screens.
 
-The redesign's driving-mode page (`DriveRoot`) has no holder either. It makes one
+The driving-mode page (`DriveRoot`) has no holder either. It makes one
 `DrivePlayer` for the visit, so a single `<video>` outlives the routes: the tap on
 Home's one button (`CarContinue`) starts it before the player screen exists, and that
 first start is what lets every later one work on iOS without another tap. `DriveWatch`
@@ -159,15 +159,15 @@ lends the element to its frame and draws the big controls round it. Signed out, 
 page draws the web page's `SignInScreen`; its rules are in `next/signin.css`, which
 both pages link.
 
-The redesign adds two routes: `Route.Seasons` (`#/seasons`) and `Route.Season`
-(`#/seasons/3`). A season that is not a positive number parses to the list. The
-old UI has no screen for either and draws its dashboard or browse screen.
+`Route.Seasons` (`#/seasons`) lists every season and `Route.Season` (`#/seasons/3`)
+opens one. A season that is not a positive number parses to the list.
 
 `DashboardViewModel` and `LoginViewModel` are one per visit to their screen, made
 by a factory the same way. The dashboard's holds the picked season, the question
 on screen and the busy flag, and makes the progress changes and the catalog
 rebuild. The sign-in form's holds what was typed, the mode and the busy flag, and
-sends the requests; the web, TV and driving mode share it through `LoginScreen`.
+sends the requests; the web and driving mode share it through `SignInScreen`, and
+TV through `TvSignIn`.
 Both run their work in the app scope, so leaving the screen does not stop a change
 halfway, and both say how it went through `ToastStore`, in the words of `S`.
 Playback is the exception: each player words its own failures.
@@ -187,32 +187,27 @@ these returns nothing.
 - **Compose HTML and the component library in `:presentation`.** An import does
   not resolve today, but only because its build file does not list them, so the
   grep reads the build file too.
-- **keel in `:presentation-new`.** The same reason: keel is in the build, so
-  only the module's build file keeps it out, and the grep reads that file too.
-  A keel class written as a literal is caught by `tools/check-css-classes.py`,
-  because the `/next/` pages link no keel sheet.
-- **`ui/` naming `:data`.** The root module depends on `:data`, because the
+- **`:data` in the UI.** The root module depends on `:data`, because the
   composition roots (`di/`, `Main.kt`) build the repositories. `di/` holds both
-  `AppGraph` and the fixture graph. `ui/` reaches data through the domain
-  interfaces only.
+  `AppGraph` and the fixture graph. `:presentation-new` does not list `:data` in its
+  build file, and reaches data through the domain interfaces only.
 
 ```bash
 S=presentation/src/commonMain/kotlin/ge/dakalebi
 grep -rn "kotlinx.browser\|org.w3c\|dynamic" domain/src/
 grep -rn "kotlinx.browser\|org.w3c\|compose.web\|dynamic" core/src/commonMain/ data/src/commonMain/ $S
 grep -rn "compose.web\|firebase" core/src/commonMain/ data/src/commonMain/ $S
-grep -rn "keel\|compose.web" presentation/ --exclude-dir=build
-grep -rn "io.github.bchmsl" presentation-new/ --exclude-dir=build
-grep -rn "import ge.dakalebi.data" src/jsMain/kotlin/ge/dakalebi/ui
+grep -rn "compose.web" presentation/ --exclude-dir=build
+grep -rn "import ge.dakalebi.data\|project(\":data\")" presentation-new/ --exclude-dir=build
 ```
 
 ## Where a change goes
 
 `domain/...` paths below are in `:domain` and `data/...` paths in `:data`. Other
-paths are in `:presentation` unless they say root.
+paths are in `:presentation` unless they say root or `next/`.
 
-- **A new screen** → root `ui/`, reading stores and ViewModels from
-  `di/Locals.kt`.
+- **A new screen** → `next/web/`, `next/tv/` or `next/drive/` in
+  `:presentation-new`, reading stores and ViewModels from `di/Locals.kt`.
 - **New screen or app state** → a ViewModel in `presentation/` (a
   `ViewModel<S>` over an immutable `S`), built in root `di/AppGraph.kt`, rather
   than another store.
@@ -292,19 +287,13 @@ later state change is.
 
   | Player | State and actions | Around it |
   |---|---|---|
-  | Web, `ui/player/` | `CustomPlayerState` | `CustomVideoPlayer` (effects, layout), `CustomPlayerVideo` (the element and its events), `CustomPlayerControls` |
-  | TV, `ui/tv/player/` and `next/tv/player/` | `TvPlayerState` | `TvVideoPlayer` (input layers, layout), `TvPlayerInput` (what each key does), `TvPlayerVideo`, `TvPlayerChrome` |
+  | Web, `next/web/` | `WebPlayer` (one `<video>` for the shell's life) | `NowPlaying` (mini-player, sheet, panel), `NowPlayingViewModel` |
+  | TV, `next/tv/player/` | `TvPlayerState` | `TvPlayer` (input layers, chrome, shelf), `TvPlayerInput` (what each key does), `TvPlayerVideo` |
   | Driving mode, `next/drive/` | `DrivePlayer` (not Compose) | `DriveMediaSession`, `ScreenWakeLock`, `VideoFullscreen.kt` |
 
-  `next/` is `:presentation-new`. The parts with no keel moved there so the
-  redesign can use them: `TvPlayerState`, `TvPlayerInput`, `TvPlayerVideo` and the
-  whole driving-mode player. The screens around them stay in root `ui/`.
-
-  The two Compose players hold their state in a plain class kept with `remember`,
-  so the same state objects live as long as the old single composable's did and
-  the effects run in the same order. The TV focus path still needs no
-  recomposition: the key handling in `TvPlayerInput` moves the ring with direct
-  `SpatialNav` calls, as it did before the split.
+  `next/` is `:presentation-new`. The TV player holds its state in a plain class
+  kept with `remember`. Its focus path needs no recomposition: the key handling in
+  `TvPlayerInput` moves the ring with direct `SpatialNav` calls.
 - **`Firebase` is an object, not injected.** It is a lazily-initialised handle
   to the SDK, held inside `data/firebase` and named by nothing outside it. The
   repositories in front of it are what the rest of the app depends on.
@@ -314,9 +303,9 @@ later state change is.
   `requestAnimationFrame`, which a browser stops entirely when the page is hidden —
   an Android WebView without Android focus is exactly that — so anything on the
   focus path that needs a frame is something that silently stops working. Hence
-  `SpatialNav.onFocusChanged`, and hence `TvApp` toggling the navigation rail's
-  `open` class itself rather than deriving it from state. It also happens to be
-  faster: sweeping a sixty-tile grid recomposes nothing.
+  `SpatialNav.onFocusChanged`, which `TvRoot` uses to open the navigation rail
+  while the ring is in it. It also happens to be faster: sweeping a sixty-tile grid
+  recomposes nothing.
 
 ## The one asymmetry in the TV focus engine
 

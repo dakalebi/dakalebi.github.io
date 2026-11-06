@@ -1,7 +1,7 @@
 /* =============================================================================
    The sign-in screen (`next/web/SignInScreen.kt`), which the web and driving-mode
    pages share: an account's email and password, or a guest visit. Linked after
-   components.css on `/next/` and `/next/drive/`. TV draws its own (`tv/tv.css`).
+   components.css on `/` and `/drive/`. TV draws its own (`tv/tv.css`).
 
    Semantic (layer 2) and component (layer 3) tokens only, like the components, so
    the drive shell's larger roles and 64px targets apply without restating them here.
@@ -100,4 +100,10 @@
   font: var(--type-body-s);
   font-stretch: var(--type-body-s-stretch);
   text-align: center;
+}
+
+/* The setup notice's file path (`next/web/SetupNotice.kt`): one long word, so it breaks
+   anywhere rather than pushing the card wider than the page. */
+.signin-path {
+  overflow-wrap: anywhere;
 }

@@ -74,11 +74,11 @@ private enum class Tab(val label: String) {
 }
 
 /**
- * Every component in every state, on one page per shell: what each `/next/` page shows
- * until that shell has real screens.
+ * Every component in every state, on one page per shell: what each page shows at
+ * `?gallery`.
  *
- * It is the fixture the components are checked against. The same code runs on `/next/`,
- * `/next/drive/` (larger targets) and `/next/tv/` (the D-pad, the ring and Back), so a
+ * It is the fixture the components are checked against. The same code runs on `/`,
+ * `/drive/` (larger targets) and `/tv/` (the D-pad, the ring and Back), so a
  * change to a component or a token is seen on all three at once. The words on the
  * components come from `S`; the controls only show toasts and change local state. Nothing
  * here signs in, saves a setting or calls the network.

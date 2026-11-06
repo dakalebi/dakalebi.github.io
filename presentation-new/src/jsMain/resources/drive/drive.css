@@ -1,7 +1,7 @@
 /* =============================================================================
-   The redesign's driving mode (`next/drive/`): the one-button home (CarContinue) and
-   the player with big controls round the native one. Linked after components.css and
-   signin.css on `/next/drive/` only.
+   Driving mode (`next/drive/`): the one-button home (CarContinue) and the player with
+   big controls round the native one. Linked after components.css and signin.css on
+   `/drive/` only.
 
    The drive shell's tokens already make every target 64px with 12px between, the
    smallest text 16px, the motion shorter and the large amber darker. This sheet only

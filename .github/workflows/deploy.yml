@@ -18,7 +18,7 @@ name: Deploy to GitHub Pages
 # ------------------------------------------------- what makes the folders work at all --
 #
 # Two properties of the app, and both need to stay true. Every asset path is
-# relative - the TV shell reaches the shared sheets as `../keel/tokens.css`, which
+# relative - the TV shell reaches the shared sheets as `../tokens.css`, which
 # stays correct under any prefix - so a copy under /pr/<n> finds its own files
 # rather than the root's. And routing is hash-based, so a deep link is
 # /pr/<n>/#/watch, one real file, which is all Pages can serve without rewrite
@@ -60,14 +60,8 @@ jobs:
           echo "::error::${GITHUB_REF_NAME} has no folder to publish to. Pull requests publish from checks.yml."
           exit 1
 
-      # keel is a submodule, and `includeBuild("keel")` in settings.gradle.kts
-      # points straight at its directory. Without this the checkout leaves that
-      # directory empty and Gradle fails at configuration time, before any task
-      # runs.
       - name: Check out the branch being published
         uses: actions/checkout@v5
-        with:
-          submodules: true
 
       - uses: actions/setup-java@v5
         with:

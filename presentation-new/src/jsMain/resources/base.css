@@ -1,5 +1,5 @@
 /* =============================================================================
-   Page-level rules for the redesign's pages, in every shell. Link after tokens.css.
+   Page-level rules for every page, in every shell. Link after tokens.css.
 
    Elements only, no classes: a component's look belongs to its own sheet. Reads the
    semantic tokens (layer 2), so a shell's overrides in tokens.css reach these too.
@@ -30,7 +30,7 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  /* Same as the old pages: no double-tap zoom (iOS honours this, not the viewport
+  /* No double-tap zoom (iOS honours this, not the viewport
      tag), no long-press callout and no tap flash. A pinch is cancelled in script. */
   touch-action: manipulation;
   -webkit-touch-callout: none;

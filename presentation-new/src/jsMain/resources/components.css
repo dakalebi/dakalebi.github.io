@@ -1,6 +1,5 @@
 /* =============================================================================
-   The redesign's components (`next/components/`). Linked after base.css on every
-   /next/ page.
+   The components (`next/components/`). Linked after base.css on every page.
 
    Component tokens (layer 3) and semantic tokens (layer 2) only, never a primitive, so a
    shell's overrides in tokens.css resize and recolour every component at once. The shell
