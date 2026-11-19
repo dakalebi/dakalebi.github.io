@@ -13,10 +13,10 @@ import ge.dakalebi.di.settings
 import ge.dakalebi.i18n.S
 import ge.dakalebi.presentation.Route
 import ge.dakalebi.ui.LoginScreen
+import ge.dakalebi.ui.Text
 import ge.dakalebi.ui.ToastHost
 import kotlinx.browser.document
 import org.jetbrains.compose.web.dom.Div
-import org.jetbrains.compose.web.dom.Text
 
 /**
  * Driving mode's root: the auth gate, the one video player, and two screens.

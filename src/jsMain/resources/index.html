@@ -34,22 +34,21 @@
     <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png" />
 
     <!--
-      Noto Sans Georgian is loaded rather than merely named. None of the faces
-      the stylesheet used to ask for - Noto, BPG Arial, Sylfaen - are installed
-      on a typical Mac or phone, so every Georgian glyph was coming from an
-      arbitrary system fallback. It also carries Mtavruli (U+1C90-1CBA), which
-      the uppercase treatment depends on.
+      Mersad is the face for all text, self-hosted and declared in tokens.css. It
+      carries Mtavruli (U+1C90-1CBF), which the uppercase treatment depends on.
+      Preloaded because the stylesheet only asks for it once the page is styled,
+      and every line of Georgian waits on it. `crossorigin` is required on a font
+      preload even from the same origin, or the browser fetches it twice.
 
-      JetBrains Mono is for timecodes and counters only.
-
-      `display=swap` keeps text visible if fonts.gstatic.com is slow or blocked;
-      the stack in tokens.css is the fallback in that case.
+      JetBrains Mono is for timecodes and counters only. `display=swap` keeps
+      them visible if fonts.gstatic.com is slow or blocked.
     -->
+    <link rel="preload" href="fonts/Mersad.ttf" as="font" type="font/ttf" crossorigin />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap"
     />
     <!--
       Two links rather than an `@import` chain, which would cost a serialised

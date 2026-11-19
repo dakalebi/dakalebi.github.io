@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import ge.dakalebi.i18n.S
 import ge.dakalebi.presentation.Route
 import ge.dakalebi.presentation.Router
+import ge.dakalebi.ui.Text
 import ge.dakalebi.ui.assetBase
 import ge.dakalebi.ui.tv.focus.FocusAxis
 import ge.dakalebi.ui.tv.focus.focusGroup
@@ -15,7 +16,6 @@ import org.jetbrains.compose.web.dom.A
 import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.Img
 import org.jetbrains.compose.web.dom.Span
-import org.jetbrains.compose.web.dom.Text
 
 /** The key the rail's focus group is filed under, shared with the shell. */
 internal const val NAV_GROUP = "nav"

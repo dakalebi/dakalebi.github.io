@@ -37,6 +37,17 @@ interface Strings {
      */
     fun caps(text: String): String = text
 
+    /**
+     * Casing for every other visible text: body copy, notes, tile titles, data.
+     *
+     * Georgian sets all of its on-screen text in Mtavruli, chrome or not. Unlike
+     * [caps], this changes only the Georgian letters, so Latin inside a line
+     * (an email, a commit hash, "E12") keeps its own case. For the same reason
+     * as [caps] it cannot be CSS. Spoken labels and the tab title stay as they
+     * are: they are not on the page, and a screen reader reads Mkhedruli.
+     */
+    fun cased(text: String): String = text
+
     // ------------------------------------------------------------- shell
     val appName: String
 
@@ -295,3 +306,6 @@ val S: Strings get() = I18n.current
 
 /** Chrome casing for the active language. See [Strings.caps]. */
 val String.caps: String get() = I18n.current.caps(this)
+
+/** Casing for all other visible text in the active language. See [Strings.cased]. */
+val String.cased: String get() = I18n.current.cased(this)

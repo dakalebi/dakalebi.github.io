@@ -23,6 +23,7 @@ import ge.dakalebi.presentation.ToastStore
 import ge.dakalebi.ui.ConfirmDialog
 import ge.dakalebi.ui.EpisodeTile
 import ge.dakalebi.ui.Rail
+import ge.dakalebi.ui.Text
 import ge.dakalebi.ui.Thumb
 import ge.dakalebi.ui.assetBase
 import io.github.bchmsl.keel.components.Badge
@@ -52,7 +53,6 @@ import org.jetbrains.compose.web.dom.H1
 import org.jetbrains.compose.web.dom.H2
 import org.jetbrains.compose.web.dom.Img
 import org.jetbrains.compose.web.dom.Span
-import org.jetbrains.compose.web.dom.Text
 
 private enum class Confirm { None, ResetAll, MarkSeason, ResetSeason }
 

@@ -19,6 +19,7 @@ import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
 import ge.dakalebi.presentation.Route
 import ge.dakalebi.ui.ConfirmDialog
+import ge.dakalebi.ui.Text
 import ge.dakalebi.ui.player.isAppleMobile
 import ge.dakalebi.ui.useFixtures
 import io.github.bchmsl.keel.dom.classNames
@@ -31,7 +32,6 @@ import org.jetbrains.compose.web.dom.Button
 import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.H1
 import org.jetbrains.compose.web.dom.Span
-import org.jetbrains.compose.web.dom.Text
 import kotlin.math.ceil
 
 /**

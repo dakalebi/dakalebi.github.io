@@ -10,6 +10,7 @@ import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
 import ge.dakalebi.presentation.Route
 import ge.dakalebi.presentation.Router
+import ge.dakalebi.ui.Text
 import ge.dakalebi.ui.Thumb
 import ge.dakalebi.ui.tv.focus.Axis
 import ge.dakalebi.ui.tv.focus.FocusAxis
@@ -27,7 +28,6 @@ import org.jetbrains.compose.web.dom.A
 import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.H2
 import org.jetbrains.compose.web.dom.Span
-import org.jetbrains.compose.web.dom.Text
 import org.w3c.dom.HTMLElement
 
 /**

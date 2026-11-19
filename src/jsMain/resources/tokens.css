@@ -10,6 +10,22 @@
    the player has no visible seam against the page on OLED screens.
    ========================================================================== */
 
+/* Mersad, by Nikoloz Khipashvili: the face for every language this app speaks.
+   Self-hosted, one variable file for the whole 100-900 range, because the sheets
+   ask for 500 through 800 and in-between steps (620, 650, 680) that only an axis
+   can draw. It carries Latin, Mkhedruli and all 46 Mtavruli capitals, which the
+   Georgian casing depends on. The few symbols it lacks (✓ ▸ ◂ → ⋅) fall through
+   to the system faces after it in --f-sans. The URL is relative to this sheet,
+   so /tv/ and /drive/, which link it as ../tokens.css, reach the same file. Each
+   page preloads it, so the swap from the fallback is rarely seen. */
+@font-face {
+  font-family: "Mersad";
+  src: url("fonts/Mersad.ttf") format("truetype");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --bg: #000000;
   --elev: #0d0d0f;
@@ -53,11 +69,21 @@
   --z-dialog: 90;
   --z-toast: 100;
 
-  --f-sans: "Noto Sans Georgian", "BPG Arial", Sylfaen, ui-sans-serif, system-ui,
-    -apple-system, "Segoe UI", sans-serif;
+  --f-sans: "Mersad", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   /* Timecodes, counters and quality labels. A face of its own so numbers read
      as data rather than as more of the sentence around them. */
   --f-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 
   color-scheme: dark;
+}
+
+/* Georgian is cased in Kotlin (Strings.caps and Strings.cased), so CSS must not
+   case it again. `text-transform: uppercase` does worse than skip Georgian: Chrome
+   maps Mtavruli back down to Mkhedruli, so a `.caps` eyebrow drew in small letters.
+   Measured on the sign-in eyebrow: the DOM holds ᲡᲐᲜᲐᲮᲐᲕᲘ, the screen showed
+   სანახავი. Here because every shell links this sheet, after keel's (whose `.badge`
+   uppercases too); `!important` because the rules it undoes are more specific and
+   load later. English keeps them, since its `caps` leaves casing to CSS. */
+:lang(ka) {
+  text-transform: none !important;
 }
