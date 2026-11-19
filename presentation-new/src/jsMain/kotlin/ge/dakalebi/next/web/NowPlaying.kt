@@ -34,6 +34,7 @@ import ge.dakalebi.next.components.MenuEntry
 import ge.dakalebi.next.components.Notice
 import ge.dakalebi.next.components.Scrubber
 import ge.dakalebi.next.components.Spinner
+import ge.dakalebi.next.components.Text
 import ge.dakalebi.next.components.Thumb
 import ge.dakalebi.next.components.Transport
 import ge.dakalebi.next.components.episodeMeta
@@ -57,7 +58,6 @@ import org.jetbrains.compose.web.dom.Li
 import org.jetbrains.compose.web.dom.P
 import org.jetbrains.compose.web.dom.Section
 import org.jetbrains.compose.web.dom.Span
-import org.jetbrains.compose.web.dom.Text
 import org.jetbrains.compose.web.dom.Ul
 import org.w3c.dom.HTMLElement
 import org.w3c.dom.Node

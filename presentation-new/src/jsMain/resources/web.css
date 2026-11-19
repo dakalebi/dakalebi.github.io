@@ -75,7 +75,6 @@
 
 .tabbar-label {
   font: var(--type-label-s);
-  font-stretch: var(--type-label-s-stretch);
   letter-spacing: var(--type-label-s-tracking);
 }
 
@@ -98,7 +97,6 @@
 
 .page-title {
   font: var(--type-display);
-  font-stretch: var(--type-display-stretch);
   letter-spacing: var(--type-display-tracking);
 }
 
@@ -125,14 +123,12 @@
 .section-title {
   color: var(--color-text-2);
   font: var(--type-section);
-  font-stretch: var(--type-section-stretch);
   letter-spacing: var(--type-section-tracking);
 }
 
 .section-meta {
   color: var(--color-text-3);
   font: var(--type-figure-s);
-  font-stretch: var(--type-figure-stretch);
   font-variant-numeric: var(--type-figure-numeric);
 }
 
@@ -150,7 +146,6 @@
   margin-block: calc((var(--target-min) - 1em) / -2);
   color: var(--color-accent-text);
   font: var(--type-section);
-  font-stretch: var(--type-section-stretch);
   letter-spacing: var(--type-section-tracking);
 }
 
@@ -188,13 +183,11 @@
 .continue-eyebrow {
   color: var(--color-accent-text);
   font: var(--type-section);
-  font-stretch: var(--type-section-stretch);
   letter-spacing: var(--type-section-tracking);
 }
 
 .continue-title {
   font: var(--type-headline);
-  font-stretch: var(--type-headline-stretch);
   letter-spacing: var(--type-headline-tracking);
 }
 
@@ -202,7 +195,6 @@
 .continue-note {
   color: var(--color-text-3);
   font: var(--type-body-s);
-  font-stretch: var(--type-body-s-stretch);
   font-variant-numeric: var(--type-figure-numeric);
 }
 
@@ -285,7 +277,6 @@
 .season-card-meta {
   color: var(--color-text-3);
   font: var(--type-figure-s);
-  font-stretch: var(--type-figure-stretch);
   font-variant-numeric: var(--type-figure-numeric);
 }
 
@@ -351,14 +342,12 @@
 
 .season-title {
   font: var(--type-title);
-  font-stretch: var(--type-title-stretch);
   letter-spacing: var(--type-title-tracking);
 }
 
 .season-meta {
   color: var(--color-text-3);
   font: var(--type-body-s);
-  font-stretch: var(--type-body-s-stretch);
   font-variant-numeric: var(--type-figure-numeric);
 }
 
@@ -383,14 +372,12 @@
 .settings-email {
   max-width: 100%;
   font: var(--type-item);
-  font-stretch: var(--type-item-stretch);
   overflow-wrap: anywhere;
 }
 
 .settings-note {
   color: var(--color-text-3);
   font: var(--type-body-s);
-  font-stretch: var(--type-body-s-stretch);
 }
 
 .settings-buttons {
@@ -440,36 +427,27 @@
 
 .stat-value {
   font: var(--type-figure-l);
-  font-stretch: var(--type-figure-stretch);
   font-variant-numeric: var(--type-figure-numeric);
+  white-space: nowrap;
 }
 
 .stat-label {
   color: var(--color-text-3);
   font: var(--type-label-s);
-  font-stretch: var(--type-label-s-stretch);
   letter-spacing: var(--type-label-s-tracking);
 }
 
-/* The longest label is one Georgian word of about 76px, and three cards across leave it
-   less on a narrow phone. Under 24rem the cards' sides give it room; under 22.5rem even
-   that is too little, and the figures stack, each a row with its label first. */
-@media (max-width: 23.99rem) {
-  .stat {
-    padding-inline: var(--space-3);
-  }
-}
-
-@media (max-width: 22.49rem) {
+/* The widest figure is the first, "932 / 932" with the whole catalog watched: about
+   138px at figure-l. Three cards across hold it from 36rem. Below that it gets the row
+   to itself and the other two share the row under it, which still leaves the longest
+   label (one Georgian word, about 83px) room on a 320px phone. */
+@media (max-width: 35.99rem) {
   .stat-row {
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--space-2);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .stat {
-    flex-direction: row-reverse;
-    align-items: baseline;
-    justify-content: space-between;
+  .stat:first-child {
+    grid-column: 1 / -1;
   }
 }
 
@@ -479,7 +457,6 @@
   gap: var(--space-1);
   color: var(--color-text-3);
   font: var(--type-body-s);
-  font-stretch: var(--type-body-s-stretch);
 }
 
 .build-stamp {
@@ -496,7 +473,6 @@
 
 .build-commit {
   font: var(--type-figure-s);
-  font-stretch: var(--type-figure-stretch);
 }
 
 /* ----- desktop: the side menu takes over from the tab bar ---------------------- */
@@ -595,7 +571,6 @@
   background: var(--on-media-bg);
   color: var(--on-media-fg);
   font: var(--type-label);
-  font-stretch: var(--type-label-stretch);
   letter-spacing: var(--type-label-tracking);
   white-space: nowrap;
   transform: translate(-50%, -50%);
@@ -715,7 +690,6 @@
 .np-mini-title {
   overflow: hidden;
   font: var(--type-item);
-  font-stretch: var(--type-item-stretch);
   letter-spacing: var(--type-item-tracking);
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -724,7 +698,6 @@
 .np-mini-time {
   color: var(--color-text-2);
   font: var(--type-figure-s);
-  font-stretch: var(--type-figure-stretch);
   font-variant-numeric: var(--type-figure-numeric);
 }
 
@@ -766,7 +739,6 @@
   flex: 1;
   color: var(--color-text-2);
   font: var(--type-label-s);
-  font-stretch: var(--type-label-s-stretch);
   letter-spacing: var(--type-label-s-tracking);
   text-align: center;
 }
@@ -794,14 +766,12 @@
 
 .np-title {
   font: var(--type-title);
-  font-stretch: var(--type-title-stretch);
   letter-spacing: var(--type-title-tracking);
 }
 
 .np-meta {
   color: var(--color-text-2);
   font: var(--type-meta);
-  font-stretch: var(--type-meta-stretch);
   letter-spacing: var(--type-meta-tracking);
 }
 
@@ -843,13 +813,11 @@
 .upnext-eyebrow {
   color: var(--color-accent-text);
   font: var(--type-label-s);
-  font-stretch: var(--type-label-s-stretch);
   letter-spacing: var(--type-label-s-tracking);
 }
 
 .upnext-title {
   font: var(--type-item);
-  font-stretch: var(--type-item-stretch);
   letter-spacing: var(--type-item-tracking);
 }
 
@@ -983,7 +951,6 @@
     padding: 0 var(--space-3) var(--space-6);
     color: var(--color-accent-text);
     font: var(--type-headline);
-    font-stretch: var(--type-headline-stretch);
     letter-spacing: var(--type-headline-tracking);
   }
 
@@ -1003,7 +970,6 @@
     border-radius: var(--sidenav-item-radius);
     color: var(--sidenav-item-fg);
     font: var(--type-item);
-    font-stretch: var(--type-item-stretch);
     transition: background-color var(--dur-press) var(--ease-out), color var(--dur-press) var(--ease-out);
   }
 
@@ -1040,7 +1006,6 @@
     max-width: 100%;
     color: var(--color-text-3);
     font: var(--type-body-s);
-    font-stretch: var(--type-body-s-stretch);
     overflow-wrap: anywhere;
   }
 

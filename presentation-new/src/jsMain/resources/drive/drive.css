@@ -38,8 +38,8 @@
 
 /* The way out to the full site. Quiet, so the eye goes to Continue, but at the full
    64px. Pulled left so the arrow lines up with the card's edge, not the label. The
-   Georgian label takes two lines on a narrow phone, so it wraps rather than ending in
-   an ellipsis: a way out has to say where it goes. */
+   Georgian label takes two lines on an upright phone and three at 320px, so it wraps
+   rather than ending in an ellipsis: a way out has to say where it goes. */
 .drive-exit {
   margin-inline-start: calc(-1 * var(--space-3));
   padding-block: var(--space-2);
@@ -63,7 +63,6 @@
   max-width: 24rem;
   color: var(--color-text-2);
   font: var(--type-title);
-  font-stretch: var(--type-title-stretch);
   text-align: center;
 }
 
@@ -135,25 +134,21 @@
 
 .car-continue-label {
   font: var(--type-section);
-  font-stretch: var(--type-section-stretch);
   letter-spacing: var(--type-section-tracking);
 }
 
 .car-continue-season {
   font: var(--type-title);
-  font-stretch: var(--type-title-stretch);
 }
 
 .car-continue-title {
   font: var(--type-display);
-  font-stretch: var(--type-display-stretch);
   letter-spacing: var(--type-display-tracking);
 }
 
 .car-continue-meta {
   margin-top: var(--space-1);
   font: var(--type-item);
-  font-stretch: var(--type-item-stretch);
 }
 
 /* How far in, as a line along the foot. The words above say it too. */
@@ -172,6 +167,18 @@
   background: var(--car-continue-fg);
 }
 
+/* Beside the disc, the words get the card's width less 9.75rem, and "ᲡᲔᲠᲘᲐ 88" at display
+   is about 257px, which fits from 28rem. Under that, an upright phone, the disc goes
+   above the words and they get the card's whole width: "ᲡᲔᲠᲘᲐ 4" on one line from
+   320px, two digits from 360px. */
+@media (max-width: 27.99rem) {
+  .car-continue {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+  }
+}
+
 /* ----- player ------------------------------------------------------------------ */
 
 .drive-now {
@@ -183,13 +190,11 @@
 .drive-eyebrow {
   color: var(--color-accent-text);
   font: var(--type-section);
-  font-stretch: var(--type-section-stretch);
   letter-spacing: var(--type-section-tracking);
 }
 
 .drive-title {
   font: var(--type-headline);
-  font-stretch: var(--type-headline-stretch);
   letter-spacing: var(--type-headline-tracking);
 }
 
@@ -202,13 +207,11 @@
   gap: var(--space-1) var(--space-4);
   color: var(--color-text-2);
   font: var(--type-item);
-  font-stretch: var(--type-item-stretch);
 }
 
 .drive-clock {
   color: var(--color-text);
   font: var(--type-figure-m);
-  font-stretch: var(--type-figure-stretch);
   font-variant-numeric: var(--type-figure-numeric);
 }
 
@@ -273,7 +276,6 @@
   padding: var(--space-2);
   border-radius: var(--radius-card);
   font: var(--type-label-s);
-  font-stretch: var(--type-label-s-stretch);
   white-space: normal;
 }
 
@@ -442,7 +444,6 @@
 
   .drive-title {
     font: var(--type-title);
-    font-stretch: var(--type-title-stretch);
   }
 
   .drive-time {

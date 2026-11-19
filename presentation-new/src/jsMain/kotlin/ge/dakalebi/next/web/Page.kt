@@ -8,6 +8,7 @@ import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
 import ge.dakalebi.next.components.EmptyState
 import ge.dakalebi.next.components.Glyph
+import ge.dakalebi.next.components.Text
 import ge.dakalebi.presentation.DashboardViewModel
 import ge.dakalebi.presentation.ErrorMessages
 import org.jetbrains.compose.web.dom.Div
@@ -15,7 +16,6 @@ import org.jetbrains.compose.web.dom.H1
 import org.jetbrains.compose.web.dom.H2
 import org.jetbrains.compose.web.dom.Section
 import org.jetbrains.compose.web.dom.Span
-import org.jetbrains.compose.web.dom.Text
 
 /** A tab's title row: the title in the display role, and [end] on the right. */
 @Composable

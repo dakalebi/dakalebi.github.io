@@ -37,7 +37,6 @@
 
 .fd-section-title {
   font: var(--type-section);
-  font-stretch: var(--type-section-stretch);
   letter-spacing: var(--type-section-tracking);
   color: var(--color-text-3);
 }
@@ -58,7 +57,6 @@
 
 .fd-role {
   font: var(--type-figure-s);
-  font-stretch: var(--type-figure-stretch);
   color: var(--color-text-3);
 }
 
@@ -105,7 +103,6 @@
   white-space: nowrap;
   text-overflow: ellipsis;
   font: var(--type-figure-s);
-  font-stretch: var(--type-figure-stretch);
   color: var(--color-text-2);
 }
 
@@ -136,7 +133,6 @@
   right: var(--space-2);
   bottom: var(--space-1);
   font: var(--type-figure-l);
-  font-stretch: var(--type-figure-stretch);
   font-variant-numeric: var(--type-figure-numeric);
   color: var(--color-on-media-text);
   text-shadow: var(--shadow-on-media);
@@ -152,7 +148,6 @@
 
 .fd-card-eyebrow {
   font: var(--type-label-s);
-  font-stretch: var(--type-label-s-stretch);
   color: var(--color-accent-text);
 }
 
@@ -161,7 +156,6 @@
   white-space: nowrap;
   text-overflow: ellipsis;
   font: var(--type-title);
-  font-stretch: var(--type-title-stretch);
   letter-spacing: var(--type-title-tracking);
 }
 
@@ -183,7 +177,6 @@
   white-space: nowrap;
   text-overflow: ellipsis;
   font: var(--type-meta);
-  font-stretch: var(--type-meta-stretch);
   color: var(--color-text-2);
 }
 

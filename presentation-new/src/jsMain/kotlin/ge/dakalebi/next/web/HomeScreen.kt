@@ -16,6 +16,7 @@ import ge.dakalebi.next.components.EpisodeTile
 import ge.dakalebi.next.components.Glyph
 import ge.dakalebi.next.components.Skeleton
 import ge.dakalebi.next.components.SkeletonShape
+import ge.dakalebi.next.components.Text
 import ge.dakalebi.next.components.Thumb
 import ge.dakalebi.presentation.DashboardViewModel
 import ge.dakalebi.presentation.Route
@@ -26,7 +27,6 @@ import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.H2
 import org.jetbrains.compose.web.dom.P
 import org.jetbrains.compose.web.dom.Section
-import org.jetbrains.compose.web.dom.Text
 
 /** How many episodes the sideways rows on Home hold: the old dashboard's rail length. */
 private const val ROW_LENGTH = 12

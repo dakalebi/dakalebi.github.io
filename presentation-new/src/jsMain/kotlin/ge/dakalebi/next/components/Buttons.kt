@@ -10,7 +10,6 @@ import org.jetbrains.compose.web.attributes.target
 import org.jetbrains.compose.web.attributes.type
 import org.jetbrains.compose.web.dom.A
 import org.jetbrains.compose.web.dom.Span
-import org.jetbrains.compose.web.dom.Text
 import org.w3c.dom.HTMLElement
 import org.jetbrains.compose.web.dom.Button as HtmlButton
 

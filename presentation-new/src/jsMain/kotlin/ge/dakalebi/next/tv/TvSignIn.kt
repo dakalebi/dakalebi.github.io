@@ -9,6 +9,7 @@ import ge.dakalebi.i18n.caps
 import ge.dakalebi.next.assetBase
 import ge.dakalebi.next.components.Button
 import ge.dakalebi.next.components.ButtonVariant
+import ge.dakalebi.next.components.Text
 import ge.dakalebi.next.components.TextField
 import ge.dakalebi.next.components.TextFieldKind
 import ge.dakalebi.next.tv.focus.FocusAxis
@@ -21,7 +22,6 @@ import org.jetbrains.compose.web.dom.H1
 import org.jetbrains.compose.web.dom.Img
 import org.jetbrains.compose.web.dom.Main
 import org.jetbrains.compose.web.dom.P
-import org.jetbrains.compose.web.dom.Text
 
 /**
  * The way in on TV: the mark and the name on the left, the form on the right.

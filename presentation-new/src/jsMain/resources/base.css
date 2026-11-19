@@ -24,9 +24,7 @@ body {
   min-height: 100dvh;
   background: var(--color-bg);
   color: var(--color-text);
-  /* `font` resets font-stretch, so the stretch comes after it. */
   font: var(--type-body);
-  font-stretch: var(--type-body-stretch);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
@@ -54,7 +52,6 @@ input,
 select,
 textarea {
   font: inherit;
-  font-stretch: inherit;
   color: inherit;
 }
 
