@@ -1,0 +1,195 @@
+/*
+ * The six palettes this library ships, each in a light and a dark form.
+ *
+ * Requires `tokens.css`, which declares everything these do not: shape, motion,
+ * type, shadow, and the colours that are the same whatever palette is active.
+ *
+ * Optional. An app with its own palettes links its own sheet instead of this one
+ * and inherits nothing from here - see the note in tokens.css.
+ *
+ * Coral is both the default and the fallback, so it is declared on bare `:root` as
+ * well as `[data-theme="coral"]`. That is what makes an unknown or missing
+ * `data-theme` paint a complete palette rather than an unstyled page.
+ *
+ * Link this AFTER tokens.css, always. `:root` and `[data-theme='...']` carry the
+ * same specificity, so a token declared in both is settled by source order and
+ * nothing else - `--secondary-foreground` is one, and the two palettes that
+ * override it would silently lose their dark ink if this sheet came first.
+ *
+ * Six tokens are derived rather than declared per palette, so `tokens.css` writes
+ * them once rather than repeating them twelve times here. Deriving them makes a
+ * mismatch impossible rather than merely unlikely:
+ *   --input            is always --border
+ *   --ring             is always --primary
+ *   --popover          is always --card
+ *   --card-foreground, --popover-foreground and --accent-foreground
+ *                      are always --foreground
+ * A palette that needs to break one of these overrides it in its own block.
+ */
+
+/* ---------------------------------------------------------------- coral ---- */
+/* The default. Declared on bare `:root` too, so it is what an unknown theme gets. */
+
+:root,
+[data-theme='coral'] {
+  --background: 350 30% 97%;
+  --foreground: 350 25% 15%;
+  --card: 350 20% 99%;
+  --primary: 350 91% 60%;
+  --secondary: 160 59% 45%;
+  --muted: 350 16% 94%;
+  --muted-foreground: 350 12% 42%;
+  --accent: 350 16% 90%;
+  --border: 350 14% 89%;
+}
+
+:root.dark,
+[data-theme='coral'].dark {
+  --background: 222 20% 10%;
+  --foreground: 210 20% 92%;
+  --card: 222 18% 14%;
+  --primary: 350 91% 60%;
+  --secondary: 160 59% 45%;
+  --muted: 222 14% 18%;
+  --muted-foreground: 215 15% 55%;
+  --accent: 222 14% 22%;
+  --border: 222 14% 20%;
+}
+
+/* ---------------------------------------------------------------- ocean ---- */
+
+[data-theme='ocean'] {
+  --background: 200 35% 96%;
+  --foreground: 210 30% 14%;
+  --card: 200 30% 98%;
+  --primary: 199 89% 48%;
+  --secondary: 172 66% 50%;
+  --muted: 200 22% 92%;
+  --muted-foreground: 210 16% 44%;
+  --accent: 200 22% 88%;
+  --border: 200 20% 87%;
+}
+
+[data-theme='ocean'].dark {
+  --background: 215 28% 9%;
+  --foreground: 210 20% 92%;
+  --card: 215 25% 13%;
+  --primary: 199 89% 48%;
+  --secondary: 172 66% 50%;
+  --muted: 215 20% 18%;
+  --muted-foreground: 215 15% 55%;
+  --accent: 215 18% 22%;
+  --border: 215 18% 20%;
+}
+
+/* --------------------------------------------------------------- forest ---- */
+/* Forest and Ember are the two palettes whose secondary is a light yellow, so both
+   override --secondary-foreground to a dark ink rather than the usual white. */
+
+[data-theme='forest'] {
+  --background: 140 30% 96%;
+  --foreground: 150 30% 12%;
+  --card: 140 25% 98%;
+  --primary: 142 71% 45%;
+  --secondary: 47 96% 53%;
+  --secondary-foreground: 150 25% 14%;
+  --muted: 140 20% 92%;
+  --muted-foreground: 150 14% 40%;
+  --accent: 140 20% 87%;
+  --border: 140 18% 86%;
+}
+
+[data-theme='forest'].dark {
+  --background: 150 20% 8%;
+  --foreground: 138 16% 90%;
+  --card: 150 18% 12%;
+  --primary: 142 71% 45%;
+  --secondary: 47 96% 53%;
+  --secondary-foreground: 150 25% 14%;
+  --muted: 150 14% 17%;
+  --muted-foreground: 140 10% 52%;
+  --accent: 150 14% 21%;
+  --border: 150 14% 19%;
+}
+
+/* ------------------------------------------------------------- lavender ---- */
+
+[data-theme='lavender'] {
+  --background: 268 32% 96%;
+  --foreground: 270 28% 16%;
+  --card: 268 28% 98%;
+  --primary: 263 70% 71%;
+  --secondary: 330 80% 65%;
+  --muted: 268 20% 92%;
+  --muted-foreground: 270 14% 43%;
+  --accent: 268 20% 88%;
+  --border: 268 18% 87%;
+}
+
+[data-theme='lavender'].dark {
+  --background: 270 22% 9%;
+  --foreground: 270 15% 90%;
+  --card: 270 20% 13%;
+  --primary: 263 70% 71%;
+  --secondary: 330 80% 65%;
+  --muted: 270 16% 18%;
+  --muted-foreground: 270 12% 53%;
+  --accent: 270 16% 22%;
+  --border: 270 16% 20%;
+}
+
+/* ---------------------------------------------------------------- ember ---- */
+
+[data-theme='ember'] {
+  --background: 28 35% 96%;
+  --foreground: 20 28% 13%;
+  --card: 28 30% 98%;
+  --primary: 25 95% 53%;
+  --secondary: 43 96% 56%;
+  --secondary-foreground: 20 25% 15%;
+  --muted: 28 22% 91%;
+  --muted-foreground: 20 14% 41%;
+  --accent: 28 22% 87%;
+  --border: 28 20% 86%;
+}
+
+[data-theme='ember'].dark {
+  --background: 20 22% 9%;
+  --foreground: 30 18% 90%;
+  --card: 20 20% 13%;
+  --primary: 25 95% 53%;
+  --secondary: 43 96% 56%;
+  --secondary-foreground: 20 25% 15%;
+  --muted: 20 16% 17%;
+  --muted-foreground: 20 10% 52%;
+  --accent: 20 16% 21%;
+  --border: 20 16% 19%;
+}
+
+/* ---------------------------------------------------------------- slate ---- */
+/* The only palette whose primary differs between modes: its light primary is too
+   dark to read against the dark background. */
+
+[data-theme='slate'] {
+  --background: 220 20% 95%;
+  --foreground: 224 22% 16%;
+  --card: 220 16% 98%;
+  --primary: 215 16% 47%;
+  --secondary: 215 25% 60%;
+  --muted: 220 18% 90%;
+  --muted-foreground: 220 12% 44%;
+  --accent: 220 18% 86%;
+  --border: 220 16% 85%;
+}
+
+[data-theme='slate'].dark {
+  --background: 224 20% 9%;
+  --foreground: 220 14% 90%;
+  --card: 224 18% 13%;
+  --primary: 215 20% 55%;
+  --secondary: 215 25% 60%;
+  --muted: 224 14% 17%;
+  --muted-foreground: 220 10% 52%;
+  --accent: 224 14% 21%;
+  --border: 224 14% 19%;
+}

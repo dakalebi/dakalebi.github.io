@@ -1,0 +1,398 @@
+/*
+ * The token contract: everything that is not a palette.
+ *
+ * Shape, motion, type, shadow, and the colours that do not change with a palette.
+ * A component reads only tokens, which is what lets one stylesheet serve a light
+ * six-palette dashboard and a single-palette dark video app without either editing
+ * the other's rules.
+ *
+ * ---------------------------------------------------------------- colours ----
+ *
+ * Every colour is a bare HSL triple (`H S% L%`) rather than a finished colour, so a
+ * consumer can add alpha with the slash form: `hsl(var(--primary) / 0.1)`. A hex
+ * token cannot do that, which is why the format is part of the contract rather than
+ * a preference. Converting a hex palette to triples is lossless in the direction
+ * that matters: any sRGB hex has an exact HSL representation.
+ *
+ * ------------------------------------------------------------------ using ----
+ *
+ * This file declares NO palette. On its own it paints nothing, deliberately: a
+ * palette is the one part of a design system an app should own outright.
+ *
+ *   link this, then `palettes.css`  -> the six shipped palettes
+ *   link this, then your own sheet  -> your palettes and nothing else
+ *
+ * The second form is the point of the split. A single-palette app must not have to
+ * override eleven palettes it will never paint, and must not inherit a fallback
+ * that fights its own - a video app on true black should stay on true black rather
+ * than being re-derived as somebody else's near-black.
+ *
+ * ------------------------------------------------------- adding a palette ----
+ *
+ * A palette is a `[data-theme='id']` block setting the nine per-palette colours,
+ * plus a `[data-theme='id'].dark` block if it has a dark form, plus a `Theme` in
+ * Kotlin with the same id. Neither half works alone: a `Theme` with no block paints
+ * whatever was declared last while claiming to be something else, and a block with
+ * no `Theme` can never be selected. See ARCHITECTURE.md for a worked dark-only
+ * example, and `KeelTokens` for the list of colours a palette must declare.
+ */
+:root {
+  /* ------------------------------------------------------------ shape ---- */
+  /* One number sets the shape language. The rest are derived, so a change to
+     `--radius` moves every corner together instead of most of them. */
+  --radius: 0.75rem;
+  --radius-xs: calc(var(--radius) - 8px);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-pill: 9999px;
+
+  /* ------------------------------------------------ control geometry ---- */
+  /* A control's box, named so an app can resize the whole set from here
+     instead of re-stating keel's rules by selector.
+
+     This exists because `rem` on its own was not enough. Every value below
+     already scaled with the root font size - but the *ratios* are a phone's.
+     A 2.5rem button is 40px, which is a thumb. A ten-foot interface needs a
+     larger control at the same root size, because its root size is already
+     spoken for by its layout, so the only way to get one used to be
+     overriding these rules from outside. That is how a consumer's stylesheet
+     turns into a fork of this one.
+
+     Every value is what the rule it replaced already stated, so at a 16px
+     root nothing here moves. */
+  --control-h-xs: 1.75rem;
+  --control-h-sm: 2.25rem;
+  --control-h-default: 2.5rem;
+  --control-h-lg: 2.75rem;
+  /* Start, pause, skip: the control that runs the thing a surface is about, and the
+     same control when it is the only thing on the screen. Outside the scale above
+     rather than the top of it - a form control's size follows the density of the form
+     around it, and these two follow being aimed at. Square only, so there is no `px`
+     counterpart: a word in a 3.5rem box is a banner. */
+  --control-h-transport: 3.5rem;
+  --control-h-transport-lg: 5rem;
+  --control-px-xs: 0.625rem;
+  --control-px-sm: 0.75rem;
+  --control-px-default: 1rem;
+  --control-px-lg: 2rem;
+  --control-py-default: 0.5rem;
+  --control-font-size: 0.875rem;
+  --control-font-weight: 500;
+
+  /* The xs tier's own type size. The other three sizes share `--control-font-size`,
+     because a 36px and a 44px button holding the same 14px label is on purpose - the
+     box grows, the text does not. 28px is where that stops working: 14px in a 28px
+     box leaves 7px of padding above and below, which is a label in a slot rather
+     than a button. */
+  --control-font-size-xs: 0.75rem;
+
+  /* A field's own padding. Separate from `--control-px/py-*`, because a field is
+     not one of the button size variants: it has no height of its own and is sized
+     entirely by this padding and its type. */
+  --input-px: 0.75rem;
+  --input-py: 0.625rem;
+
+  /* The size a field takes on a coarse pointer, and the one length here that has to
+     be `px`. iOS Safari zooms the viewport whenever a focused field is under 16 CSS
+     pixels and never zooms back out, so the user finishes typing on a page scrolled
+     sideways. The threshold is absolute: it is not 1rem, and an app that sets its
+     root from the viewport would miss it in either direction. It stays a token
+     because `pointer: coarse` is not only a phone - a remote-driven shell can match
+     it too, and there a 16px field is smaller than the rest of the interface. */
+  --input-font-size-touch: 16px;
+
+  /* The switch is a knob inside a track, so these three are not independent.
+     The knob's travel is *derived* from them in `components.css` rather than
+     stated as a fourth value - which is what stops a resized track from
+     leaving the knob stranded short of the end. */
+  --switch-track-w: 2.25rem;
+  --switch-track-h: 1.25rem;
+  --switch-knob-size: 1rem;
+  --switch-knob-inset: 0.125rem;
+
+  /* A second size, for a switch that sits *inside* another control rather than
+     alone at the end of a settings row - a labelled pill in a player's control
+     bar, a toggle in a toolbar. It is a second size and not a second component,
+     so `.switch--size-sm` rebinds the four values above to these rather than
+     restating the rules that read them. The knob's derived travel then follows
+     on its own, which a duplicated rule set would have to derive correctly a
+     second time. */
+  --switch-track-w-sm: 1.75rem;
+  --switch-track-h-sm: 1rem;
+  --switch-knob-size-sm: 0.75rem;
+  --switch-knob-inset-sm: 0.125rem;
+
+  --slider-rail-h: 0.375rem;
+  --slider-thumb-size: 1rem;
+
+  /* A checkbox is a box with a tick in it, so its radius is not the shape
+     language's: `--radius-sm` on a 20px box is nearly a circle. Both sizes
+     therefore carry their own, and `.checkbox--small` rebinds these the way
+     `.switch--size-sm` rebinds the switch's.
+
+     The border is thick for a reason worth keeping: an unchecked box is *only*
+     its border, so a hairline one reads as absent rather than as empty. */
+  --checkbox-size: 1.25rem;
+  --checkbox-size-sm: 1rem;
+  --checkbox-radius: 0.375rem;
+  --checkbox-radius-sm: 0.25rem;
+  --checkbox-border-w: 0.125rem;
+
+  /* How far an unselected filter pill fades, and the ring the selected one takes.
+     Dimming rather than recolouring is the whole design: a filter pill's colour is
+     its *data* - the tag it stands for - so swapping it for a "not selected" grey
+     would hide which tag the pill is. Opacity says "off" while leaving the colour
+     legible.
+
+     The ring is the held-off pair the focus styles use, and for the same reason: a
+     background-coloured gap keeps the stroke readable on any surface. Its colour is
+     `currentColor` in the rule, so it is the pill's own. */
+  --pill-dim: 0.6;
+  --pill-ring-gap: 0.0625rem;
+  --pill-ring-width: 0.0625rem;
+
+  /* A swatch: a colour offered for the user to pick, drawn as the colour itself.
+
+     Two sizes, because the two things being picked are different in kind. Ten tag
+     colours in a grid is a set - what matters is telling them apart, so they are
+     small and close together. A theme's accent in a short row is a handful of
+     decisions, each of which gets room.
+
+     The ring marking the chosen one is the held-off pair the focus styles and the
+     selected pill both use, and for the same reason: a background-coloured gap keeps
+     the stroke legible against whatever colour the swatch happens to be. Wider than
+     the pill's, because on a swatch the ring is the *only* mark - there is no text to
+     embolden and no dim to lift. */
+  --swatch-size: 1.5rem;
+  --swatch-size-sm: 1rem;
+  --swatch-ring-gap: 0.125rem;
+  --swatch-ring-width: 0.125rem;
+
+  /* A labelled swatch tile: the same choice with its name beside it, for a picker
+     with room for words - six theme names in a settings panel rather than ten
+     wordless colours in a dialog.
+
+     The dot is smaller than the smallest bare swatch on purpose. In a tile the colour
+     is a preview sitting beside a name, not the thing being aimed at; the whole tile
+     is the target. */
+  --swatch-dot-size: 0.75rem;
+  --swatch-tile-pad: 0.5rem;
+  --swatch-tile-gap: 0.375rem;
+  --swatch-tile-font-size: 0.75rem;
+
+  /* How strongly the chosen tile fills itself with `--primary`. Its own knob rather
+     than `--callout-tint`, which is the same order of magnitude for a different job:
+     a callout tints to say what it is about, a tile tints to say it is the one
+     picked, and tying them together would mean neither could move alone. */
+  --swatch-tile-tint: 0.09;
+
+  /* The ring on a card while the pointer is carrying it. Thinner than the focus ring
+     and much fainter, because the raised shadow under it is doing most of the work -
+     this only has to say which of several cards is the one in hand. */
+  --card-drag-ring: 0.125rem;
+  --card-drag-ring-alpha: 0.2;
+
+  /* A callout: a bordered box that says something about the screen it is on. Its
+     type is smaller than body text because it is an aside, and its padding is the
+     tighter of the two hand-written boxes it replaces. */
+  --callout-py: 0.75rem;
+  --callout-px: 1rem;
+  --callout-gap: 0.875rem;
+  --callout-font-size: 0.8125rem;
+
+  /* How strongly a toned callout tints its box. Low, because the border and the type
+     already say which tone it is - the fill is only there so the box does not read as
+     a plain bordered panel. */
+  --callout-tint: 0.09;
+  --callout-border-alpha: 0.4;
+
+  /* The fill a control takes when it sits over picture instead of over the page.
+
+     `--primary-foreground` is the palette's ink for a saturated fill of unknown
+     colour, which is exactly what a video frame is - the same argument
+     `.progress--on-media` already makes in components.css. That bar keeps its own
+     0.22 rather than reading these: a translucent *track* behind a fill and a
+     translucent *control* are not the same job, and tying them together would mean
+     one could not be tuned without moving the other. */
+  --on-media-alpha: 0.16;
+  --on-media-alpha-hover: 0.3;
+
+  /* How much `--destructive` a quiet destructive control washes itself with when
+     reached for. A tint rather than the solid fill `.btn--destructive` takes, because
+     the point of that variant is that it is *not* shouting until the pointer is on
+     it - see `.btn--quiet-destructive`. */
+  --quiet-danger-tint: 0.1;
+
+  /* The spinner's three diameters. Not a control - nothing is aimed at it - but
+     the same argument applies: at ten feet a 20px ring is a dot, and the three
+     size variants only help a consumer whose wanted size is one of the three. */
+  --loader-size-sm: 0.875rem;
+  --loader-size: 1.25rem;
+  --loader-size-lg: 2.25rem;
+
+  /* A progress bar's three thicknesses: a hairline under a tile, the usual bar,
+     and a bar that is the point of its own row. */
+  --progress-h-sm: 0.125rem;
+  --progress-h-default: 0.1875rem;
+  --progress-h-lg: 0.25rem;
+
+  /* The scrub bar. Deliberately *not* the slider's rail and thumb, which are
+     0.375rem and 1rem: a scrub bar lies over moving picture and a thick rail
+     covers it, so it is thinner than a slider on a page and its knob is
+     smaller. `--scrub-h` is the hit area, which is several times the rail -
+     a 3px pointer target is not one.
+
+     A ten-foot shell needs all three larger *and* keeps needing the hit area to
+     dwarf the rail, which is why the height is its own token rather than
+     padding derived from the rail. */
+  --scrub-h: 1rem;
+  --scrub-rail-h: 0.1875rem;
+  --scrub-knob-size: 0.75rem;
+
+  /* A segmented chip is denser than a standalone control, so it takes the
+     `--control-px-*` widths but not the heights: it is sized by its padding,
+     like a field. The two treatments differ, and both differences are real -
+     a rail chip is a standalone target with no track behind it, so it gets
+     the room a button would, while a track chip is one cell of a strip.
+
+     Only the verticals and the type are here; the horizontals are
+     `--control-px-sm` and `--control-px-default`, which already mean this. */
+  --segmented-py: 0.375rem;
+  --segmented-font-size: 0.75rem;
+  --segmented-rail-py: 0.5rem;
+  --segmented-rail-font-size: 0.8125rem;
+
+  /* ---------------------------------------------------- overlay layers ---- */
+  /* The dim behind anything modal. One alpha for the scrim and the dialog's own
+     overlay, because there is no argument for dimming a drawer's page less than
+     a dialog's - both mean "nothing behind this is available".
+
+     The blur is the one length here in `px` rather than `rem`, deliberately: it
+     is a screen-space effect and not layout, so it should not grow when a
+     ten-foot shell scales its root. A 4px blur is 4px on every surface. */
+  --scrim-alpha: 0.7;
+  --scrim-blur: 4px;
+
+  --drawer-w: 24rem;
+  --drawer-pad: 1.25rem;
+  --drawer-gap: 1rem;
+
+  --dropdown-min-w: 13.75rem;
+  --dropdown-offset: 0.375rem;
+  --dropdown-item-py: 0.625rem;
+
+  --toast-w: 25rem;
+  --toast-inset: 1rem;
+  --toast-py: 0.75rem;
+  --toast-accent-w: 0.1875rem;
+  --toast-font-size: 0.8125rem;
+
+  /* ------------------------------------------------------ focus ring ---- */
+  /* Two layers: a gap in the page's own background colour, then the ring
+     itself. The gap is what keeps the ring readable against any surface,
+     including one the same colour as the ring.
+
+     `--focus-ring-width` is the ring's own thickness, NOT the outer radius.
+     The rules draw the outer layer as `calc(offset + width)`, so widening the
+     ring cannot silently eat the gap it needs to stay visible. The pair below
+     is 2px and 2px, which is what the rules stated as 2px and 4px.
+
+     A consumer whose focus ring *is* the cursor - a television, driven by a
+     D-pad - wants both of these several times larger. That is the whole
+     reason they are tokens. */
+  --focus-ring-offset: 0.125rem;
+  --focus-ring-width: 0.125rem;
+
+  /* A field gets a soft glow rather than the two-layer ring, so it needs its own
+     strength. Faint is right at arm's length and wrong across a room, and it is a
+     token so that the far case can say so without restating the rule. */
+  --focus-glow-alpha: 0.2;
+
+  /* -------------------------------------------------------- layering ---- */
+  /* One scale, so two overlays written months apart cannot both reach for 50
+     and leave which wins to source order.
+
+     `--z-dialog` is 50 because that is the value `.dialog__overlay` and
+     `.dialog__content` already carried, and both apps using keel have their
+     own overlays numbered around it. Moving it would silently reorder them.
+
+     The decades leave a consumer room to slot its own layer between two of
+     these without renumbering keel's. The catcher sits one below its menu
+     rather than a decade below, because that pairing is fixed: a
+     click-catcher is only ever directly beneath the thing it dismisses.
+
+     There is no single scrim value. `--z-scrim` belongs to the standalone
+     scrim that pairs with a drawer; a dialog carries its own overlay at
+     `--z-dialog` instead, so the two cannot be separated by a stray layer. */
+  --z-scrim: 20;
+  --z-drawer: 30;
+  --z-dropdown-catch: 39;
+  --z-dropdown: 40;
+  --z-dialog: 50;
+  --z-toast: 60;
+
+  /* ----------------------------------------------------------- motion ---- */
+  /* Named so a component states its intent rather than a number, and so a
+     consumer can retime the whole interface from one place.
+
+     `--ease` is the CSS keyword, not a curve of its own. That is deliberate: it
+     is the value the rules it replaced already used, so tokenising them changed
+     nothing about how anything moves. A house curve belongs to an app, and an
+     app that wants one sets this token - `cubic-bezier(0.32, 0.72, 0, 1)` is a
+     good Apple-like choice - rather than finding one imposed by a library. */
+  --ease: ease;
+  --duration-fast: 150ms;
+  --duration-slow: 200ms;
+
+  /* ------------------------------------------------------ type stacks ---- */
+  /* Tokens rather than rules, because this is the layer a localised app has to
+     replace: a Georgian interface needs a face that covers the alphabet, and
+     changing that must not mean forking the stylesheet.
+
+     The mono stack carries digits that have to hold still - a countdown, a
+     timecode, a counter - so it is a separate token and not a fallback. */
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* ---------------------------------------------------------- shadows ---- */
+  /* Overridden under `.dark`, and they have to be: a 5% black shadow is
+     invisible against a dark surface, so a single value would silently drop
+     every elevation cue in dark mode. */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+
+  /* -------------------------------------------- palette-independent ------ */
+  /* The same in all twelve palettes. Destructive and success are states rather
+     than accents: an app's identity should not change what "this deletes
+     something" looks like. */
+  --primary-foreground: 0 0% 100%;
+  --secondary-foreground: 0 0% 100%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --success: 158 64% 52%;
+  --success-foreground: 0 0% 100%;
+
+  /* Derived; see the note above. `var()` resolves against whichever palette block
+     won on <html>, because every one of these selectors targets that element. */
+  --input: var(--border);
+  --ring: var(--primary);
+  --popover: var(--card);
+  --card-foreground: var(--foreground);
+  --popover-foreground: var(--foreground);
+  --accent-foreground: var(--foreground);
+
+  /* Tells the browser which way to draw the things a page does not style: form
+     controls, the scrollbar gutter, a date picker. Without it a dark page gets
+     light native controls. */
+  color-scheme: light;
+}
+
+:root.dark {
+  color-scheme: dark;
+
+  /* Stronger, because the light values are invisible here. */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.4);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.4);
+}

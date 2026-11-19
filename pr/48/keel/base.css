@@ -1,0 +1,228 @@
+/*
+ * The page-level rules: the reset, the document surface, motion, and scrollbars.
+ *
+ * Separate from tokens.css so a second surface - a TV stylesheet, an embedded
+ * widget - can take the palette without also inheriting a phone type scale and a
+ * page background. This file reads tokens and defines none, which is what makes
+ * that split safe.
+ *
+ * Order matters in exactly one place: `tokens.css` must be linked before the palette
+ * sheet. Not because of `var()` - a custom property is substituted from the element's
+ * fully cascaded value, so this file and components.css resolve their colours
+ * whatever order they arrive in - but because `:root` and `[data-theme='...']` have
+ * the same specificity, so a token declared in both is decided by source order alone.
+ * `--secondary-foreground` is declared in both today. Reverse the two sheets and the
+ * palettes that override it silently lose their dark ink: one token in two palettes,
+ * not a broken page. `TokenContractTest` holds that pair.
+ *
+ * A sheet that is not delivered at all is the case where `var()` really does fall
+ * back to the property's initial value, and that one is silent.
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  /* Every element's default border colour is the theme's, so a rule that adds a
+     border never has to name one. */
+  border-color: hsl(var(--border));
+}
+
+html {
+  /* Where the page disables pinch zoom, a double-tap must not be held back while
+     the browser waits to see whether it was the start of a zoom gesture. */
+  touch-action: manipulation;
+}
+
+body {
+  margin: 0;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/*
+ * Numbers that have to hold still: a countdown, a timecode, a counter.
+ *
+ * `tabular-nums` is the point of it. Without it a 1 is narrower than an 8, so a
+ * counting display shuffles sideways every second and the eye follows the movement
+ * instead of reading the number.
+ */
+.font-mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * Present for assistive technology, absent for everyone else.
+ *
+ * `display: none` would remove it from the accessibility tree along with everything
+ * else, which is the opposite of what this is for.
+ */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* ----------------------------------------------------------- animations ---- */
+
+/* A live indicator breathes rather than blinks: a blink reads as an error. */
+@keyframes keel-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+
+.pulse {
+  animation: keel-pulse 2s ease-in-out infinite;
+}
+
+/* Turns any icon into a spinner. */
+@keyframes keel-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spinner {
+  animation: keel-spin 1s linear infinite;
+}
+
+@keyframes keel-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Dialogs enter from slightly small, which reads as arriving rather than appearing. */
+@keyframes keel-dialog-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.95);
+  }
+}
+
+/* A panel anchored to an edge comes from that edge. */
+@keyframes keel-slide-in-from-right {
+  from {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes keel-slide-in-from-left {
+  from {
+    transform: translateX(-100%);
+  }
+}
+
+/* A transient notice rises into place. Both apps wrote this animation; one called
+   it `rise` and moved 8px, the other did not animate its toasts at all. */
+@keyframes keel-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+}
+
+/* An expansion grows downward out of the row that opened it. */
+@keyframes keel-slide-in-from-top {
+  from {
+    opacity: 0;
+    transform: translateY(-0.25rem);
+  }
+}
+
+/* And upward, when the row that opened it is near the foot of the screen. The
+   mirror of the rule above rather than a reuse of `keel-toast-in`, which travels
+   twice as far because a notice arrives from off-screen while this one grows out of
+   a control the user is already looking at. */
+@keyframes keel-slide-in-from-bottom {
+  from {
+    opacity: 0;
+    transform: translateY(0.25rem);
+  }
+}
+
+/* A highlight travelling left to right across a placeholder. Moves the background
+   position rather than the element, so it costs no layout and a row of skeletons
+   sweeps in step. The element it belongs to sets the gradient; this only slides it. */
+@keyframes keel-skeleton-sweep {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Honour the setting without disabling the interface: transitions collapse to
+     effectively instant rather than being removed, so a state change still lands
+     and nothing depends on a transition that never fires. */
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ----------------------------------------------------------- scrollbars ---- */
+/* Thin and quiet. Sized rather than hidden: a scrollbar nobody can see is a
+   scrollbar nobody can drag.
+
+   Two mechanisms, and they must not both apply to the same element. Blink and
+   WebKit ignore the legacy `::-webkit-scrollbar` pseudo-elements entirely on any
+   element that also has a non-initial `scrollbar-width` or `scrollbar-color`.
+   Measured in Chrome 148 on a scrolling div: the pseudo-elements alone give a 6px
+   gutter, the standard properties alone give 11px, and both together give 11px -
+   so an unguarded legacy block is dead code that reads as load-bearing.
+
+   The standard properties are therefore the rule, and the legacy block is kept
+   only where they are unsupported, which is Safari before 18.2. */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--muted-foreground) / 0.3) transparent;
+}
+
+@supports not (scrollbar-width: thin) {
+  *::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--muted-foreground) / 0.25);
+    border-radius: var(--radius-pill);
+  }
+
+  /* Wrapped like every other hover in the design system, for consistency rather
+     than because a stuck scrollbar hover would be a visible problem: this block
+     only exists on Safari before 18.2, where the scrollbar is an overlay with no
+     tap target to leave a hover behind on. An invariant with one quiet exception
+     is harder to keep than one with none. */
+  @media (hover: hover) {
+    *::-webkit-scrollbar-thumb:hover {
+      background-color: hsl(var(--muted-foreground) / 0.4);
+    }
+  }
+}
