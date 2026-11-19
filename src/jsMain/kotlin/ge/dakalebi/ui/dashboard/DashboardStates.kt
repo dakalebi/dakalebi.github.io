@@ -3,6 +3,8 @@ package ge.dakalebi.ui.dashboard
 import androidx.compose.runtime.Composable
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
+import ge.dakalebi.i18n.cased
+import ge.dakalebi.ui.Text
 import io.github.bchmsl.keel.components.Button
 import io.github.bchmsl.keel.components.EmptyState
 import io.github.bchmsl.keel.components.Skeleton
@@ -10,7 +12,6 @@ import io.github.bchmsl.keel.components.SkeletonShape
 import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.H2
 import org.jetbrains.compose.web.dom.Span
-import org.jetbrains.compose.web.dom.Text
 
 /** The three ways the dashboard can have nothing to show. */
 
@@ -45,9 +46,11 @@ fun LoadingRails() {
 @Composable
 fun LoadFailed(message: String, onRetry: () -> Unit) {
     EmptyPage {
+        // keel's EmptyState paints its strings itself, past this app's `Text`, so
+        // they are cased here.
         EmptyState(
-            title = S.loadFailedEyebrow,
-            body = message,
+            title = S.loadFailedEyebrow.cased,
+            body = message.cased,
             action = { Button(label = S.retry.caps, onClick = onRetry) },
         )
     }
@@ -62,12 +65,12 @@ fun EmptyCatalog(
 ) {
     EmptyPage {
         EmptyState(
-            title = S.emptyEyebrow,
-            body = S.emptyBody,
+            title = S.emptyEyebrow.cased,
+            body = S.emptyBody.cased,
             action = {
                 if (canRefresh) {
                     Button(
-                        label = if (refreshing) note ?: S.refreshing else S.downloadEpisodes.caps,
+                        label = if (refreshing) (note ?: S.refreshing).cased else S.downloadEpisodes.caps,
                         onClick = onRefresh,
                         enabled = !refreshing,
                     )

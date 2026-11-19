@@ -2,6 +2,7 @@ package ge.dakalebi.ui
 
 import androidx.compose.runtime.Composable
 import ge.dakalebi.di.toasts
+import ge.dakalebi.i18n.cased
 import ge.dakalebi.presentation.ToastKind
 import io.github.bchmsl.keel.components.Toast as KeelToast
 import io.github.bchmsl.keel.components.ToastHost as KeelToastHost
@@ -29,7 +30,8 @@ fun ToastHost() {
                 // across recompositions rather than by position. Without it,
                 // dismissing the first of three re-labels the other two.
                 id = toast.id.toString(),
-                message = toast.message,
+                // keel paints this itself, past this app's `Text`, so it is cased here.
+                message = toast.message.cased,
                 tone = when (toast.kind) {
                     ToastKind.Ok -> ToastTone.Success
                     ToastKind.Error -> ToastTone.Error

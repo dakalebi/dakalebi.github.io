@@ -1,6 +1,7 @@
 package ge.dakalebi.ui.watch
 
 import androidx.compose.runtime.Composable
+import ge.dakalebi.ui.Text
 import io.github.bchmsl.keel.components.Button
 import io.github.bchmsl.keel.components.ButtonSize
 import io.github.bchmsl.keel.components.ButtonVariant
@@ -18,7 +19,6 @@ import io.github.bchmsl.keel.icons.LucideIcon
 import org.jetbrains.compose.web.dom.A
 import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.Span
-import org.jetbrains.compose.web.dom.Text
 
 @Composable
 fun WatchNav(episode: Episode?) {

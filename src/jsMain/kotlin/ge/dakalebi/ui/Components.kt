@@ -13,6 +13,7 @@ import ge.dakalebi.domain.model.Episode
 import ge.dakalebi.domain.model.WatchProgress
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
+import ge.dakalebi.i18n.cased
 import ge.dakalebi.presentation.Route
 import ge.dakalebi.presentation.Router
 import io.github.bchmsl.keel.components.Button as KeelButton
@@ -32,7 +33,6 @@ import org.jetbrains.compose.web.dom.H3
 import org.jetbrains.compose.web.dom.Img
 import org.jetbrains.compose.web.dom.P
 import org.jetbrains.compose.web.dom.Span
-import org.jetbrains.compose.web.dom.Text
 
 /**
  * Episode still, or a deterministic gradient stand-in when there is none.
@@ -126,7 +126,7 @@ fun EpisodeTile(episode: Episode, progress: WatchProgress?) {
         Div({ classes("tile-actions") }) {
             Button({
                 classes("tile-act")
-                attr("title", S.copyEpisodeLink)
+                attr("title", S.copyEpisodeLink.cased)
                 attr("aria-label", S.copyEpisodeLink)
                 onClick { event ->
                     event.preventDefault()
@@ -141,7 +141,7 @@ fun EpisodeTile(episode: Episode, progress: WatchProgress?) {
             episode.videoUrl?.let { videoUrl ->
                 Button({
                     classes("tile-act")
-                    attr("title", S.copyMp4Link)
+                    attr("title", S.copyMp4Link.cased)
                     attr("aria-label", S.copyMp4Link)
                     onClick { event ->
                         event.preventDefault()

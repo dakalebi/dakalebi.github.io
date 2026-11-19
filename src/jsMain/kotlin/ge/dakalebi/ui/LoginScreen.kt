@@ -12,6 +12,7 @@ import ge.dakalebi.di.toasts
 import ge.dakalebi.presentation.ErrorMessages
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
+import ge.dakalebi.i18n.cased
 import ge.dakalebi.ui.tv.focus.FocusAxis
 import ge.dakalebi.ui.tv.focus.focusGroup
 import ge.dakalebi.ui.tv.focus.focusItem
@@ -38,7 +39,6 @@ import org.jetbrains.compose.web.dom.Img
 import org.jetbrains.compose.web.dom.Input
 import org.jetbrains.compose.web.dom.P
 import org.jetbrains.compose.web.dom.Span
-import org.jetbrains.compose.web.dom.Text
 import org.w3c.dom.Element
 import org.w3c.dom.HTMLInputElement
 
@@ -115,7 +115,7 @@ fun LoginScreen() {
                     Input(InputType.Email) {
                         classNames(inputClasses())
                         name("email")
-                        placeholder(S.emailPlaceholder)
+                        placeholder(S.emailPlaceholder.cased)
                         required()
                         value(email)
                         onInput { email = it.value }
@@ -126,7 +126,7 @@ fun LoginScreen() {
                     Input(InputType.Password) {
                         classNames(inputClasses())
                         name("password")
-                        placeholder(S.passwordPlaceholder)
+                        placeholder(S.passwordPlaceholder.cased)
                         required()
                         minLength(6)
                         value(password)

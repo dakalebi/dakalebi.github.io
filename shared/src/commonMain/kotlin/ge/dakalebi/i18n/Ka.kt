@@ -12,6 +12,22 @@ object Ka : Strings {
      */
     override fun caps(text: String): String = text.uppercase()
 
+    /**
+     * Mkhedruli → Mtavruli, and nothing else. Each Mtavruli letter sits a fixed
+     * 0xBC0 above its Mkhedruli form (ა U+10D0 → Ა U+1C90, through ჺ, and ჽ-ჿ);
+     * U+10FB and U+10FC have no capital and are left alone.
+     */
+    override fun cased(text: String): String {
+        if (text.none { it.isMkhedruliLetter() }) return text
+        return buildString(text.length) {
+            for (c in text) append(if (c.isMkhedruliLetter()) (c.code + MTAVRULI_OFFSET).toChar() else c)
+        }
+    }
+
+    private const val MTAVRULI_OFFSET = 0x1C90 - 0x10D0
+
+    private fun Char.isMkhedruliLetter() = this in 'ა'..'ჺ' || this in 'ჽ'..'ჿ'
+
     // ------------------------------------------------------------- shell
     override val appName = "დაქალები"
     override val seriesTitle = "ჩემი ცოლის დაქალები"

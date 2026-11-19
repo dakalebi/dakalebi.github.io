@@ -15,6 +15,7 @@ import ge.dakalebi.i18n.S
 import ge.dakalebi.presentation.Route
 import ge.dakalebi.presentation.Router
 import ge.dakalebi.ui.LoginScreen
+import ge.dakalebi.ui.Text
 import ge.dakalebi.ui.ToastHost
 import ge.dakalebi.ui.tv.focus.FocusMemory
 import ge.dakalebi.ui.tv.focus.ITEM_ATTR
@@ -25,7 +26,6 @@ import io.github.bchmsl.keel.dom.classNames
 import kotlinx.browser.document
 import kotlinx.browser.window
 import org.jetbrains.compose.web.dom.Div
-import org.jetbrains.compose.web.dom.Text
 import org.w3c.dom.Element
 import org.w3c.dom.HTMLElement
 

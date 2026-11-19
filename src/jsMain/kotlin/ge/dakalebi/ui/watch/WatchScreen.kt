@@ -32,6 +32,7 @@ import ge.dakalebi.presentation.Route
 import ge.dakalebi.ui.ConfirmDialog
 import ge.dakalebi.ui.EpisodeRow
 import ge.dakalebi.ui.ExternalLink
+import ge.dakalebi.ui.Text
 import ge.dakalebi.ui.UpNextList
 import ge.dakalebi.ui.drive.driveHref
 import ge.dakalebi.ui.player.CustomVideoPlayer
@@ -54,7 +55,6 @@ import kotlinx.coroutines.withTimeoutOrNull
 import org.jetbrains.compose.web.dom.Button
 import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.H1
-import org.jetbrains.compose.web.dom.Text
 import org.w3c.dom.HTMLVideoElement
 import org.w3c.dom.events.Event
 import kotlin.math.floor

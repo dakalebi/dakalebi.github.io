@@ -61,3 +61,14 @@
 
   color-scheme: dark;
 }
+
+/* Georgian is cased in Kotlin (Strings.caps and Strings.cased), so CSS must not
+   case it again. `text-transform: uppercase` does worse than skip Georgian: Chrome
+   maps Mtavruli back down to Mkhedruli, so a `.caps` eyebrow drew in small letters.
+   Measured on the sign-in eyebrow: the DOM holds ᲡᲐᲜᲐᲮᲐᲕᲘ, the screen showed
+   სანახავი. Here because every shell links this sheet, after keel's (whose `.badge`
+   uppercases too); `!important` because the rules it undoes are more specific and
+   load later. English keeps them, since its `caps` leaves casing to CSS. */
+:lang(ka) {
+  text-transform: none !important;
+}

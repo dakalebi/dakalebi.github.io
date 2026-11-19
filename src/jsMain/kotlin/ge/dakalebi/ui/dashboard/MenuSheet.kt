@@ -11,6 +11,7 @@ import ge.dakalebi.domain.model.Setting
 import ge.dakalebi.i18n.I18n
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
+import ge.dakalebi.ui.Text
 import ge.dakalebi.ui.drive.driveHref
 import ge.dakalebi.ui.player.isAppleMobile
 import io.github.bchmsl.keel.components.Drawer
@@ -31,7 +32,6 @@ import org.jetbrains.compose.web.dom.A
 import org.jetbrains.compose.web.dom.Button
 import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.Span
-import org.jetbrains.compose.web.dom.Text
 
 @Composable
 fun MenuSheet(
@@ -250,7 +250,7 @@ private fun BuildStamp() {
         }
         Span({ classes("mono") }) { Text(BuildInfo.COMMIT) }
         // A locally-built bundle should never be mistaken for what CI shipped.
-        if (BuildInfo.isDevBuild) Span({ classes("build-dev") }) { Text("dev") }
+        if (BuildInfo.isDevBuild) Span({ classes("build-dev") }) { Text("dev".caps) }
     }
 }
 

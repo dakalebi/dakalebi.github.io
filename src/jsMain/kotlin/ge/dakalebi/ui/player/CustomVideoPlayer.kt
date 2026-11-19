@@ -12,6 +12,7 @@ import ge.dakalebi.domain.service.orderedQualityLabels
 import ge.dakalebi.i18n.S
 import ge.dakalebi.ui.Icon as PlayerIcon
 import ge.dakalebi.ui.Icons as PlayerIcons
+import ge.dakalebi.ui.Text
 import io.github.bchmsl.keel.components.ButtonSize
 import io.github.bchmsl.keel.components.ButtonVariant
 import io.github.bchmsl.keel.components.DropdownMenu
@@ -43,7 +44,6 @@ import org.jetbrains.compose.web.dom.Button
 import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.Input
 import org.jetbrains.compose.web.dom.Span
-import org.jetbrains.compose.web.dom.Text
 import org.jetbrains.compose.web.dom.Video
 import org.w3c.dom.HTMLElement
 import org.w3c.dom.HTMLVideoElement

@@ -80,6 +80,9 @@ button {
  * `ᲥᲐᲠᲗᲣᲚᲘ` renders 220px. Latin *is* transformed, so leaving the rule on would
  * have produced "GOOGLE-ით შესვლა" - half shouted, half not.
  *
+ * It also maps Mtavruli back down to Mkhedruli, which undoes the Kotlin casing,
+ * so tokens.css turns every `text-transform` off for Georgian.
+ *
  * See Strings.caps and the `.caps` extension in the i18n package.
  */
 

@@ -15,6 +15,7 @@ import ge.dakalebi.i18n.caps
 import ge.dakalebi.presentation.TvSeek
 import ge.dakalebi.ui.Icon as PlayerIcon
 import ge.dakalebi.ui.Icons as PlayerIcons
+import ge.dakalebi.ui.Text
 import ge.dakalebi.ui.player.PlayerEvents
 import ge.dakalebi.ui.tv.TvConfig
 import ge.dakalebi.ui.tv.actsAsButton
@@ -50,7 +51,6 @@ import kotlinx.browser.document
 import kotlinx.browser.window
 import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.Span
-import org.jetbrains.compose.web.dom.Text
 import org.jetbrains.compose.web.dom.Video
 import org.w3c.dom.HTMLElement
 import org.w3c.dom.HTMLVideoElement
