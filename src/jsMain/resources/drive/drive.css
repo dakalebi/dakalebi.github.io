@@ -226,8 +226,12 @@ button {
   font-weight: 700;
 }
 
+/* Sized so the widest title, "ᲡᲔᲠᲘᲐ 88" (5.35em in Mersad 800), stays on one line
+   beside the play icon from a 320px phone up. At 13vw a 390px phone broke even
+   "ᲡᲔᲠᲘᲐ 1" before its number: the Mtavruli capitals are wider than the
+   Mkhedruli this was tuned for. */
 .drive-start-title {
-  font-size: clamp(2.75rem, 13vw, 4.5rem);
+  font-size: clamp(1.75rem, 9.5vw, 4.5rem);
   font-weight: 800;
   line-height: 1;
 }
