@@ -3,11 +3,11 @@ package ge.dakalebi.next.web
 import androidx.compose.runtime.Composable
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
+import ge.dakalebi.next.components.Text
 import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.H1
 import org.jetbrains.compose.web.dom.Main
 import org.jetbrains.compose.web.dom.P
-import org.jetbrains.compose.web.dom.Text
 
 /**
  * Drawn instead of the app when `FirebaseConfig` is still empty, so a fresh checkout says

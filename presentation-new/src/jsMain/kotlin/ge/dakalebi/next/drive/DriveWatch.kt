@@ -22,6 +22,7 @@ import ge.dakalebi.next.components.IconButton
 import ge.dakalebi.next.components.IconButtonVariant
 import ge.dakalebi.next.components.Notice
 import ge.dakalebi.next.components.Spinner
+import ge.dakalebi.next.components.Text
 import ge.dakalebi.next.player.isAppleMobile
 import ge.dakalebi.presentation.ErrorMessages
 import ge.dakalebi.presentation.Route
@@ -30,7 +31,6 @@ import org.jetbrains.compose.web.dom.H1
 import org.jetbrains.compose.web.dom.Main
 import org.jetbrains.compose.web.dom.P
 import org.jetbrains.compose.web.dom.Span
-import org.jetbrains.compose.web.dom.Text
 
 /**
  * The native player, with the controls a driver reaches for drawn large around it:

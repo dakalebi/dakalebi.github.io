@@ -12,6 +12,7 @@ import ge.dakalebi.next.components.MenuButton
 import ge.dakalebi.next.components.SeasonRing
 import ge.dakalebi.next.components.Skeleton
 import ge.dakalebi.next.components.SkeletonShape
+import ge.dakalebi.next.components.Text
 import ge.dakalebi.next.components.seasonLabel
 import ge.dakalebi.presentation.CatalogStore
 import ge.dakalebi.presentation.DashboardConfirm
@@ -27,7 +28,6 @@ import org.jetbrains.compose.web.dom.Nav
 import org.jetbrains.compose.web.dom.P
 import org.jetbrains.compose.web.dom.Section
 import org.jetbrains.compose.web.dom.Small
-import org.jetbrains.compose.web.dom.Text
 import org.jetbrains.compose.web.dom.Ul
 
 /** A season's watched and total episode counts. */

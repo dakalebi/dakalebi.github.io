@@ -13,7 +13,6 @@ import org.jetbrains.compose.web.attributes.disabled
 import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.Input
 import org.jetbrains.compose.web.dom.Span
-import org.jetbrains.compose.web.dom.Text
 import kotlin.math.max
 
 /**

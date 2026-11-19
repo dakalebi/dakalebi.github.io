@@ -22,6 +22,7 @@ import ge.dakalebi.next.components.ButtonVariant
 import ge.dakalebi.next.components.ConfirmDialog
 import ge.dakalebi.next.components.Glyph
 import ge.dakalebi.next.components.Icon
+import ge.dakalebi.next.components.Text
 import ge.dakalebi.next.components.ToastRegion
 import ge.dakalebi.domain.service.COMPACT_SCREEN_MAX_QUALITY
 import ge.dakalebi.next.player.isAppleMobile
@@ -39,7 +40,6 @@ import org.jetbrains.compose.web.dom.Main
 import org.jetbrains.compose.web.dom.Nav
 import org.jetbrains.compose.web.dom.P
 import org.jetbrains.compose.web.dom.Span
-import org.jetbrains.compose.web.dom.Text
 
 /** The app's three places. Each is a route, so it has an address and Back reaches it. */
 internal enum class Tab(val route: Route, val glyph: Glyph) {

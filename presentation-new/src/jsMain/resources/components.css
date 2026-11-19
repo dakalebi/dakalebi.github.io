@@ -67,7 +67,6 @@
   padding: 0 var(--button-px);
   border-radius: var(--button-radius);
   font: var(--type-label);
-  font-stretch: var(--type-label-stretch);
   letter-spacing: var(--type-label-tracking);
   white-space: nowrap;
   text-align: center;
@@ -225,7 +224,6 @@
   background: var(--chip-bg);
   color: var(--chip-fg);
   font: var(--type-label-s);
-  font-stretch: var(--type-label-s-stretch);
   letter-spacing: var(--type-label-s-tracking);
   white-space: nowrap;
   transition: background-color var(--dur-press) var(--ease-out);
@@ -262,7 +260,6 @@
   background: var(--badge-bg);
   color: var(--badge-fg);
   font: var(--type-label-s);
-  font-stretch: var(--type-label-s-stretch);
   letter-spacing: var(--type-label-s-tracking);
   white-space: nowrap;
 }
@@ -278,7 +275,6 @@
 
 .field-label {
   font: var(--type-label-s);
-  font-stretch: var(--type-label-s-stretch);
   letter-spacing: var(--type-label-s-tracking);
   color: var(--color-text-2);
 }
@@ -313,7 +309,6 @@
   border: 0;
   background: transparent;
   font: var(--type-body);
-  font-stretch: var(--type-body-stretch);
   /* Never under 16px, or iOS zooms into the field. */
   font-size: var(--input-font-size);
   color: var(--color-text);
@@ -334,7 +329,6 @@
 .field-hint,
 .field-error {
   font: var(--type-body-s);
-  font-stretch: var(--type-body-s-stretch);
   color: var(--color-text-2);
 }
 
@@ -384,13 +378,11 @@
 
 .switch-label {
   font: var(--type-item);
-  font-stretch: var(--type-item-stretch);
   letter-spacing: var(--type-item-tracking);
 }
 
 .switch-description {
   font: var(--type-body-s);
-  font-stretch: var(--type-body-s-stretch);
   color: var(--color-text-2);
 }
 
@@ -440,7 +432,6 @@
 
 .segmented-label {
   font: var(--type-label-s);
-  font-stretch: var(--type-label-s-stretch);
   letter-spacing: var(--type-label-s-tracking);
   color: var(--color-text-2);
 }
@@ -475,7 +466,6 @@
   border-radius: var(--radius-pill);
   color: var(--color-text-2);
   font: var(--type-label-s);
-  font-stretch: var(--type-label-s-stretch);
   letter-spacing: var(--type-label-s-tracking);
   white-space: nowrap;
   transition:
@@ -656,13 +646,11 @@
 
 .notice-title {
   font: var(--type-item);
-  font-stretch: var(--type-item-stretch);
   letter-spacing: var(--type-item-tracking);
 }
 
 .notice-body {
   font: var(--type-body-s);
-  font-stretch: var(--type-body-s-stretch);
   color: var(--color-text-2);
 }
 
@@ -696,13 +684,11 @@
 
 .empty-title {
   font: var(--type-title);
-  font-stretch: var(--type-title-stretch);
   letter-spacing: var(--type-title-tracking);
 }
 
 .empty-body {
   font: var(--type-body);
-  font-stretch: var(--type-body-stretch);
   color: var(--color-text-2);
 }
 
@@ -738,7 +724,6 @@
   background: var(--toast-bg);
   box-shadow: var(--toast-shadow);
   font: var(--type-body-s);
-  font-stretch: var(--type-body-s-stretch);
   color: var(--color-text);
   pointer-events: auto;
   animation:
@@ -822,7 +807,6 @@
 
 .dialog-title {
   font: var(--type-title);
-  font-stretch: var(--type-title-stretch);
   letter-spacing: var(--type-title-tracking);
 }
 
@@ -880,7 +864,6 @@
 
 .sheet-title {
   font: var(--type-title);
-  font-stretch: var(--type-title-stretch);
   letter-spacing: var(--type-title-tracking);
 }
 
@@ -963,7 +946,6 @@
 .menu-title {
   padding: var(--space-2) var(--space-4) var(--space-3);
   font: var(--type-section);
-  font-stretch: var(--type-section-stretch);
   letter-spacing: var(--type-section-tracking);
   color: var(--color-text-3);
 }
@@ -979,7 +961,6 @@
   border-radius: var(--radius-12);
   color: var(--color-text);
   font: var(--type-item);
-  font-stretch: var(--type-item-stretch);
   letter-spacing: var(--type-item-tracking);
   text-align: start;
 }
@@ -1121,7 +1102,6 @@
   background: var(--color-on-media);
   color: var(--color-on-media-text);
   font: var(--type-figure-s);
-  font-stretch: var(--type-figure-stretch);
   font-variant-numeric: var(--type-figure-numeric);
   text-align: center;
   text-shadow: var(--thumb-number-shadow);
@@ -1139,7 +1119,6 @@
   background: var(--color-on-media);
   color: var(--color-accent-text);
   font: var(--type-figure-s);
-  font-stretch: var(--type-figure-stretch);
   white-space: nowrap;
   text-shadow: var(--thumb-number-shadow);
 }
@@ -1216,7 +1195,6 @@
 
 .ep-row-name {
   font: var(--type-item);
-  font-stretch: var(--type-item-stretch);
   letter-spacing: var(--type-item-tracking);
 }
 
@@ -1225,7 +1203,6 @@
   overflow: hidden;
   color: var(--color-text-3);
   font: var(--type-body-s);
-  font-stretch: var(--type-body-s-stretch);
   font-variant-numeric: var(--type-figure-numeric);
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -1263,14 +1240,12 @@
 .ep-tile-season {
   color: var(--color-text-3);
   font: var(--type-label-s);
-  font-stretch: var(--type-label-s-stretch);
   letter-spacing: var(--type-label-s-tracking);
 }
 
 .ep-tile-name {
   overflow: hidden;
   font: var(--type-item);
-  font-stretch: var(--type-item-stretch);
   letter-spacing: var(--type-item-tracking);
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -1311,7 +1286,6 @@
   position: relative;
   color: var(--color-text);
   font: var(--type-figure-m);
-  font-stretch: var(--type-figure-stretch);
   font-variant-numeric: var(--type-figure-numeric);
 }
 
@@ -1351,7 +1325,6 @@
   aspect-ratio: auto;
   padding: var(--space-3);
   font: var(--type-body-s);
-  font-stretch: var(--type-body-s-stretch);
   overflow-wrap: anywhere;
 }
 
@@ -1467,7 +1440,6 @@
   justify-content: space-between;
   margin-top: calc((var(--scrub-hit) - var(--scrub-h)) / -2 + var(--space-1));
   font: var(--type-figure-s);
-  font-stretch: var(--type-figure-stretch);
   font-variant-numeric: var(--type-figure-numeric);
 }
 

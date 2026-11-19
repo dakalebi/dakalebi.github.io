@@ -24,6 +24,7 @@ import ge.dakalebi.next.components.ProgressBar
 import ge.dakalebi.next.components.SegmentOption
 import ge.dakalebi.next.components.Segmented
 import ge.dakalebi.next.components.Switch
+import ge.dakalebi.next.components.Text
 import ge.dakalebi.next.tv.focus.FocusAxis
 import ge.dakalebi.next.tv.focus.focusGroup
 import ge.dakalebi.next.tv.focus.focusItem
@@ -33,7 +34,6 @@ import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.Footer
 import org.jetbrains.compose.web.dom.P
 import org.jetbrains.compose.web.dom.Span
-import org.jetbrains.compose.web.dom.Text
 
 /**
  * Settings on TV: who is watching and how far they are, the language, the interface

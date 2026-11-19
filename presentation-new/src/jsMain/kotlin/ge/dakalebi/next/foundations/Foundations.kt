@@ -3,6 +3,7 @@ package ge.dakalebi.next.foundations
 import androidx.compose.runtime.Composable
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
+import ge.dakalebi.next.components.Text
 import org.jetbrains.compose.web.css.percent
 import org.jetbrains.compose.web.css.width
 import org.jetbrains.compose.web.dom.Article
@@ -12,7 +13,6 @@ import org.jetbrains.compose.web.dom.Li
 import org.jetbrains.compose.web.dom.P
 import org.jetbrains.compose.web.dom.Section
 import org.jetbrains.compose.web.dom.Span
-import org.jetbrains.compose.web.dom.Text
 import org.jetbrains.compose.web.dom.Ul
 
 /**
@@ -47,8 +47,9 @@ fun FoundationsGrid() {
 }
 
 /**
- * One type role and the words it is shown with. The roles the brief marks "caps" get
- * their sample through `caps`, which is Mtavruli in Georgian and unchanged in English.
+ * One type role and the words it is shown with. Every sample is Mtavruli in Georgian,
+ * through `Text`. The roles the brief marks "caps" also go through `caps`, which
+ * uppercases Latin too, and is unchanged in English.
  */
 private class Role(val name: String, val sample: String)
 
@@ -75,7 +76,6 @@ private fun TypeRamp() {
                     classes("fd-sample")
                     style {
                         property("font", "var(--type-${role.name})")
-                        property("font-stretch", "var(--type-${role.name}-stretch)")
                         property("letter-spacing", "var(--type-${role.name}-tracking)")
                     }
                 }) { Text(role.sample) }
@@ -90,7 +90,6 @@ private fun TypeRamp() {
                     Span({
                         style {
                             property("font", "var(--type-figure-$size)")
-                            property("font-stretch", "var(--type-figure-stretch)")
                             property("font-variant-numeric", "var(--type-figure-numeric)")
                         }
                     }) { Text(sample) }

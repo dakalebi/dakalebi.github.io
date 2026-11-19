@@ -10,6 +10,7 @@ import ge.dakalebi.i18n.caps
 import ge.dakalebi.next.components.Button
 import ge.dakalebi.next.components.ButtonVariant
 import ge.dakalebi.next.components.Glyph
+import ge.dakalebi.next.components.Text
 import ge.dakalebi.next.components.Thumb
 import ge.dakalebi.next.tv.focus.FocusAxis
 import ge.dakalebi.next.tv.focus.focusGroup
@@ -22,7 +23,6 @@ import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.H1
 import org.jetbrains.compose.web.dom.P
 import org.jetbrains.compose.web.dom.Section
-import org.jetbrains.compose.web.dom.Text
 
 /**
  * Home on TV: the episode to continue, large, with the ring on its one amber button.

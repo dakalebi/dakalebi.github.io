@@ -13,6 +13,7 @@ import ge.dakalebi.next.components.EmptyState
 import ge.dakalebi.next.components.Glyph
 import ge.dakalebi.next.components.Icon
 import ge.dakalebi.next.components.Spinner
+import ge.dakalebi.next.components.Text
 import ge.dakalebi.next.useFixtures
 import ge.dakalebi.presentation.ErrorMessages
 import ge.dakalebi.presentation.Route
@@ -20,7 +21,6 @@ import org.jetbrains.compose.web.dom.Button as HtmlButton
 import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.Main
 import org.jetbrains.compose.web.dom.Span
-import org.jetbrains.compose.web.dom.Text
 import kotlin.math.ceil
 import kotlin.math.roundToInt
 

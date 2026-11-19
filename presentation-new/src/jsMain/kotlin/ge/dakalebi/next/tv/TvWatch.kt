@@ -21,6 +21,7 @@ import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
 import ge.dakalebi.next.components.QrCode
 import ge.dakalebi.next.components.Spinner
+import ge.dakalebi.next.components.Text
 import ge.dakalebi.next.components.Thumb
 import ge.dakalebi.next.player.PlayerEvents
 import ge.dakalebi.next.player.VideoPlayhead
@@ -30,7 +31,6 @@ import ge.dakalebi.presentation.PlaybackError
 import ge.dakalebi.presentation.PlaybackViewModel
 import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.P
-import org.jetbrains.compose.web.dom.Text
 import org.w3c.dom.HTMLMediaElement
 import org.w3c.dom.HTMLVideoElement
 

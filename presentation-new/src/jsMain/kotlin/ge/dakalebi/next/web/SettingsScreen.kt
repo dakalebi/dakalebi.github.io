@@ -25,6 +25,7 @@ import ge.dakalebi.next.components.ProgressBar
 import ge.dakalebi.next.components.SegmentOption
 import ge.dakalebi.next.components.Segmented
 import ge.dakalebi.next.components.Switch
+import ge.dakalebi.next.components.Text
 import ge.dakalebi.next.drive.driveHref
 import ge.dakalebi.next.player.isAppleMobile
 import ge.dakalebi.presentation.DashboardConfirm
@@ -36,7 +37,6 @@ import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.Footer
 import org.jetbrains.compose.web.dom.P
 import org.jetbrains.compose.web.dom.Span
-import org.jetbrains.compose.web.dom.Text
 
 /**
  * Settings: who is watching, how far they are, the two settings the web has, the

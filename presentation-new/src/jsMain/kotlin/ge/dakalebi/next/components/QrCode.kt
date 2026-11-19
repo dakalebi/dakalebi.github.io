@@ -6,7 +6,6 @@ import androidx.compose.runtime.remember
 import ge.dakalebi.core.Log
 import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.P
-import org.jetbrains.compose.web.dom.Text
 
 /**
  * [text] as a QR code, for a link a television cannot open: the viewer scans it with a

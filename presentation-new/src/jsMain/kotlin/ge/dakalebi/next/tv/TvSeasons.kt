@@ -10,6 +10,7 @@ import ge.dakalebi.i18n.caps
 import ge.dakalebi.next.components.EpisodeTile
 import ge.dakalebi.next.components.MenuButton
 import ge.dakalebi.next.components.MenuEntry
+import ge.dakalebi.next.components.Text
 import ge.dakalebi.next.components.tvItem
 import ge.dakalebi.next.tv.focus.FocusAxis
 import ge.dakalebi.next.tv.focus.focusGroup
@@ -23,7 +24,6 @@ import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.H2
 import org.jetbrains.compose.web.dom.P
 import org.jetbrains.compose.web.dom.Section
-import org.jetbrains.compose.web.dom.Text
 
 /**
  * Seasons on TV: every season as a ring along the top, and the picked season's episodes

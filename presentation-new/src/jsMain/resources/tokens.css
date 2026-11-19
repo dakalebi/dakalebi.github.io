@@ -18,9 +18,26 @@
    Sizes are named by their px value at a 16px root (--fs-20 is 1.25rem). On TV the name is the
    design size at 960x540, not the rendered size.
 
-   Chrome casing (Mtavruli) is not a token. It is a string transform per language (`String.caps`),
-   so English stays sentence case. The roles marked "caps" below expect that transform.
+   Casing is not a token. It is a string transform per language, so English stays sentence
+   case. In Georgian every on-screen string is Mtavruli: the `Text` wrapper runs it through
+   `String.cased`. The roles marked "caps" below also take `String.caps`, which uppercases
+   Latin too. Never `text-transform`: it does not map Mkhedruli to Mtavruli.
    ========================================================================== */
+
+/* Mersad, by Nikoloz Khipashvili: the one face for every role and both languages.
+   Self-hosted, one variable file for the whole 100-900 range, because the roles ask for
+   650, 750 and 850, which only an axis can draw. It carries Latin, Mkhedruli and all 46
+   Mtavruli capitals. It has no width axis, so no role is condensed, and no tabular
+   figures (see the figure roles). The few symbols it lacks (✓ ▸ ◂ → ⋅) fall through to
+   the faces after it. The URL is relative to this sheet, so /tv/ and /drive/, which link
+   it as ../tokens.css, reach the same file. Each page preloads it. */
+@font-face {
+  font-family: "Mersad";
+  src: url("fonts/Mersad.ttf") format("truetype");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
 
 :root {
   color-scheme: dark;
@@ -59,9 +76,10 @@
   --amber-rgb: 244 169 60;
   --shadow-rgb: 0 0 0;
 
-  /* families. Noto Sans Georgian also carries Latin, so English needs no second face. */
-  --font-georgian: "Noto Sans Georgian", "BPG Arial", Sylfaen, system-ui, sans-serif;
-  --font-figures: "Archivo", "Noto Sans Georgian", system-ui, sans-serif;
+  /* families. Both are Mersad, which also carries Latin, so English needs no second face.
+     Figures keep their own token so numbers can take another face without touching text. */
+  --font-georgian: "Mersad", "BPG Arial", Sylfaen, system-ui, sans-serif;
+  --font-figures: "Mersad", system-ui, sans-serif;
 
   /* size steps (rem; name = px at 16px) */
   --fs-12: 0.75rem;
@@ -81,18 +99,12 @@
   --fs-48: 3rem;
   --fs-64: 4rem;
 
-  /* weights (both families are variable) */
+  /* weights (Mersad is variable, 100 to 900) */
   --fw-400: 400;
   --fw-500: 500;
   --fw-650: 650;
   --fw-750: 750;
   --fw-850: 850;
-
-  /* widths, as font-stretch. Noto Sans Georgian: 62.5% to 100%. Archivo: 62% to 125%. */
-  --stretch-66: 66%;
-  --stretch-72: 72%;
-  --stretch-75: 75%;
-  --stretch-100: 100%;
 
   /* line heights. Mkhedruli has real ascenders and descenders, so running text needs 1.5. */
   --lh-100: 1;
@@ -203,8 +215,8 @@
   --focus-scale: 1;
   --focus-ring: 0 0 0 var(--focus-gap) var(--color-bg), 0 0 0 calc(var(--focus-gap) + var(--focus-width)) var(--focus-color), var(--focus-glow);
 
-  /* type roles. Use as:  font: var(--type-x); font-stretch: var(--type-x-stretch);
-     letter-spacing: var(--type-x-tracking). Shells change only the -size tokens. */
+  /* type roles. Use as:  font: var(--type-x); letter-spacing: var(--type-x-tracking).
+     Shells change only the -size tokens. */
   --type-display-size: var(--fs-32);
   --type-headline-size: var(--fs-26);
   --type-title-size: var(--fs-18);
@@ -222,49 +234,41 @@
 
   /* display: page titles. caps */
   --type-display: var(--fw-850) var(--type-display-size) / var(--lh-100) var(--font-georgian);
-  --type-display-stretch: var(--stretch-66);
   --type-display-tracking: var(--tracking-0);
   /* headline: the episode you are on. caps */
   --type-headline: var(--fw-850) var(--type-headline-size) / var(--lh-110) var(--font-georgian);
-  --type-headline-stretch: var(--stretch-66);
   --type-headline-tracking: var(--tracking-0);
   /* title: card, sheet and dialog titles. caps */
   --type-title: var(--fw-750) var(--type-title-size) / var(--lh-125) var(--font-georgian);
-  --type-title-stretch: var(--stretch-75);
   --type-title-tracking: var(--tracking-0);
   /* section: labels above a group. caps */
   --type-section: var(--fw-750) var(--type-section-size) / var(--lh-125) var(--font-georgian);
-  --type-section-stretch: var(--stretch-75);
   --type-section-tracking: var(--tracking-2);
   /* label: buttons and chips. caps */
   --type-label: var(--fw-750) var(--type-label-size) / var(--lh-100) var(--font-georgian);
-  --type-label-stretch: var(--stretch-75);
   --type-label-tracking: var(--tracking-2);
-  /* label-s: tab bar and badges. Mkhedruli, not caps: small caps text is hard to read. */
+  /* label-s: tab bar and badges. Not caps, so Latin keeps its case. Georgian is Mtavruli,
+     like all text. */
   --type-label-s: var(--fw-650) var(--type-label-s-size) / var(--lh-100) var(--font-georgian);
-  --type-label-s-stretch: var(--stretch-100);
   --type-label-s-tracking: var(--tracking-0);
-  /* item: the name of a row ("სერია 21", a setting). Mkhedruli, not caps. */
+  /* item: the name of a row ("ᲡᲔᲠᲘᲐ 21", a setting). Not caps, like label-s. */
   --type-item: var(--fw-650) var(--type-item-size) / var(--lh-125) var(--font-georgian);
-  --type-item-stretch: var(--stretch-100);
   --type-item-tracking: var(--tracking-0);
   /* body and body-s: sentences, settings descriptions */
   --type-body: var(--fw-400) var(--type-body-size) / var(--lh-150) var(--font-georgian);
-  --type-body-stretch: var(--stretch-100);
   --type-body-tracking: var(--tracking-0);
   --type-body-s: var(--fw-400) var(--type-body-s-size) / var(--lh-150) var(--font-georgian);
-  --type-body-s-stretch: var(--stretch-100);
   --type-body-s-tracking: var(--tracking-0);
   /* meta: durations, counts, "20 left" lines */
   --type-meta: var(--fw-500) var(--type-meta-size) / var(--lh-140) var(--font-georgian);
-  --type-meta-stretch: var(--stretch-100);
   --type-meta-tracking: var(--tracking-0);
-  /* figures: episode numbers, timecodes, counters. Always tabular. */
+  /* figures: episode numbers, timecodes, counters. They ask for tabular digits, which the
+     fallback faces have. Mersad has none, so its digits keep their own widths, and a
+     running timecode can shift by a pixel or two as it counts. */
   --type-figure-xl: var(--fw-650) var(--type-figure-xl-size) / var(--lh-100) var(--font-figures);
   --type-figure-l: var(--fw-650) var(--type-figure-l-size) / var(--lh-100) var(--font-figures);
   --type-figure-m: var(--fw-650) var(--type-figure-m-size) / var(--lh-100) var(--font-figures);
   --type-figure-s: var(--fw-500) var(--type-figure-s-size) / var(--lh-100) var(--font-figures);
-  --type-figure-stretch: var(--stretch-72);
   --type-figure-numeric: tabular-nums;
 
   /* spacing roles */

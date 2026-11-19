@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import ge.dakalebi.i18n.S
 import ge.dakalebi.i18n.caps
 import ge.dakalebi.next.components.Icon
+import ge.dakalebi.next.components.Text
 import ge.dakalebi.next.tv.focus.FocusAxis
 import ge.dakalebi.next.tv.focus.SpatialNav
 import ge.dakalebi.next.tv.focus.focusGroup
@@ -15,7 +16,6 @@ import org.jetbrains.compose.web.dom.A
 import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.Nav
 import org.jetbrains.compose.web.dom.Span
-import org.jetbrains.compose.web.dom.Text
 import org.w3c.dom.Element
 import org.w3c.dom.HTMLElement
 

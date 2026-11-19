@@ -14,6 +14,7 @@ import ge.dakalebi.next.components.IconButtonVariant
 import ge.dakalebi.next.components.ProgressBar
 import ge.dakalebi.next.components.Spinner
 import ge.dakalebi.next.components.Switch
+import ge.dakalebi.next.components.Text
 import ge.dakalebi.next.player.PlayerEvents
 import ge.dakalebi.next.tv.TvConfig
 import ge.dakalebi.next.tv.actsAsOption
@@ -32,7 +33,6 @@ import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.H1
 import org.jetbrains.compose.web.dom.P
 import org.jetbrains.compose.web.dom.Span
-import org.jetbrains.compose.web.dom.Text
 
 /**
  * The player for a remote: the picture, the chrome over it, and the episode

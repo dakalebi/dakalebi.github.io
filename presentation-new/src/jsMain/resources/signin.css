@@ -46,13 +46,11 @@
 .signin-eyebrow {
   color: var(--color-accent-text);
   font: var(--type-section);
-  font-stretch: var(--type-section-stretch);
   letter-spacing: var(--type-section-tracking);
 }
 
 .signin-title {
   font: var(--type-display);
-  font-stretch: var(--type-display-stretch);
   letter-spacing: var(--type-display-tracking);
 }
 
@@ -98,7 +96,6 @@
 .signin-note {
   color: var(--color-text-3);
   font: var(--type-body-s);
-  font-stretch: var(--type-body-s-stretch);
   text-align: center;
 }
 
